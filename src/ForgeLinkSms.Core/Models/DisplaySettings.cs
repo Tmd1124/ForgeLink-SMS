@@ -1,0 +1,32 @@
+namespace ForgeLinkSms.Core.Models;
+
+public enum ListColorMode
+{
+    Person,
+    Filter,
+    None
+}
+
+public class DisplaySettings
+{
+    public const string Gray = "#6b7280";
+
+    public ConversationDisplayStyle Layout { get; set; } = ConversationDisplayStyle.BubblesAndCards;
+
+    // Who gets a bubble. In the Bubbles layout anyone not picked is left out entirely (reachable
+    // through search and the lane tabs); in Bubbles + list they go to the list.
+    public bool BubbleEveryone { get; set; }
+    public bool BubbleFavorites { get; set; } = true;
+    public bool BubbleUnread { get; set; } = true;
+    public bool BubbleRecent { get; set; } = true;
+    public bool BubbleFiltered { get; set; }
+
+    public bool ShowFilterTabs { get; set; } = true;
+
+    public ListColorMode ColorBy { get; set; } = ListColorMode.Person;
+
+    /// Overrides ColorBy for unread conversations; null means unread rows get no color.
+    public string? UnreadColor { get; set; } = Gray;
+
+    public DisplaySettings Clone() => (DisplaySettings)MemberwiseClone();
+}

@@ -88,27 +88,54 @@
         </div>
     }
 
-    @if (_selectedThreadIds.Count == 0 && string.IsNullOrWhiteSpace(ViewModel.SearchText)
-         && (ViewModel.ScreenerCount > 0 || ViewModel.UpdatesCount > 0 || ViewModel.Lane != ConversationLane.Conversations))
+    @{
+        var showLaneTabs = _selectedThreadIds.Count == 0 && string.IsNullOrWhiteSpace(ViewModel.SearchText)
+            && (ViewModel.ScreenerCount > 0 || ViewModel.UpdatesCount > 0 || ViewModel.Lane != ConversationLane.Conversations);
+        var filterTabs = _selectedThreadIds.Count == 0 && string.IsNullOrWhiteSpace(ViewModel.SearchText) && ViewModel.Display.ShowFilterTabs
+            ? ViewModel.FiltersInUse
+            : Array.Empty<ForgeLinkSms.Core.Models.Filter>();
+    }
+    @if (showLaneTabs || filterTabs.Count > 0)
     {
-        @* Pinned just under the 52px-tall header row so the lanes stay reachable while scrolling. *@
-        <div id="lane-tabs" style="position:sticky;top:52px;z-index:9;background:var(--surface-color);display:flex;gap:6px;margin-bottom:8px;padding:0 0 6px;">
-            @foreach (var (lane, label, count) in LaneTabs())
+        @* Pinned just under the 52px-tall header row so the lanes and filters stay reachable while scrolling. *@
+        <div id="lane-tabs" style="position:sticky;top:52px;z-index:9;background:var(--surface-color);margin-bottom:8px;padding:0 0 6px;">
+            @if (showLaneTabs)
             {
-                var isActive = ViewModel.Lane == lane;
-                <button @onclick="() => ViewModel.Lane = lane"
-                        style="flex:1;min-width:0;border:none;border-radius:999px;padding:8px 4px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:@(isActive ? "var(--accent-color)" : "#e2e8f0");color:@(isActive ? "white" : "#1e293b");">
-                    @label @(count > 0 ? $"({count})" : "")
-                </button>
+                <div style="display:flex;gap:6px;">
+                    @foreach (var (lane, label, count) in LaneTabs())
+                    {
+                        var isActive = ViewModel.Lane == lane;
+                        <button @onclick="() => ViewModel.Lane = lane"
+                                style="flex:1;min-width:0;border:none;border-radius:999px;padding:8px 4px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:@(isActive ? "var(--accent-color)" : "#e2e8f0");color:@(isActive ? "white" : "#1e293b");">
+                            @label @(count > 0 ? $"({count})" : "")
+                        </button>
+                    }
+                </div>
+            }
+            @if (filterTabs.Count > 0)
+            {
+                <div class="filter-tabs" style="display:flex;gap:6px;overflow-x:auto;touch-action:pan-x;scrollbar-width:none;margin-top:@(showLaneTabs ? "6px" : "0");padding-bottom:2px;">
+                    @foreach (var filter in filterTabs)
+                    {
+                        var isActive = ViewModel.ActiveFilterIds.Contains(filter.Id);
+                        <button @key="filter.Id" @onclick="() => ViewModel.ToggleActiveFilter(filter.Id)"
+                                style="flex-shrink:0;border:2px solid @filter.ColorHex;border-radius:999px;padding:3px 12px;font-size:0.8em;font-weight:600;white-space:nowrap;background:@(isActive ? filter.ColorHex : "transparent");color:@(isActive ? "white" : "var(--text-color)");">
+                            @filter.Name
+                        </button>
+                    }
+                </div>
             }
         </div>
+    }
+    @if (showLaneTabs)
+    {
         @if (ViewModel.Lane == ConversationLane.Screener)
         {
-            <div style="color:#94a3b8;font-size:0.85em;margin:0 4px 8px;">Texts from numbers that aren't in your contacts. They arrive without a notification (except verification codes) until you allow them.</div>
+            <div style="color:#94a3b8;font-size:0.85em;margin:0 4px 8px;">Texts from numbers that aren't in your contacts and that you've never replied to — often spam, wrong numbers or someone new. They arrive without a notification (except verification codes). Tap Allow to move a sender to Chats, or Block to stop them.</div>
         }
         else if (ViewModel.Lane == ConversationLane.Updates)
         {
-            <div style="color:#94a3b8;font-size:0.85em;margin:0 4px 8px;">Automated texts from businesses, grouped by topic. They arrive without a notification, except verification codes.</div>
+            <div style="color:#94a3b8;font-size:0.85em;margin:0 4px 8px;">Automated texts from businesses (short codes, toll-free numbers and named senders), grouped by topic. They arrive without a notification, except verification codes. Businesses you've saved as contacts stay in Chats.</div>
         }
     }
 
@@ -117,6 +144,13 @@
         <BubblePond Threads="ViewModel.PondThreads"
                     OnOpen="t => OpenThread(t.Id, t.Address)"
                     OnLongPress="SelectFromPond" />
+    }
+
+    @if (_selectedThreadIds.Count == 0 && ViewModel.Display.Layout == ConversationDisplayStyle.Bubbles && ViewModel.GridThreads.Count == 0
+         && ViewModel.Lane == ConversationLane.Conversations && string.IsNullOrWhiteSpace(ViewModel.SearchText)
+         && !ViewModel.ShowUnreadOnly && ViewModel.ActiveFilterIds.Count == 0 && ViewModel.Threads.Count > 0)
+    {
+        <p style="color:#94a3b8;text-align:center;margin-top:40px;">No one to show as a bubble right now. Search 🔍 for anyone, or change who gets a bubble in Settings → Display.</p>
     }
 
     @if (_selectedThreadIds.Count == 0 && ViewModel.GridThreads.Count > 0)
@@ -383,15 +417,20 @@
         {
             return "rgba(99,102,241,0.2)";
         }
-        // Each conversation is a speech-bubble card tinted with that person's bubble color.
-        var tint = thread.UnreadCount > 0 ? 34 : 16;
-        return $"color-mix(in srgb, {PondSelector.ColorFor(thread.Address)} {tint}%, var(--card-color))";
+        // A speech-bubble card tinted per the Display settings (person, filter or unread color).
+        var color = ViewModel.RowColor(thread);
+        if (color is null)
+        {
+            return "var(--card-color)";
+        }
+        var tint = thread.UnreadCount > 0 ? 45 : 18;
+        return $"color-mix(in srgb, {color} {tint}%, var(--card-color))";
     }
 
     protected override async Task OnInitializedAsync()
     {
         _photoDataUri = await ProfileService.GetProfilePhotoDataUriAsync();
-        ViewModel.DisplayStyle = DisplayStyles.GetDisplayStyle();
+        ViewModel.Display = DisplayStyles.GetDisplaySettings();
         await ViewModel.LoadCommand.ExecuteAsync(null);
         _isLoading = false;
         AppResumeNotifier.Resumed += OnAppResumed;

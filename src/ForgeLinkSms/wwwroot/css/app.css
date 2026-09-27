@@ -165,3 +165,7 @@ body {
     background-color: var(--surface-color);
     color: var(--text-color);
 }
+
+.filter-tabs::-webkit-scrollbar {
+    display: none;
+}

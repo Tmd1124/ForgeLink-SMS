@@ -4,6 +4,6 @@ namespace ForgeLinkSms.Core.Services;
 
 public interface IDisplayStyleService
 {
-    ConversationDisplayStyle GetDisplayStyle();
-    void SetDisplayStyle(ConversationDisplayStyle style);
+    DisplaySettings GetDisplaySettings();
+    void SaveDisplaySettings(DisplaySettings settings);
 }

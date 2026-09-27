@@ -35,6 +35,11 @@ public partial class ConversationsViewModel : ObservableObject
     public ObservableCollection<Filter> Filters { get; } = new();
     public HashSet<long> ActiveFilterIds { get; } = new();
 
+    /// Filters with at least one visible conversation assigned, in the user's filter order.
+    public IReadOnlyList<Filter> FiltersInUse => Filters
+        .Where(f => _allThreads.Any(t => t.FilterIds.Contains(f.Id)))
+        .ToList();
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Threads))]
     private string _searchText = string.Empty;
@@ -63,20 +68,20 @@ public partial class ConversationsViewModel : ObservableObject
 
     public IReadOnlyList<SmsThread> GridThreads { get; private set; } = Array.Empty<SmsThread>();
 
-    private ConversationDisplayStyle _displayStyle;
+    private DisplaySettings _display = new();
 
-    public ConversationDisplayStyle DisplayStyle
+    public DisplaySettings Display
     {
-        get => _displayStyle;
+        get => _display;
         set
         {
-            if (_displayStyle != value)
-            {
-                _displayStyle = value;
-                ArrangeThreads();
-            }
+            _display = value;
+            ArrangeThreads();
         }
     }
+
+    /// The list row's tint, or null for an uncolored row.
+    public string? RowColor(SmsThread thread) => DisplayRules.RowColor(thread, Display, Filters);
 
     private ConversationLane LaneOf(SmsThread thread) => SenderScreening.LaneFor(thread, _allowedSenders);
 
@@ -545,14 +550,21 @@ public partial class ConversationsViewModel : ObservableObject
     {
         var bubblesAllowed = Lane == ConversationLane.Conversations && string.IsNullOrEmpty(SearchText?.Trim())
             && !ShowUnreadOnly && ActiveFilterIds.Count == 0;
-        PondThreads = bubblesAllowed && DisplayStyle == ConversationDisplayStyle.BubblesAndCards
-            ? PondSelector.Select(Threads)
-            : Array.Empty<SmsThread>();
-        GridThreads = bubblesAllowed && DisplayStyle == ConversationDisplayStyle.Bubbles
-            ? PondSelector.Rank(Threads).ToList()
-            : Array.Empty<SmsThread>();
+        IReadOnlyList<SmsThread> bubbles = !bubblesAllowed ? Array.Empty<SmsThread>() : Display.Layout switch
+        {
+            ConversationDisplayStyle.Bubbles or ConversationDisplayStyle.BubblesAndCards => DisplayRules.BubbleMembers(Threads, Display),
+            _ => Array.Empty<SmsThread>()
+        };
+        // The floating pond has fixed slots for 3–8 people; any other count uses the grid.
+        var fitsPond = Display.Layout == ConversationDisplayStyle.BubblesAndCards
+            && bubbles.Count is >= PondSelector.MinBubbles and <= PondSelector.MaxBubbles;
+        PondThreads = fitsPond ? bubbles : Array.Empty<SmsThread>();
+        GridThreads = fitsPond ? Array.Empty<SmsThread>() : bubbles;
         var bubbleIds = PondThreads.Concat(GridThreads).Select(t => t.Id).ToHashSet();
-        ListThreads = Threads.Where(t => !bubbleIds.Contains(t.Id)).ToList();
+        // The Bubbles layout has no list, so chats that aren't bubbles are simply left out.
+        ListThreads = bubblesAllowed && Display.Layout == ConversationDisplayStyle.Bubbles
+            ? Array.Empty<SmsThread>()
+            : Threads.Where(t => !bubbleIds.Contains(t.Id)).ToList();
         OnPropertyChanged(nameof(PondThreads));
         OnPropertyChanged(nameof(GridThreads));
         OnPropertyChanged(nameof(ListThreads));

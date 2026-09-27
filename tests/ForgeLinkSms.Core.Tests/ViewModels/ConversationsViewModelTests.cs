@@ -1199,7 +1199,7 @@ public class ConversationsViewModelTests
         var threadService = new Mock<IThreadService>();
         threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
         var viewModel = MakeViewModel(threadService);
-        viewModel.DisplayStyle = ConversationDisplayStyle.Cards;
+        viewModel.Display = new DisplaySettings { Layout = ConversationDisplayStyle.Cards };
 
         await viewModel.LoadCommand.ExecuteAsync(null);
 
@@ -1216,7 +1216,7 @@ public class ConversationsViewModelTests
         var favorites = MakeEmptyFavoriteRepository();
         favorites.Setup(r => r.GetFavoriteThreadIdsAsync()).ReturnsAsync(new List<long> { 4 });
         var viewModel = MakeViewModel(threadService, favoriteRepository: favorites);
-        viewModel.DisplayStyle = ConversationDisplayStyle.Bubbles;
+        viewModel.Display = new DisplaySettings { Layout = ConversationDisplayStyle.Bubbles, BubbleEveryone = true };
 
         await viewModel.LoadCommand.ExecuteAsync(null);
 
@@ -1231,7 +1231,7 @@ public class ConversationsViewModelTests
         var threadService = new Mock<IThreadService>();
         threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
         var viewModel = MakeViewModel(threadService);
-        viewModel.DisplayStyle = ConversationDisplayStyle.Bubbles;
+        viewModel.Display = new DisplaySettings { Layout = ConversationDisplayStyle.Bubbles, BubbleEveryone = true };
         await viewModel.LoadCommand.ExecuteAsync(null);
 
         viewModel.SearchText = "a";
@@ -1248,9 +1248,102 @@ public class ConversationsViewModelTests
         var viewModel = MakeViewModel(threadService);
         await viewModel.LoadCommand.ExecuteAsync(null);
 
-        viewModel.DisplayStyle = ConversationDisplayStyle.Bubbles;
+        viewModel.Display = new DisplaySettings { Layout = ConversationDisplayStyle.Bubbles, BubbleEveryone = true };
 
         Assert.Equal(5, viewModel.GridThreads.Count);
+    }
+
+    [Fact]
+    public async Task Bubble_checklist_decides_who_is_in_the_pond()
+    {
+        var chats = FiveNamedChats();
+        chats[0].UnreadCount = 2;
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(chats);
+        var favorites = MakeEmptyFavoriteRepository();
+        favorites.Setup(r => r.GetFavoriteThreadIdsAsync()).ReturnsAsync(new List<long> { 3, 4 });
+        var viewModel = MakeViewModel(threadService, favoriteRepository: favorites);
+        viewModel.Display = new DisplaySettings { BubbleFavorites = true, BubbleUnread = true, BubbleRecent = false };
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(new long[] { 3, 4, 1 }, viewModel.PondThreads.Select(t => t.Id));
+        Assert.Equal(new long[] { 2, 5 }, viewModel.ListThreads.Select(t => t.Id));
+    }
+
+    [Fact]
+    public async Task More_bubbles_than_the_pond_holds_go_to_the_grid()
+    {
+        var chats = Enumerable.Range(1, 12).Select(i => MakeThread(i, $"55500000{i:00}", $"P{i}", "x", DateTimeOffset.UtcNow.AddMinutes(-i), unreadCount: 1)).ToList();
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(chats);
+        var viewModel = MakeViewModel(threadService);
+        viewModel.Display = new DisplaySettings { BubbleUnread = true, BubbleRecent = false, BubbleFavorites = false };
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        Assert.Empty(viewModel.PondThreads);
+        Assert.Equal(12, viewModel.GridThreads.Count);
+        Assert.Empty(viewModel.ListThreads);
+    }
+
+    [Fact]
+    public async Task Row_color_follows_the_display_settings()
+    {
+        var chats = FiveNamedChats();
+        chats[0].UnreadCount = 1;
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(chats);
+        var viewModel = MakeViewModel(threadService);
+        viewModel.Display = new DisplaySettings { ColorBy = ListColorMode.None, UnreadColor = "#123456" };
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal("#123456", viewModel.RowColor(chats[0]));
+        Assert.Null(viewModel.RowColor(chats[1]));
+    }
+
+    [Fact]
+    public async Task Bubbles_layout_without_everyone_shows_only_the_checked_groups_and_no_list()
+    {
+        var chats = FiveNamedChats();
+        chats[1].UnreadCount = 1;
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(chats);
+        var favorites = MakeEmptyFavoriteRepository();
+        favorites.Setup(r => r.GetFavoriteThreadIdsAsync()).ReturnsAsync(new List<long> { 4 });
+        var viewModel = MakeViewModel(threadService, favoriteRepository: favorites);
+        viewModel.Display = new DisplaySettings { Layout = ConversationDisplayStyle.Bubbles, BubbleFavorites = true, BubbleUnread = true, BubbleRecent = false };
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(new long[] { 4, 2 }, viewModel.GridThreads.Select(t => t.Id));
+        Assert.Empty(viewModel.ListThreads);
+        Assert.Empty(viewModel.PondThreads);
+    }
+
+    [Fact]
+    public async Task FiltersInUse_lists_only_filters_with_conversations_assigned()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
+        var filterRepository = MakeEmptyFilterRepository();
+        filterRepository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter>
+        {
+            new() { Id = 1, Name = "Family", ColorHex = "#e11d48" },
+            new() { Id = 2, Name = "Work", ColorHex = "#0ea5e9" },
+            new() { Id = 3, Name = "Unused", ColorHex = "#16a34a" }
+        });
+        filterRepository.Setup(r => r.GetAllAssignmentsAsync()).ReturnsAsync(new Dictionary<long, List<long>>
+        {
+            [2] = new() { 2 },
+            [5] = new() { 1, 2 }
+        });
+        var viewModel = MakeViewModel(threadService, filterRepository: filterRepository);
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(new long[] { 1, 2 }, viewModel.FiltersInUse.Select(f => f.Id));
     }
 
     [Fact]

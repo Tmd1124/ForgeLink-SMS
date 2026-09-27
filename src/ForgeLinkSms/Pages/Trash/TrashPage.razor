@@ -17,16 +17,20 @@
                 <span @onclick="ToggleSelectAll" style="color:var(--accent-color);cursor:pointer;font-weight:600;">
                     @(AllSelected() ? "Deselect all" : "Select all")
                 </span>
-                @if (_selectedThreadIds.Count > 0)
-                {
-                    <button @onclick="OpenDeleteConfirm" title="Delete selected"
-                            style="border:none;background:transparent;color:#ef4444;font-size:1.4em;font-weight:bold;line-height:1;padding:0;">
-                        ✕
-                    </button>
-                }
             </div>
         }
     </div>
+
+    @if (ViewModel.TrashedThreads.Count > 0)
+    {
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+            @if (_selectedThreadIds.Count > 0)
+            {
+                <button @onclick="() => ConfirmDelete(_selectedThreadIds.ToList())" style="@DeleteButtonStyle">🗑 Delete selected (@_selectedThreadIds.Count)</button>
+            }
+            <button @onclick="() => ConfirmDelete(ViewModel.TrashedThreads.Select(t => t.Id).ToList())" style="@DeleteButtonStyle">🗑 Delete all (@ViewModel.TrashedThreads.Count)</button>
+        </div>
+    }
 
     @if (ViewModel.TrashedThreads.Count == 0)
     {
@@ -45,7 +49,12 @@
                     <strong>@thread.DisplayNameOrAddress</strong>
                     <div style="color:#94a3b8;font-size:0.85em;">@thread.PreviewText</div>
                 </div>
-                <button @onclick="() => ViewModel.RestoreCommand.ExecuteAsync(thread.Id)">Restore</button>
+                <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+                    <button @onclick="() => ViewModel.RestoreCommand.ExecuteAsync(thread.Id)"
+                            style="border:none;border-radius:8px;padding:6px 12px;background:var(--accent-color);color:white;font-weight:600;">Restore</button>
+                    <button @onclick="() => ConfirmDelete(new List<long> { thread.Id })"
+                            style="border:none;border-radius:8px;padding:6px 12px;background:#ef4444;color:white;font-weight:600;">Delete</button>
+                </div>
             </div>
         }
 
@@ -55,11 +64,14 @@
     }
 </div>
 
-<ConfirmDeleteDialog @ref="_confirmDialog" OnConfirm="DeleteSelected" />
+<ConfirmDeleteDialog @ref="_confirmDialog" OnConfirm="DeletePending" />
 
 @code {
+    private const string DeleteButtonStyle = "flex:1;border:none;border-radius:10px;padding:10px;background:#ef4444;color:white;font-weight:600;";
+
     private readonly HashSet<long> _selectedThreadIds = new();
     private ConfirmDeleteDialog? _confirmDialog;
+    private List<long> _pendingDeleteIds = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -123,12 +135,17 @@
         }
     }
 
-    private void OpenDeleteConfirm() => _confirmDialog?.Open(_selectedThreadIds.Count);
-
-    private async Task DeleteSelected()
+    private void ConfirmDelete(List<long> threadIds)
     {
-        var ids = _selectedThreadIds.ToList();
-        _selectedThreadIds.Clear();
+        _pendingDeleteIds = threadIds;
+        _confirmDialog?.Open(threadIds.Count);
+    }
+
+    private async Task DeletePending()
+    {
+        var ids = _pendingDeleteIds;
+        _pendingDeleteIds = new();
+        _selectedThreadIds.ExceptWith(ids);
         await ViewModel.DeleteThreadsCommand.ExecuteAsync(ids);
     }
 }

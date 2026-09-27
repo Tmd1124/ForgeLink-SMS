@@ -2,8 +2,9 @@
 @inject ForgeLinkSms.Core.ViewModels.SettingsViewModel ViewModel
 @inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
 @using ForgeLinkSms.Core.Models
+@using ForgeLinkSms.Core.Utils
 
-<div style="padding:12px;">
+<div style="padding:12px;padding-bottom:40px;">
     <h3>Settings</h3>
     <p>Default SMS app: @(ViewModel.IsDefaultSmsApp ? "Yes ✓" : "No — open Onboarding to fix this")</p>
     <label>
@@ -11,42 +12,142 @@
         Notify me about incoming texts
     </label>
 
-    <h4 style="margin:24px 0 8px;">Display</h4>
-    <div style="color:#94a3b8;font-size:0.85em;margin-bottom:8px;">How your Chats list looks.</div>
-    @foreach (var (style, icon, title, description) in Styles)
+    <h4 style="margin:24px 0 4px;">Display</h4>
+    <div style="@HintStyle">How your Chats list looks.</div>
+    @foreach (var (layout, icon, title, description) in Layouts)
     {
-        var selected = _style == style;
-        <div @onclick="() => Choose(style)"
-             style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:14px;cursor:pointer;background:var(--card-color);border:2px solid @(selected ? "var(--accent-color)" : "transparent");">
+        <div @onclick="() => ChooseLayout(layout)" style="@OptionStyle(_settings.Layout == layout)">
             <span style="font-size:1.6em;">@icon</span>
             <div style="flex:1;min-width:0;">
                 <div style="font-weight:600;">@title</div>
-                <div style="color:#94a3b8;font-size:0.85em;">@description</div>
+                <div style="@HintStyle">@description</div>
             </div>
-            <span style="width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid var(--accent-color);background:@(selected ? "var(--accent-color)" : "transparent");"></span>
+            <span style="@RadioStyle(_settings.Layout == layout)"></span>
         </div>
     }
+
+    <div style="font-weight:600;margin:16px 0 6px;">Quick presets</div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+        <button @onclick="() => Apply(DisplayRules.BubblesOnlyFavoritesAndUnreadPreset)" style="@PresetStyle">🫧 Bubbles only: favorites + unread (no list)</button>
+        <button @onclick="() => Apply(DisplayRules.FavoritesAndUnreadPreset)" style="@PresetStyle">🫧💬 Favorites + unread are bubbles</button>
+        <button @onclick="() => Apply(DisplayRules.UnreadOnlyColorPreset)" style="@PresetStyle">💬 Only unread messages are colored</button>
+        <button @onclick="() => Apply(DisplayRules.FavoritesWithFilterColorsPreset)" style="@PresetStyle">🏷️ Favorite bubbles + filter-colored list</button>
+    </div>
+
+    <h4 style="margin:24px 0 4px;">Filter tabs</h4>
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
+        <input type="checkbox" checked="@_settings.ShowFilterTabs" @onchange="e => Update(s => s.ShowFilterTabs = e.Value is true)" style="width:20px;height:20px;" />
+        Show filters that have conversations as tabs under Chats, Updates and Screener
+    </label>
+
+    <h4 style="margin:24px 0 4px;">Bubbles</h4>
+    @if (_settings.Layout != ConversationDisplayStyle.Cards)
+    {
+        <div style="@HintStyle">@(_settings.Layout == ConversationDisplayStyle.Bubbles ? "Who gets a bubble. With no list, anyone else is only found through search and the tabs." : "Who gets a bubble. Everyone else is in the list.")</div>
+        @foreach (var (label, isChecked, set) in BubbleChoices())
+        {
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
+                <input type="checkbox" checked="@isChecked" @onchange="e => Update(s => set(s, e.Value is true))" style="width:20px;height:20px;" />
+                @label
+            </label>
+        }
+    }
+    else
+    {
+        <div style="@HintStyle">The Color list layout has no bubbles.</div>
+    }
+
+    <h4 style="margin:24px 0 4px;">Colored list</h4>
+    <div style="@HintStyle">Color the list by</div>
+    @foreach (var (mode, title) in ColorModes)
+    {
+        <div @onclick="() => Update(s => s.ColorBy = mode)" style="@OptionStyle(_settings.ColorBy == mode)">
+            <div style="flex:1;">@title</div>
+            <span style="@RadioStyle(_settings.ColorBy == mode)"></span>
+        </div>
+    }
+
+    <div style="@HintStyle;margin-top:12px;">Unread messages</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;">
+        @foreach (var (color, name) in UnreadColors)
+        {
+            var selected = _settings.UnreadColor == color;
+            <div @onclick="() => Update(s => s.UnreadColor = color)" style="display:flex;flex-direction:column;align-items:center;gap:4px;width:56px;cursor:pointer;">
+                <span style="width:40px;height:40px;border-radius:50%;box-sizing:border-box;background:@(color ?? "transparent");border:@(selected ? "3px solid var(--accent-color)" : color is null ? "2px dashed #94a3b8" : "3px solid transparent");display:flex;align-items:center;justify-content:center;color:#94a3b8;">@(color is null ? "∅" : "")</span>
+                <span style="font-size:0.75em;text-align:center;">@name</span>
+            </div>
+        }
+    </div>
 </div>
 
 @code {
-    private static readonly (ConversationDisplayStyle Style, string Icon, string Title, string Description)[] Styles =
+    private const string HintStyle = "color:#94a3b8;font-size:0.85em";
+    private const string PresetStyle = "text-align:left;border:none;border-radius:12px;padding:12px;background:var(--card-color);color:var(--text-color);font:inherit;font-weight:600;";
+
+    private static readonly (ConversationDisplayStyle Layout, string Icon, string Title, string Description)[] Layouts =
     {
         (ConversationDisplayStyle.Bubbles, "🫧", "Bubbles", "Everyone is a bubble. Recent people are bigger and at the top."),
-        (ConversationDisplayStyle.BubblesAndCards, "🫧💬", "Bubbles + color list", "Your top people as bubbles, everyone else in a colorful list."),
+        (ConversationDisplayStyle.BubblesAndCards, "🫧💬", "Bubbles + color list", "The people you choose as bubbles, everyone else in a colorful list."),
         (ConversationDisplayStyle.Cards, "💬", "Color list", "Every conversation as a colorful message card.")
     };
 
-    private ConversationDisplayStyle _style;
+    private static readonly (ListColorMode Mode, string Title)[] ColorModes =
+    {
+        (ListColorMode.Person, "Each person's own color"),
+        (ListColorMode.Filter, "Filter colors (only conversations in a filter are colored)"),
+        (ListColorMode.None, "No color")
+    };
+
+    private static readonly (string? Color, string Name)[] UnreadColors =
+    {
+        (DisplaySettings.Gray, "Gray"), ("#0ea5e9", "Blue"), ("#16a34a", "Green"), ("#f59e0b", "Yellow"),
+        ("#e11d48", "Red"), ("#7c3aed", "Purple"), (null, "No color")
+    };
+
+    private DisplaySettings _settings = new();
+
+    private static string OptionStyle(bool selected) =>
+        $"display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:14px;cursor:pointer;background:var(--card-color);border:2px solid {(selected ? "var(--accent-color)" : "transparent")};";
+
+    private static string RadioStyle(bool selected) =>
+        $"width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid var(--accent-color);background:{(selected ? "var(--accent-color)" : "transparent")};";
+
+    private IEnumerable<(string Label, bool Checked, Action<DisplaySettings, bool> Set)> BubbleChoices()
+    {
+        yield return ("👥 Everyone", _settings.BubbleEveryone, (s, v) => s.BubbleEveryone = v);
+        yield return ("❤️ Favorites", _settings.BubbleFavorites, (s, v) => s.BubbleFavorites = v);
+        yield return ("🔵 Unread", _settings.BubbleUnread, (s, v) => s.BubbleUnread = v);
+        yield return ("🕒 People you text most recently (top 8)", _settings.BubbleRecent, (s, v) => s.BubbleRecent = v);
+        yield return ("🏷️ People assigned to a filter", _settings.BubbleFiltered, (s, v) => s.BubbleFiltered = v);
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        _style = DisplayStyles.GetDisplayStyle();
+        _settings = DisplayStyles.GetDisplaySettings();
         await ViewModel.RefreshCommand.ExecuteAsync(null);
     }
 
-    private void Choose(ConversationDisplayStyle style)
+    private void Update(Action<DisplaySettings> change)
     {
-        _style = style;
-        DisplayStyles.SetDisplayStyle(style);
+        var updated = _settings.Clone();
+        change(updated);
+        _settings = updated;
+        DisplayStyles.SaveDisplaySettings(updated);
+    }
+
+    // Switching to Bubbles starts with everyone, as the layout always did; uncheck to narrow it.
+    private void ChooseLayout(ConversationDisplayStyle layout) => Update(s =>
+    {
+        if (layout == ConversationDisplayStyle.Bubbles && s.Layout != layout)
+        {
+            s.BubbleEveryone = true;
+        }
+        s.Layout = layout;
+    });
+
+    private void Apply(Func<DisplaySettings, DisplaySettings> preset)
+    {
+        _settings = preset(_settings);
+        DisplayStyles.SaveDisplaySettings(_settings);
     }
 }
