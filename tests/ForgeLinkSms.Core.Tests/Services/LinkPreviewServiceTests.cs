@@ -90,4 +90,16 @@ public class LinkPreviewServiceTests
         Assert.Null(await service.GetAsync("https://example.com/missing"));
         Assert.Null(await service.GetAsync("https://example.com/offline"));
     }
+
+    private sealed class PlatformException(string message) : Exception(message);
+
+    [Fact]
+    public async Task GetAsync_returns_null_when_the_platform_handler_throws_its_own_error()
+    {
+        // Android's handler throws Java.Net.MalformedURLException ("unknown protocol: intent")
+        // when a web link redirects to an app link.
+        var service = new LinkPreviewService(new HttpClient(new FakeHandler(_ => throw new PlatformException("unknown protocol: intent"))));
+
+        Assert.Null(await service.GetAsync("https://photos.example.com/share/abc"));
+    }
 }

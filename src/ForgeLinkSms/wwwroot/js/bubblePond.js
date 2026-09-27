@@ -3,7 +3,8 @@
 // and removes the pond (search, select mode, lane changes) after observe() runs.
 window.forgeLinkBubblePond = {
     handler: null,
-    observe: function (pondId, miniId, headerId) {
+    // headerIds: comma-separated pinned bars; the mini row sits under the lowest one showing.
+    observe: function (pondId, miniId, headerIds) {
         this.dispose();
         var ticking = false;
         var update = function () {
@@ -13,8 +14,13 @@ window.forgeLinkBubblePond = {
             if (!pond || !mini) {
                 return;
             }
-            var header = document.getElementById(headerId);
-            var headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+            var headerBottom = 0;
+            headerIds.split(",").forEach(function (id) {
+                var header = document.getElementById(id);
+                if (header) {
+                    headerBottom = Math.max(headerBottom, header.getBoundingClientRect().bottom);
+                }
+            });
             mini.style.top = headerBottom + "px";
             mini.classList.toggle("show", pond.getBoundingClientRect().bottom < headerBottom + 40);
         };

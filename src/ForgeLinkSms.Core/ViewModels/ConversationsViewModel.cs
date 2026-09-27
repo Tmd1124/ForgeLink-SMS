@@ -61,6 +61,23 @@ public partial class ConversationsViewModel : ObservableObject
 
     public IReadOnlyList<SmsThread> ListThreads { get; private set; } = Array.Empty<SmsThread>();
 
+    public IReadOnlyList<SmsThread> GridThreads { get; private set; } = Array.Empty<SmsThread>();
+
+    private ConversationDisplayStyle _displayStyle;
+
+    public ConversationDisplayStyle DisplayStyle
+    {
+        get => _displayStyle;
+        set
+        {
+            if (_displayStyle != value)
+            {
+                _displayStyle = value;
+                ArrangeThreads();
+            }
+        }
+    }
+
     private ConversationLane LaneOf(SmsThread thread) => SenderScreening.LaneFor(thread, _allowedSenders);
 
     public ConversationsViewModel(
@@ -518,13 +535,26 @@ public partial class ConversationsViewModel : ObservableObject
         }
         OnPropertyChanged(nameof(ScreenerCount));
         OnPropertyChanged(nameof(UpdatesCount));
+        ArrangeThreads();
+    }
 
-        var showPond = Lane == ConversationLane.Conversations && string.IsNullOrEmpty(query)
+    // Splits the visible chats between the bubble pond, the bubble grid and the list according to
+    // the chosen display style. Bubbles only make sense on the plain Chats view, so searching,
+    // filtering or other lanes always fall back to the list.
+    private void ArrangeThreads()
+    {
+        var bubblesAllowed = Lane == ConversationLane.Conversations && string.IsNullOrEmpty(SearchText?.Trim())
             && !ShowUnreadOnly && ActiveFilterIds.Count == 0;
-        PondThreads = showPond ? PondSelector.Select(Threads) : Array.Empty<SmsThread>();
-        var pondIds = PondThreads.Select(t => t.Id).ToHashSet();
-        ListThreads = Threads.Where(t => !pondIds.Contains(t.Id)).ToList();
+        PondThreads = bubblesAllowed && DisplayStyle == ConversationDisplayStyle.BubblesAndCards
+            ? PondSelector.Select(Threads)
+            : Array.Empty<SmsThread>();
+        GridThreads = bubblesAllowed && DisplayStyle == ConversationDisplayStyle.Bubbles
+            ? PondSelector.Rank(Threads).ToList()
+            : Array.Empty<SmsThread>();
+        var bubbleIds = PondThreads.Concat(GridThreads).Select(t => t.Id).ToHashSet();
+        ListThreads = Threads.Where(t => !bubbleIds.Contains(t.Id)).ToList();
         OnPropertyChanged(nameof(PondThreads));
+        OnPropertyChanged(nameof(GridThreads));
         OnPropertyChanged(nameof(ListThreads));
     }
 }

@@ -1194,6 +1194,66 @@ public class ConversationsViewModelTests
     }
 
     [Fact]
+    public async Task Cards_style_shows_every_chat_in_the_list_without_a_pond()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
+        var viewModel = MakeViewModel(threadService);
+        viewModel.DisplayStyle = ConversationDisplayStyle.Cards;
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        Assert.Empty(viewModel.PondThreads);
+        Assert.Empty(viewModel.GridThreads);
+        Assert.Equal(new long[] { 1, 2, 3, 4, 5 }, viewModel.ListThreads.Select(t => t.Id));
+    }
+
+    [Fact]
+    public async Task Bubbles_style_puts_every_chat_in_the_grid_in_rank_order()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
+        var favorites = MakeEmptyFavoriteRepository();
+        favorites.Setup(r => r.GetFavoriteThreadIdsAsync()).ReturnsAsync(new List<long> { 4 });
+        var viewModel = MakeViewModel(threadService, favoriteRepository: favorites);
+        viewModel.DisplayStyle = ConversationDisplayStyle.Bubbles;
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(new long[] { 4, 1, 2, 3, 5 }, viewModel.GridThreads.Select(t => t.Id));
+        Assert.Empty(viewModel.PondThreads);
+        Assert.Empty(viewModel.ListThreads);
+    }
+
+    [Fact]
+    public async Task Bubbles_style_falls_back_to_the_list_while_searching()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
+        var viewModel = MakeViewModel(threadService);
+        viewModel.DisplayStyle = ConversationDisplayStyle.Bubbles;
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        viewModel.SearchText = "a";
+
+        Assert.Empty(viewModel.GridThreads);
+        Assert.Equal(viewModel.Threads.Select(t => t.Id), viewModel.ListThreads.Select(t => t.Id));
+    }
+
+    [Fact]
+    public async Task Changing_the_display_style_rearranges_the_loaded_chats()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
+        var viewModel = MakeViewModel(threadService);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        viewModel.DisplayStyle = ConversationDisplayStyle.Bubbles;
+
+        Assert.Equal(5, viewModel.GridThreads.Count);
+    }
+
+    [Fact]
     public async Task Pond_refills_after_a_pond_thread_is_archived()
     {
         var threadService = new Mock<IThreadService>();

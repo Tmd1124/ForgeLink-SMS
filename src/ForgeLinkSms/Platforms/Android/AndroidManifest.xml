@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true">
+    <application android:enableOnBackInvokedCallback="true" android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true">
         <!-- SmsManager.SendMultimediaMessage reads the outgoing PDU as the system MMS service,
              not this app's own process — a raw file:// Uri throws FileUriExposedException on
              API 24+, so the PDU is written under cache/mms/ and handed off as a content:// Uri

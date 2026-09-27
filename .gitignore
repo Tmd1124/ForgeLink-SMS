@@ -11,3 +11,6 @@ obj/
 *.androidproj.user
 docs/superpowers/plans/*.output
 .playwright-mcp/
+docs/ForgeLink-Keys/
+*.jks
+*.keystore

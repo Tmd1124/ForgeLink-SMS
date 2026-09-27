@@ -1,5 +1,7 @@
 @page "/settings"
 @inject ForgeLinkSms.Core.ViewModels.SettingsViewModel ViewModel
+@inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
+@using ForgeLinkSms.Core.Models
 
 <div style="padding:12px;">
     <h3>Settings</h3>
@@ -8,11 +10,43 @@
         <input type="checkbox" @bind="ViewModel.NotificationsEnabled" />
         Notify me about incoming texts
     </label>
+
+    <h4 style="margin:24px 0 8px;">Display</h4>
+    <div style="color:#94a3b8;font-size:0.85em;margin-bottom:8px;">How your Chats list looks.</div>
+    @foreach (var (style, icon, title, description) in Styles)
+    {
+        var selected = _style == style;
+        <div @onclick="() => Choose(style)"
+             style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:14px;cursor:pointer;background:var(--card-color);border:2px solid @(selected ? "var(--accent-color)" : "transparent");">
+            <span style="font-size:1.6em;">@icon</span>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;">@title</div>
+                <div style="color:#94a3b8;font-size:0.85em;">@description</div>
+            </div>
+            <span style="width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid var(--accent-color);background:@(selected ? "var(--accent-color)" : "transparent");"></span>
+        </div>
+    }
 </div>
 
 @code {
+    private static readonly (ConversationDisplayStyle Style, string Icon, string Title, string Description)[] Styles =
+    {
+        (ConversationDisplayStyle.Bubbles, "🫧", "Bubbles", "Everyone is a bubble. Recent people are bigger and at the top."),
+        (ConversationDisplayStyle.BubblesAndCards, "🫧💬", "Bubbles + color list", "Your top people as bubbles, everyone else in a colorful list."),
+        (ConversationDisplayStyle.Cards, "💬", "Color list", "Every conversation as a colorful message card.")
+    };
+
+    private ConversationDisplayStyle _style;
+
     protected override async Task OnInitializedAsync()
     {
+        _style = DisplayStyles.GetDisplayStyle();
         await ViewModel.RefreshCommand.ExecuteAsync(null);
+    }
+
+    private void Choose(ConversationDisplayStyle style)
+    {
+        _style = style;
+        DisplayStyles.SetDisplayStyle(style);
     }
 }

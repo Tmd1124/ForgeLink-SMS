@@ -1,4 +1,4 @@
-@page "/conversations"
+﻿@page "/conversations"
 @implements IDisposable
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
@@ -9,6 +9,7 @@
 @inject ForgeLinkSms.Core.Services.IIncomingMessageNotifier IncomingMessageNotifier
 @inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
 @inject NavigationManager Nav
+@inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
 @inject Microsoft.JSInterop.IJSRuntime JS
 @using ForgeLinkSms.Core.Utils
 @using ForgeLinkSms.Core.Models
@@ -90,7 +91,8 @@
     @if (_selectedThreadIds.Count == 0 && string.IsNullOrWhiteSpace(ViewModel.SearchText)
          && (ViewModel.ScreenerCount > 0 || ViewModel.UpdatesCount > 0 || ViewModel.Lane != ConversationLane.Conversations))
     {
-        <div style="display:flex;gap:6px;margin-bottom:8px;">
+        @* Pinned just under the 52px-tall header row so the lanes stay reachable while scrolling. *@
+        <div id="lane-tabs" style="position:sticky;top:52px;z-index:9;background:var(--surface-color);display:flex;gap:6px;margin-bottom:8px;padding:0 0 6px;">
             @foreach (var (lane, label, count) in LaneTabs())
             {
                 var isActive = ViewModel.Lane == lane;
@@ -113,6 +115,13 @@
     @if (_selectedThreadIds.Count == 0 && ViewModel.PondThreads.Count > 0)
     {
         <BubblePond Threads="ViewModel.PondThreads"
+                    OnOpen="t => OpenThread(t.Id, t.Address)"
+                    OnLongPress="SelectFromPond" />
+    }
+
+    @if (_selectedThreadIds.Count == 0 && ViewModel.GridThreads.Count > 0)
+    {
+        <BubbleGrid Threads="ViewModel.GridThreads"
                     OnOpen="t => OpenThread(t.Id, t.Address)"
                     OnLongPress="SelectFromPond" />
     }
@@ -154,7 +163,7 @@
                  @onpointerup="e => OnPointerUp(thread.Id, thread.Address, e)"
                  @onpointermove="OnPointerMove"
                  @onpointerleave="CancelLongPress"
-                 style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #eee;touch-action:pan-y;user-select:none;-webkit-user-select:none;background:@RowBackground(thread);">
+                 style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin:0 0 8px;border-radius:18px 18px 18px 4px;touch-action:pan-y;user-select:none;-webkit-user-select:none;background:@RowBackground(thread);">
                 @if (_selectedThreadIds.Count > 0)
                 {
                     <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.3em;background:@(_selectedThreadIds.Contains(thread.Id) ? "var(--accent-color)" : "transparent");border:2px solid var(--accent-color);color:white;">
@@ -167,7 +176,7 @@
                 }
                 else if (!string.IsNullOrWhiteSpace(thread.DisplayName))
                 {
-                    <div style="width:40px;height:40px;border-radius:50%;background:var(--accent-color);color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;">@thread.Initials</div>
+                    <div style="width:40px;height:40px;border-radius:50%;background:@PondSelector.ColorFor(thread.Address);color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;">@thread.Initials</div>
                 }
                 else
                 {
@@ -374,12 +383,15 @@
         {
             return "rgba(99,102,241,0.2)";
         }
-        return thread.UnreadCount > 0 ? "rgba(234,179,8,0.15)" : "transparent";
+        // Each conversation is a speech-bubble card tinted with that person's bubble color.
+        var tint = thread.UnreadCount > 0 ? 34 : 16;
+        return $"color-mix(in srgb, {PondSelector.ColorFor(thread.Address)} {tint}%, var(--card-color))";
     }
 
     protected override async Task OnInitializedAsync()
     {
         _photoDataUri = await ProfileService.GetProfilePhotoDataUriAsync();
+        ViewModel.DisplayStyle = DisplayStyles.GetDisplayStyle();
         await ViewModel.LoadCommand.ExecuteAsync(null);
         _isLoading = false;
         AppResumeNotifier.Resumed += OnAppResumed;
@@ -499,7 +511,7 @@
     {
         if (firstRender)
         {
-            await JS.InvokeVoidAsync("forgeLinkBubblePond.observe", "bubble-pond", "bubble-pond-mini", "conversations-header");
+            await JS.InvokeVoidAsync("forgeLinkBubblePond.observe", "bubble-pond", "bubble-pond-mini", "conversations-header,lane-tabs");
         }
         if (_restoreRowAnchor)
         {
@@ -730,8 +742,8 @@
     {
         if (ViewModel.Lane != ConversationLane.Updates || !string.IsNullOrWhiteSpace(ViewModel.SearchText))
         {
-            // While selecting, the pond hides, so every thread (pond ones included) must be in the list.
-            var rows = _selectedThreadIds.Count == 0 && ViewModel.PondThreads.Count > 0 ? ViewModel.ListThreads : ViewModel.Threads;
+            // While selecting, the bubbles hide, so every thread (bubbled ones included) must be in the list.
+            var rows = _selectedThreadIds.Count == 0 ? ViewModel.ListThreads : ViewModel.Threads;
             foreach (var thread in rows)
             {
                 yield return (null, thread);

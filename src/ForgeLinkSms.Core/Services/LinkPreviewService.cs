@@ -46,7 +46,9 @@ public class LinkPreviewService
             }
             return OpenGraphParser.Parse(response.RequestMessage?.RequestUri?.ToString() ?? url, Encoding.UTF8.GetString(buffer, 0, read));
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException or UriFormatException or InvalidOperationException)
+        // A preview is optional, and platform handlers throw their own types (Android's
+        // MalformedURLException when a link redirects to an intent: URL), so any failure means none.
+        catch (Exception)
         {
             return null;
         }

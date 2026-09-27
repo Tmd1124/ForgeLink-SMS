@@ -1,0 +1,85 @@
+@using ForgeLinkSms.Core.Models
+@using ForgeLinkSms.Core.Utils
+
+<div class="bubble-grid">
+    @for (var i = 0; i < Threads.Count; i++)
+    {
+        var thread = Threads[i];
+        var size = ForgeLinkSms.Core.Utils.BubbleGrid.SizeFor(i);
+        var color = PondSelector.ColorFor(thread.Address);
+        <div @key="thread.Id" class="grid-cell" style="width:@(size + 16)px;">
+            <div class="grid-bubble @(thread.UnreadCount > 0 ? "unread" : "")"
+                 style="width:@(size)px;height:@(size)px;--rim:@color;"
+                 @onpointerdown="() => StartPress(thread)"
+                 @onpointerup="() => EndPress(thread)"
+                 @onpointerleave="CancelPress"
+                 @onpointercancel="CancelPress">
+                @if (!string.IsNullOrEmpty(thread.PhotoUri))
+                {
+                    <img src="@thread.PhotoUri" alt="" draggable="false" loading="lazy" />
+                }
+                else
+                {
+                    <span class="initials" style="background:@color;font-size:@(size / 3)px;">@thread.Initials</span>
+                }
+                @if (thread.UnreadCount > 0)
+                {
+                    <span class="count">@thread.UnreadCount</span>
+                }
+            </div>
+            <span class="grid-name">@FirstName(thread)</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<SmsThread> Threads { get; set; } = Array.Empty<SmsThread>();
+    [Parameter] public EventCallback<SmsThread> OnOpen { get; set; }
+    [Parameter] public EventCallback<SmsThread> OnLongPress { get; set; }
+
+    private CancellationTokenSource? _pressCts;
+    private long? _pressedThreadId;
+    private bool _longPressed;
+
+    private void StartPress(SmsThread thread)
+    {
+        _pressCts?.Cancel();
+        _pressedThreadId = thread.Id;
+        _longPressed = false;
+        _pressCts = new CancellationTokenSource();
+        var token = _pressCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(500, token);
+                _longPressed = true;
+                await InvokeAsync(() => OnLongPress.InvokeAsync(thread));
+            }
+            catch (TaskCanceledException)
+            {
+            }
+        });
+    }
+
+    private async Task EndPress(SmsThread thread)
+    {
+        _pressCts?.Cancel();
+        if (_pressedThreadId != thread.Id || _longPressed)
+        {
+            _pressedThreadId = null;
+            return;
+        }
+        _pressedThreadId = null;
+        await OnOpen.InvokeAsync(thread);
+    }
+
+    private void CancelPress()
+    {
+        _pressCts?.Cancel();
+        _pressedThreadId = null;
+    }
+
+    private static string FirstName(SmsThread thread) =>
+        thread.DisplayNameOrAddress.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? thread.DisplayNameOrAddress;
+}

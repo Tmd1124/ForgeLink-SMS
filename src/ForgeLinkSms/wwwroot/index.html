@@ -17,15 +17,24 @@
 
     <div id="app"></div>
 
-    <div id="blazor-error-ui">
-        An unhandled error has occurred.
-        <a href="" class="reload">Reload</a>
-        <a class="dismiss">🗙</a>
+    <div id="blazor-error-ui" role="alertdialog" aria-labelledby="blazor-error-title">
+        <div class="error-card">
+            <div class="error-title" id="blazor-error-title">⚠️ Something went wrong</div>
+            <div class="error-subtitle">ForgeLink hit an unexpected error. Details:</div>
+            <pre id="blazor-error-details">No details were captured.</pre>
+            <div class="error-actions">
+                <button type="button" id="blazor-error-copy">Copy</button>
+                <a class="dismiss" role="button">Close</a>
+                <a href="" class="reload" role="button">Reload</a>
+            </div>
+        </div>
     </div>
 
     <script src="js/theme.js"></script>
     <script src="js/infiniteScroll.js"></script>
     <script src="js/bubblePond.js"></script>
+    <script src="js/backSwipe.js"></script>
+    <script src="js/errorDetails.js"></script>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
 </body>

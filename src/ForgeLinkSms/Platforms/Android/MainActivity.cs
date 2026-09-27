@@ -20,6 +20,22 @@ public class MainActivity : MauiAppCompatActivity
         CapturePendingRoute(Intent);
         ApplyImeInsetPadding();
         _historyTracker = MauiApplication.Current.Services.GetRequiredService<NavigationHistoryTracker>();
+        // With predictive back (enabled in the manifest) Android 13+ delivers back through the
+        // back dispatcher, so the tracked-history navigation is registered there.
+        OnBackPressedDispatcher.AddCallback(this, new HistoryBackCallback(this));
+    }
+
+    private void NavigateBack()
+    {
+        if (!_historyTracker!.TryConsumeLocalBack() && !_historyTracker.TryGoBack())
+        {
+            Finish();
+        }
+    }
+
+    private sealed class HistoryBackCallback(MainActivity activity) : AndroidX.Activity.OnBackPressedCallback(true)
+    {
+        public override void HandleOnBackPressed() => activity.NavigateBack();
     }
 
     // BlazorWebView's own Android WebView subclass handles the hardware back key itself: it consumes
@@ -31,18 +47,18 @@ public class MainActivity : MauiAppCompatActivity
     // screen back (reproduced consistently after long-pressing a message to open the reaction picker,
     // then pressing back). Overriding DispatchKeyEvent lets us claim the ACTION_DOWN event before it
     // ever reaches the WebView, so we drive back-navigation from our own tracked stack
-    // (NavigationHistoryTracker) instead of the WebView's browser history. A dispatcher-based
-    // OnBackPressedCallback (the officially recommended approach) does not work here — it is never
-    // invoked, because the WebView already claims the event first.
+    // (NavigationHistoryTracker) instead of the WebView's browser history. Below Android 13 the
+    // navigation happens here; from 13 on, predictive back routes the press to HistoryBackCallback.
     public override bool DispatchKeyEvent(KeyEvent? e)
     {
-        if (e is { KeyCode: Keycode.Back, Action: KeyEventActions.Down })
+        if (e is { KeyCode: Keycode.Back })
         {
-            if (!_historyTracker!.TryConsumeLocalBack() && !_historyTracker.TryGoBack())
+            // On Android 13+ the same press also reaches HistoryBackCallback, so navigating here
+            // too would go back twice. The key is still swallowed to keep it from the WebView.
+            if (e.Action == KeyEventActions.Down && !OperatingSystem.IsAndroidVersionAtLeast(33))
             {
-                Finish();
+                NavigateBack();
             }
-
             return true;
         }
 

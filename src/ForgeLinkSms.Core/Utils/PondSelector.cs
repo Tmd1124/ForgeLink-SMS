@@ -16,15 +16,16 @@ public static class PondSelector
     // there's no pond at all and the plain list shows instead.
     public static IReadOnlyList<SmsThread> Select(IEnumerable<SmsThread> chats, int max = MaxBubbles)
     {
-        var picked = chats
-            .Where(t => !string.IsNullOrWhiteSpace(t.DisplayName))
-            .OrderByDescending(t => t.IsFavorite)
-            .ThenByDescending(t => t.UnreadCount > 0)
-            .ThenByDescending(t => t.LastMessageTimestamp)
+        var picked = Rank(chats.Where(t => !string.IsNullOrWhiteSpace(t.DisplayName)))
             .Take(max)
             .ToList();
         return picked.Count >= MinBubbles ? picked : Array.Empty<SmsThread>();
     }
+
+    public static IOrderedEnumerable<SmsThread> Rank(IEnumerable<SmsThread> chats) => chats
+        .OrderByDescending(t => t.IsFavorite)
+        .ThenByDescending(t => t.UnreadCount > 0)
+        .ThenByDescending(t => t.LastMessageTimestamp);
 
     // FNV-1a instead of string.GetHashCode(), which .NET randomizes per process: that would
     // give every person a different color each time the app launches.

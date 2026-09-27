@@ -436,6 +436,7 @@
     private DateTime _recordingStartedUtc;
     private CancellationTokenSource? _recordingTickCts;
     private Microsoft.JSInterop.DotNetObjectReference<ThreadDetailPage>? _dotNetRef;
+    private readonly string _backSwipeOwner = Guid.NewGuid().ToString("N");
 
     private async Task SendOrSchedule()
     {
@@ -560,6 +561,7 @@
         {
             _dotNetRef = Microsoft.JSInterop.DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("forgeLinkInfiniteScroll.observe", "thread-scroll-container", _dotNetRef);
+            await JS.InvokeVoidAsync("forgeLinkBackSwipe.attach", _backSwipeOwner, _dotNetRef);
         }
         if (_focusSearch)
         {
@@ -664,6 +666,20 @@
     }
 
     [Microsoft.JSInterop.JSInvokable]
+    public void OnHorizontalSwipe(double dx, double dy, double elapsedMs)
+    {
+        if (!BackSwipe.IsBackSwipe(dx, dy, elapsedMs))
+        {
+            return;
+        }
+        if (!HistoryTracker.TryConsumeLocalBack() && !HistoryTracker.TryGoBack())
+        {
+            Services.GetRequiredService<NavigationManager>().NavigateTo("/conversations");
+        }
+        StateHasChanged();
+    }
+
+    [Microsoft.JSInterop.JSInvokable]
     public async Task OnScrolledNearOldestMessage()
     {
         if (ViewModel is not null)
@@ -762,6 +778,7 @@
         try
         {
             await JS.InvokeVoidAsync("forgeLinkInfiniteScroll.dispose", "thread-scroll-container");
+            await JS.InvokeVoidAsync("forgeLinkBackSwipe.detach", _backSwipeOwner);
         }
         catch (Exception)
         {

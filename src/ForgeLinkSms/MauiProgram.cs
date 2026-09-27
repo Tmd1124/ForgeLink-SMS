@@ -104,6 +104,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<MenuViewModel>();
 
 		builder.Services.AddSingleton<IThemeService, ThemeService>();
+		builder.Services.AddSingleton<IDisplayStyleService, DisplayStyleService>();
 		builder.Services.AddTransient<ThemeViewModel>();
 
 		builder.Services.AddTransient<SettingsViewModel>();
@@ -116,6 +117,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IAppResumeNotifier, AppResumeNotifier>();
 		builder.Services.AddSingleton<IIncomingMessageNotifier, IncomingMessageNotifier>();
 
+		builder.Logging.AddProvider(new ErrorDetailsLoggerProvider());
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();
 		builder.Logging.AddDebug();
