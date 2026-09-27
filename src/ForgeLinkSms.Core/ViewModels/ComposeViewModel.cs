@@ -136,9 +136,12 @@ public partial class ComposeViewModel : ObservableObject
     public ContactInfo? FindContact(string phoneNumberDigits) =>
         _allContacts.FirstOrDefault(c => PhoneNumberFormatter.ToComparableDigits(c.PhoneNumber) == phoneNumberDigits);
 
+    public bool LastSendSucceeded { get; private set; }
+
     [RelayCommand]
     private async Task Send(PickedAttachment? attachment)
     {
+        LastSendSucceeded = false;
         var text = MessageBody.Trim();
         if ((string.IsNullOrEmpty(text) && attachment is null) || Recipients.Count == 0)
         {
@@ -166,11 +169,13 @@ public partial class ComposeViewModel : ObservableObject
             }
         }
         MessageBody = string.Empty;
+        LastSendSucceeded = true;
     }
 
     [RelayCommand]
     private async Task ScheduleSend(DateTimeOffset sendAtUtc)
     {
+        LastSendSucceeded = false;
         var text = MessageBody.Trim();
         if (string.IsNullOrEmpty(text) || Recipients.Count == 0)
         {
@@ -189,5 +194,6 @@ public partial class ComposeViewModel : ObservableObject
             }
         }
         MessageBody = string.Empty;
+        LastSendSucceeded = true;
     }
 }

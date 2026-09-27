@@ -73,6 +73,10 @@ public static class MauiProgram
 		draftRepository.InitializeAsync().GetAwaiter().GetResult();
 		builder.Services.AddSingleton<IDraftRepository>(draftRepository);
 
+		var forwardedMessageRepository = new ForwardedMessageRepository(Path.Combine(FileSystem.AppDataDirectory, "ForgeLinkSms.db"));
+		forwardedMessageRepository.InitializeAsync().GetAwaiter().GetResult();
+		builder.Services.AddSingleton<IForwardedMessageRepository>(forwardedMessageRepository);
+
 		var quickReplyRepository = new QuickReplyRepository(Path.Combine(FileSystem.AppDataDirectory, "ForgeLinkSms.db"));
 		quickReplyRepository.InitializeAsync().GetAwaiter().GetResult();
 		builder.Services.AddSingleton<IQuickReplyRepository>(quickReplyRepository);

@@ -7,6 +7,13 @@
     <div style="display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid #eee;margin-bottom:12px;">
         <input placeholder="New filter name" @bind="ViewModel.NewFilterName" @bind:event="oninput"
                style="padding:8px;border-radius:8px;border:1px solid #cbd5e1;font-size:1em;" />
+        <div class="filter-tabs" style="display:flex;gap:4px;overflow-x:auto;touch-action:pan-x;scrollbar-width:none;">
+            @foreach (var emoji in Emojis)
+            {
+                <button @onclick="() => ViewModel.AddEmoji(emoji)"
+                        style="flex-shrink:0;width:40px;height:40px;border:none;border-radius:10px;background:var(--card-color);font-size:1.4em;padding:0;">@emoji</button>
+            }
+        </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
             @foreach (var color in ForgeLinkSms.Core.ViewModels.FiltersViewModel.PresetColors)
             {
@@ -65,6 +72,13 @@
 </div>
 
 @code {
+    private static readonly string[] Emojis =
+    {
+        "❤️", "⭐", "👨‍👩‍👧‍👦", "🏠", "💼", "👥", "👶", "💍", "🏀", "⚾", "🏈", "⚽", "🥎", "🏐", "🎓", "🏫",
+        "⛪", "🏥", "💊", "🦷", "🏦", "💳", "🛒", "📦", "🍔", "🚗", "🔧", "✈️", "🏖️", "🐶", "🎉", "🎮",
+        "🎵", "📚", "🔥", "✅", "🔔", "💬"
+    };
+
     private long? _editingFilterId;
     private string _editingName = string.Empty;
     private long? _colorPickerFilterId;

@@ -104,4 +104,18 @@ public class FiltersViewModelTests
         repository.Verify(r => r.DeleteFilterAsync(1), Times.Once);
         Assert.Empty(viewModel.Filters);
     }
+
+    [Theory]
+    [InlineData("", "🏀", "🏀 ")]
+    [InlineData("Team", "🏀", "Team 🏀")]
+    [InlineData("Team ", "🏀", "Team 🏀")]
+    [InlineData("🏀 ", "⚾", "🏀 ⚾")]
+    public void AddEmoji_adds_the_emoji_to_the_new_filter_name(string name, string emoji, string expected)
+    {
+        var viewModel = new FiltersViewModel(new Mock<IFilterRepository>().Object) { NewFilterName = name };
+
+        viewModel.AddEmoji(emoji);
+
+        Assert.Equal(expected, viewModel.NewFilterName);
+    }
 }

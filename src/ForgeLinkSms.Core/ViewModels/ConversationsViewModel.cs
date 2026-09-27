@@ -451,6 +451,28 @@ public partial class ConversationsViewModel : ObservableObject
         ApplyFilter();
     }
 
+    /// Searching while a filter is active finds conversations to add to that filter, so the
+    /// search looks through everything rather than only what's already in it.
+    public bool IsAddingToFilter => ActiveFilterIds.Count > 0 && !string.IsNullOrWhiteSpace(SearchText);
+
+    public SmsThread? FindThread(long threadId) => _allThreads.FirstOrDefault(t => t.Id == threadId);
+
+    public bool IsInActiveFilters(SmsThread thread) => ActiveFilterIds.All(thread.FilterIds.Contains);
+
+    public async Task AddToActiveFiltersAsync(long threadId)
+    {
+        var thread = _allThreads.FirstOrDefault(t => t.Id == threadId);
+        if (thread is null)
+        {
+            return;
+        }
+        foreach (var filterId in ActiveFilterIds.Where(id => !thread.FilterIds.Contains(id)).ToList())
+        {
+            await _filterRepository.AssignFilterAsync(threadId, filterId);
+            thread.FilterIds = thread.FilterIds.Append(filterId).ToList();
+        }
+    }
+
     public void ToggleActiveFilter(long filterId)
     {
         if (!ActiveFilterIds.Remove(filterId))
@@ -529,7 +551,7 @@ public partial class ConversationsViewModel : ObservableObject
             matches = matches.Where(t => t.UnreadCount > 0);
         }
 
-        if (ActiveFilterIds.Count > 0)
+        if (ActiveFilterIds.Count > 0 && string.IsNullOrEmpty(query))
         {
             matches = matches.Where(t => t.FilterIds.Any(id => ActiveFilterIds.Contains(id)));
         }

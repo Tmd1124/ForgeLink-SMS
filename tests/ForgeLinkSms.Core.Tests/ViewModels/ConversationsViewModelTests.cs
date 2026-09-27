@@ -1346,6 +1346,55 @@ public class ConversationsViewModelTests
         Assert.Equal(new long[] { 1, 2 }, viewModel.FiltersInUse.Select(f => f.Id));
     }
 
+    private static Mock<IFilterRepository> OneFilterWithThread2()
+    {
+        var filterRepository = MakeEmptyFilterRepository();
+        filterRepository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter> { new() { Id = 7, Name = "Family", ColorHex = "#e11d48" } });
+        filterRepository.Setup(r => r.GetAllAssignmentsAsync()).ReturnsAsync(new Dictionary<long, List<long>> { [2] = new() { 7 } });
+        return filterRepository;
+    }
+
+    [Fact]
+    public async Task Searching_with_a_filter_active_looks_through_every_conversation()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
+        var viewModel = MakeViewModel(threadService, filterRepository: OneFilterWithThread2());
+        await viewModel.LoadCommand.ExecuteAsync(null);
+        viewModel.ToggleActiveFilter(7);
+        Assert.Equal(new long[] { 2 }, viewModel.Threads.Select(t => t.Id));
+
+        viewModel.SearchText = "n";
+
+        Assert.True(viewModel.IsAddingToFilter);
+        Assert.Contains(viewModel.Threads, t => t.Id == 1);
+        Assert.False(viewModel.IsInActiveFilters(viewModel.Threads.First(t => t.Id == 1)));
+        Assert.True(viewModel.IsInActiveFilters(viewModel.Threads.First(t => t.Id == 2)));
+    }
+
+    [Fact]
+    public async Task AddToActiveFilters_assigns_the_conversation_to_each_active_filter_once()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
+        var filterRepository = OneFilterWithThread2();
+        var viewModel = MakeViewModel(threadService, filterRepository: filterRepository);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+        viewModel.ToggleActiveFilter(7);
+        viewModel.SearchText = "a";
+
+        await viewModel.AddToActiveFiltersAsync(1);
+        await viewModel.AddToActiveFiltersAsync(1);
+        await viewModel.AddToActiveFiltersAsync(2);
+
+        filterRepository.Verify(r => r.AssignFilterAsync(1, 7), Times.Once);
+        filterRepository.Verify(r => r.AssignFilterAsync(2, 7), Times.Never);
+        Assert.True(viewModel.IsInActiveFilters(viewModel.Threads.First(t => t.Id == 1)));
+
+        viewModel.SearchText = string.Empty;
+        Assert.Equal(new long[] { 1, 2 }, viewModel.Threads.Select(t => t.Id).OrderBy(id => id));
+    }
+
     [Fact]
     public async Task Pond_refills_after_a_pond_thread_is_archived()
     {

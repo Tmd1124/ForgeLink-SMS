@@ -314,4 +314,18 @@ public class ComposeViewModelTests
         scheduler.Verify(s => s.ScheduleGroupAsync(0, It.Is<IReadOnlyList<string>>(a => a.SequenceEqual(new[] { "5550148890", "5550142231" })), "Dinner at 7", sendAt), Times.Once);
         scheduler.Verify(s => s.ScheduleAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>()), Times.Never);
     }
+
+    [Fact]
+    public async Task LastSendSucceeded_reports_whether_the_message_went_out()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.MessageBody = "fwd";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+        Assert.False(viewModel.LastSendSucceeded);
+
+        viewModel.AddRecipientCommand.Execute("5550148890");
+        await viewModel.SendCommand.ExecuteAsync(null);
+        Assert.True(viewModel.LastSendSucceeded);
+    }
 }

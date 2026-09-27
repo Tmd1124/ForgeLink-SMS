@@ -2,6 +2,8 @@
 @inject ForgeLinkSms.Core.Services.ForwardRequestStore Forwarding
 @inject ForgeLinkSms.Core.ViewModels.ComposeViewModel ViewModel
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
+@inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
+@inject ForgeLinkSms.Core.Data.IForwardedMessageRepository ForwardedMessages
 @using ForgeLinkSms.Components
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Core.Utils
@@ -212,6 +214,7 @@
     private ForgeLinkSms.Components.AttachmentDrawer? _drawer;
     private ForgeLinkSms.Core.Models.PickedAttachment? _pendingAttachment;
     private DateTimeOffset? _scheduledSendTime;
+    private ForgeLinkSms.Core.Services.ForwardRequest? _forwardSource;
 
     private async Task SendOrSchedule()
     {
@@ -226,6 +229,25 @@
             _pendingAttachment = null;
             await ViewModel.SendCommand.ExecuteAsync(attachment);
         }
+
+        if (!ViewModel.LastSendSucceeded)
+        {
+            return;
+        }
+        if (_forwardSource is { SourceThreadId: { } sourceThreadId, SourceMessageKey: { } sourceKey })
+        {
+            var names = string.Join(", ", ViewModel.Recipients.Select(r => ViewModel.FindContact(r)?.DisplayName ?? PhoneNumberFormatter.ToDisplayFormat(r)));
+            await ForwardedMessages.RecordAsync(sourceThreadId, sourceKey, names);
+        }
+        // A forward returns to the conversation it came from once it's on its way.
+        if (_forwardSource?.ReturnRoute is { } returnRoute)
+        {
+            _forwardSource = null;
+            if (!HistoryTracker.TryGoBack())
+            {
+                Nav.NavigateTo(returnRoute);
+            }
+        }
     }
 
     private void InsertIntoMessage(string text)
@@ -239,6 +261,7 @@
         {
             ViewModel.MessageBody = forward.Text ?? string.Empty;
             _pendingAttachment = forward.Attachment;
+            _forwardSource = forward;
         }
         await ViewModel.LoadContactsCommand.ExecuteAsync(null);
     }

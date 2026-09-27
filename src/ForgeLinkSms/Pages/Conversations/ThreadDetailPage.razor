@@ -253,6 +253,10 @@
                         {
                             <span> · @message.StatusDisplay</span>
                         }
+                        @if (_forwardedTo.TryGetValue(ForwardedMessage.KeyFor(message), out var forwardedTo))
+                        {
+                            <span> · ↪ Forwarded to @forwardedTo</span>
+                        }
                     </div>
                 </div>
                 @if (showDateSeparator)
@@ -421,6 +425,7 @@
     private string _saveToastMessage = string.Empty;
     private CancellationTokenSource? _saveToastCts;
     private readonly HashSet<long> _savedAttachmentPartIds = new();
+    private IReadOnlyDictionary<string, string> _forwardedTo = new Dictionary<string, string>();
     private IContactService? _contactService;
     private readonly Dictionary<string, string> _memberNames = new();
     private bool _isRecording;
@@ -476,6 +481,7 @@
     protected override async Task OnInitializedAsync()
     {
         DisplayName = Address;
+        _forwardedTo = await Services.GetRequiredService<ForgeLinkSms.Core.Data.IForwardedMessageRepository>().GetForThreadAsync(ThreadId);
         _contactService = Services.GetRequiredService<IContactService>();
         var contact = await _contactService.LookupAsync(Address);
         if (contact is not null)
@@ -879,8 +885,14 @@
         {
             attachment = await Services.GetRequiredService<IAttachmentSaveService>().CopyForSendingAsync(source);
         }
-        Services.GetRequiredService<ForwardRequestStore>().Set(string.IsNullOrEmpty(message.Body) ? null : message.Body, attachment);
-        Services.GetRequiredService<NavigationManager>().NavigateTo("/compose");
+        var nav = Services.GetRequiredService<NavigationManager>();
+        Services.GetRequiredService<ForwardRequestStore>().Set(new ForwardRequest(
+            string.IsNullOrEmpty(message.Body) ? null : message.Body,
+            attachment,
+            "/" + nav.ToBaseRelativePath(nav.Uri),
+            ThreadId,
+            ForwardedMessage.KeyFor(message)));
+        nav.NavigateTo("/compose");
     }
 
     private async Task SendReaction(string emoji)

@@ -23,6 +23,13 @@ public partial class FiltersViewModel : ObservableObject
     [ObservableProperty]
     private string _newFilterColorHex = PresetColors[0];
 
+    // An emoji on an empty name leads it ("🏀 " ready for typing); otherwise it's appended as a word.
+    public void AddEmoji(string emoji)
+    {
+        var name = NewFilterName.TrimEnd();
+        NewFilterName = name.Length == 0 ? emoji + " " : $"{name} {emoji}";
+    }
+
     public FiltersViewModel(IFilterRepository filterRepository)
     {
         _filterRepository = filterRepository;

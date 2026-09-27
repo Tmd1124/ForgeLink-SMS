@@ -11,9 +11,10 @@ public class ForwardRequestStoreTests
         var store = new ForwardRequestStore();
         var photo = new PickedAttachment { FileName = "photo.jpg", LocalPath = "/tmp/photo.jpg", Kind = AttachmentKind.Image };
 
-        store.Set("look at this", photo);
+        var request = new ForwardRequest("look at this", photo, "/conversations/thread?id=4&address=555", 4, "sms:10");
+        store.Set(request);
 
-        Assert.Equal(("look at this", photo), store.Take());
+        Assert.Equal(request, store.Take());
         Assert.Null(store.Take());
     }
 }
