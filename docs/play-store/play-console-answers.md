@@ -59,7 +59,7 @@ ForgeLink SMS works as your default SMS app. Standard carrier messaging rates ap
 **Category**: Communication
 **Contact email**: `Tmd1124@outlook.com`
 **Privacy policy URL**: where you host `docs/play-store/privacy-policy.html`
-(e.g. `https://YOUR-DOMAIN/forgelink/privacy`).
+(e.g. `https://azureforgeai.com/forgelink/privacy`).
 
 ## Screenshots
 
