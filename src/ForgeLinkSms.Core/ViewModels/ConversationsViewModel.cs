@@ -473,6 +473,32 @@ public partial class ConversationsViewModel : ObservableObject
         }
     }
 
+    // Tapping a lane tab shows that whole lane, so any active filter is dropped.
+    public void SelectLane(ConversationLane lane)
+    {
+        ActiveFilterIds.Clear();
+        if (Lane == lane)
+        {
+            ApplyFilter();
+        }
+        else
+        {
+            Lane = lane;
+        }
+    }
+
+    // Filter tabs pick one filter at a time; tapping the active one clears it.
+    public void SelectOnlyFilter(long filterId)
+    {
+        var wasOnlyActive = ActiveFilterIds.Count == 1 && ActiveFilterIds.Contains(filterId);
+        ActiveFilterIds.Clear();
+        if (!wasOnlyActive)
+        {
+            ActiveFilterIds.Add(filterId);
+        }
+        ApplyFilter();
+    }
+
     public void ToggleActiveFilter(long filterId)
     {
         if (!ActiveFilterIds.Remove(filterId))

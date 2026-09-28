@@ -108,7 +108,7 @@
                     @foreach (var (lane, label, count) in LaneTabs())
                     {
                         var isActive = ViewModel.Lane == lane;
-                        <button @onclick="() => ViewModel.Lane = lane"
+                        <button @onclick="() => ViewModel.SelectLane(lane)"
                                 style="flex:1;min-width:0;border:none;border-radius:999px;padding:8px 4px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:@(isActive ? "var(--accent-color)" : "#e2e8f0");color:@(isActive ? "white" : "#1e293b");">
                             @label @(count > 0 ? $"({count})" : "")
                         </button>
@@ -121,7 +121,7 @@
                     @foreach (var filter in filterTabs)
                     {
                         var isActive = ViewModel.ActiveFilterIds.Contains(filter.Id);
-                        <button @key="filter.Id" @onclick="() => ViewModel.ToggleActiveFilter(filter.Id)"
+                        <button @key="filter.Id" @onclick="() => ViewModel.SelectOnlyFilter(filter.Id)"
                                 style="flex-shrink:0;border:2px solid @filter.ColorHex;border-radius:999px;padding:3px 12px;font-size:0.8em;font-weight:600;white-space:nowrap;background:@(isActive ? filter.ColorHex : "transparent");color:@(isActive ? "white" : "var(--text-color)");">
                             @filter.Name
                         </button>

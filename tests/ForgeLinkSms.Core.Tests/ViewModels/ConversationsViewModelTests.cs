@@ -1396,6 +1396,51 @@ public class ConversationsViewModelTests
     }
 
     [Fact]
+    public async Task SelectOnlyFilter_switches_between_filters_and_clears_on_a_second_tap()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
+        var filterRepository = MakeEmptyFilterRepository();
+        filterRepository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter>
+        {
+            new() { Id = 1, Name = "Family", ColorHex = "#e11d48" },
+            new() { Id = 2, Name = "Work", ColorHex = "#0ea5e9" }
+        });
+        filterRepository.Setup(r => r.GetAllAssignmentsAsync()).ReturnsAsync(new Dictionary<long, List<long>>
+        {
+            [1] = new() { 1 },
+            [2] = new() { 2 }
+        });
+        var viewModel = MakeViewModel(threadService, filterRepository: filterRepository);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        viewModel.SelectOnlyFilter(1);
+        viewModel.SelectOnlyFilter(2);
+        Assert.Equal(new long[] { 2 }, viewModel.ActiveFilterIds);
+        Assert.Equal(new long[] { 2 }, viewModel.Threads.Select(t => t.Id));
+
+        viewModel.SelectOnlyFilter(2);
+        Assert.Empty(viewModel.ActiveFilterIds);
+        Assert.Equal(5, viewModel.Threads.Count);
+    }
+
+    [Fact]
+    public async Task SelectLane_clears_active_filters_even_for_the_current_lane()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
+        var viewModel = MakeViewModel(threadService, filterRepository: OneFilterWithThread2());
+        await viewModel.LoadCommand.ExecuteAsync(null);
+        viewModel.SelectOnlyFilter(7);
+        Assert.Single(viewModel.Threads);
+
+        viewModel.SelectLane(ConversationLane.Conversations);
+
+        Assert.Empty(viewModel.ActiveFilterIds);
+        Assert.Equal(5, viewModel.Threads.Count);
+    }
+
+    [Fact]
     public async Task Pond_refills_after_a_pond_thread_is_archived()
     {
         var threadService = new Mock<IThreadService>();
