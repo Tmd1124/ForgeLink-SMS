@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ForgeLink Launch Plan</title>
+<meta name="description" content="Master promotion plan for ForgeLink SMS across Facebook, Instagram, TikTok, YouTube, Reddit, X, LinkedIn and Product Hunt.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B1220; --surface: #131B2E; --surface-2: #1A2438;
+    --ink: #E8ECF4; --ink-dim: #97A3BF; --line: #2A3550;
+    --signal: #3FA9F5; --signal-dim: rgba(63,169,245,0.14); --signal-border: rgba(63,169,245,0.35); --glow-signal: rgba(63,169,245,0.30);
+    --amber: #F5A623; --amber-dim: rgba(245,166,35,0.14); --amber-ink: #16110a;
+    --good: #22C55E; --good-dim: rgba(34,197,94,0.14); --info: #A78BFA; --info-dim: rgba(167,139,250,0.14); --danger: #E5636B;
+    --header-bg: rgba(11,18,32,0.86);
+    --font-display: 'Space Grotesk', 'IBM Plex Sans', sans-serif; --font-body: 'IBM Plex Sans', sans-serif; --font-mono: 'IBM Plex Mono', monospace;
+    --container: 1120px; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.65; }
+  a { color: var(--signal); text-decoration: none; }
+  .container { max-width: var(--container); margin: 0 auto; padding: 0 28px; }
+  h1, h2, h3 { font-family: var(--font-display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+  h1 { font-size: clamp(2rem, 4.2vw, 3rem); line-height: 1.1; font-weight: 700; }
+  h2 { font-size: clamp(1.5rem, 2.6vw, 1.8rem); font-weight: 600; line-height: 1.2; }
+  h3 { font-size: 1.08rem; font-weight: 600; }
+  p { color: var(--ink-dim); margin: 0; }
+  .hl { color: var(--signal); }
+  .eyebrow { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--signal); margin-bottom: 12px; }
+  .eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 10px var(--glow-signal); }
+  .lede { font-size: 1.08rem; max-width: 700px; margin-top: 12px; }
+  section.block { padding: 64px 0; border-bottom: 1px solid var(--line); }
+  section.alt { background: var(--surface); }
+
+  .site-header { position: sticky; top: 0; z-index: 50; background: var(--header-bg); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .site-header .container { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; color: var(--ink); }
+  .brand img { width: 36px; height: 36px; border-radius: 9px; }
+  .brand strong { font-family: var(--font-display); display: block; line-height: 1.1; }
+  .brand small { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.1em; color: var(--ink-dim); text-transform: uppercase; }
+  .tag { font-family: var(--font-mono); font-size: 0.7rem; color: var(--amber); border: 1px solid var(--amber); border-radius: 999px; padding: 3px 12px; letter-spacing: 0.06em; white-space: nowrap; }
+
+  .hero { padding: 72px 0 52px; background: radial-gradient(800px 420px at 85% 0%, rgba(63,169,245,0.13), transparent 60%); border-bottom: 1px solid var(--line); }
+  .pitch { margin-top: 22px; display: inline-block; font-family: var(--font-display); font-size: 1.15rem; padding: 12px 18px; border: 1px solid var(--signal-border); border-radius: var(--radius); background: var(--signal-dim); }
+  .keyfacts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-top: 36px; }
+  .keyfacts div { background: var(--surface); padding: 16px 18px; }
+  .keyfacts span { display: block; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+  .keyfacts strong { font-family: var(--font-display); font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+  .keyfacts .launch strong { color: var(--amber); }
+
+  .toc { background: var(--surface); border-bottom: 1px solid var(--line); }
+  .toc .container { display: flex; gap: 24px; overflow-x: auto; padding-top: 14px; padding-bottom: 14px; }
+  .toc a { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-dim); white-space: nowrap; }
+  .toc a:hover { color: var(--signal); }
+
+  /* Timeline */
+  .timeline { margin-top: 36px; display: grid; gap: 0; position: relative; }
+  .phase { display: grid; grid-template-columns: 170px 1fr; gap: 28px; position: relative; padding-bottom: 30px; }
+  .phase:last-child { padding-bottom: 0; }
+  .phase .when { text-align: right; padding-top: 2px; }
+  .phase .when strong { display: block; font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .phase .when span { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--signal); }
+  .phase .body { border-left: 2px solid var(--line); padding-left: 28px; position: relative; }
+  .phase .body::before { content: ""; position: absolute; left: -8px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background: var(--bg); border: 2px solid var(--signal); }
+  .phase.launch .body { border-left-color: var(--amber); }
+  .phase.launch .body::before { border-color: var(--amber); background: var(--amber); box-shadow: 0 0 14px rgba(245,166,35,0.5); }
+  .phase.launch .when span { color: var(--amber); }
+  .phase h3 { margin-bottom: 8px; }
+  .phase ul { margin: 0; padding-left: 18px; color: var(--ink-dim); }
+  .phase li { margin: 4px 0; }
+  .phase li b { color: var(--ink); }
+
+  /* Platforms */
+  .platforms { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 32px; }
+  .platform { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .platform h3 { font-size: 1.05rem; }
+  .platform .role { font-family: var(--font-mono); font-size: 0.7rem; color: var(--signal); letter-spacing: 0.04em; }
+  .platform p { font-size: 0.9rem; }
+  .effort { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-dim); }
+  .effort b { color: var(--ink); font-weight: 600; }
+  .note { margin-top: 18px; padding: 14px 18px; border-radius: var(--radius); background: var(--amber-dim); color: var(--ink); font-size: 0.95rem; }
+
+  /* Lists and tables */
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 30px; }
+  .checks { list-style: none; padding: 0; margin: 16px 0 0; }
+  .checks li { padding: 10px 0 10px 32px; position: relative; border-bottom: 1px solid var(--line); color: var(--ink-dim); }
+  .checks li:last-child { border-bottom: none; }
+  .checks li::before { content: "✓"; position: absolute; left: 2px; top: 11px; width: 20px; height: 20px; border-radius: 50%; background: var(--good-dim); color: var(--good); font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .checks li b { color: var(--ink); }
+  .clips { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 16px; }
+  .clip { display: flex; gap: 12px; align-items: baseline; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  section.alt .clip { background: var(--surface-2); }
+  .clip code { font-family: var(--font-mono); color: var(--amber); font-weight: 600; }
+  .clip span { color: var(--ink-dim); font-size: 0.92rem; }
+  .pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px; }
+  .pillar { border-top: 2px solid var(--signal); padding-top: 14px; }
+  .pillar p { font-size: 0.92rem; margin-top: 6px; }
+  .table-wrap { overflow-x: auto; margin-top: 24px; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; min-width: 600px; }
+  th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line); font-size: 0.92rem; vertical-align: top; }
+  th { background: var(--surface-2); font-family: var(--font-display); font-weight: 600; }
+  td { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+  td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  .target { color: var(--good); font-weight: 600; }
+  .budget { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px; }
+  .spend { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; background: var(--bg); }
+  .spend strong { font-family: var(--font-display); font-size: 1.5rem; display: block; color: var(--amber); font-variant-numeric: tabular-nums; }
+  .spend h3 { margin: 4px 0 6px; font-size: 1rem; }
+  .spend p { font-size: 0.9rem; }
+  .files { margin-top: 20px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 24px; }
+  .files code { font-family: var(--font-mono); font-size: 0.8rem; color: var(--signal); }
+
+  .site-footer { padding: 36px 0; font-size: 0.88rem; color: var(--ink-dim); }
+  .site-footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .site-footer span { font-family: var(--font-mono); font-size: 0.74rem; }
+
+  a:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; border-radius: 4px; }
+  @media (max-width: 960px) {
+    .platforms { grid-template-columns: repeat(2, 1fr); }
+    .pillars, .budget { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 720px) {
+    .container { padding: 0 16px; }
+    .keyfacts { grid-template-columns: 1fr 1fr; }
+    .two, .clips, .files { grid-template-columns: 1fr; }
+    .phase { grid-template-columns: 1fr; gap: 6px; }
+    .phase .when { text-align: left; padding-left: 30px; }
+    .platforms, .pillars, .budget { grid-template-columns: 1fr; }
+    .tag { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <div class="brand"><img src="assets/forgelink-icon.png" alt="ForgeLink SMS icon"><span><strong>ForgeLink SMS</strong><small>by AzureForge AI</small></span></div>
+    <span class="tag">Master promotion plan</span>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <div class="eyebrow">Launch plan · Oct 2026 – Jan 2027</div>
+    <h1>Get ForgeLink through Google's test, <span class="hl">launch with momentum,</span> and grow through the holidays.</h1>
+    <p class="lede">Eight platforms, one story. The first month recruits testers, launch day lands the week before Thanksgiving, and the holiday season gives every post a reason to exist.</p>
+    <div class="pitch">Your people up front. Everything else sorted.</div>
+    <div class="keyfacts">
+      <div><span>Testers needed</span><strong>25 recruited · 12 required</strong></div>
+      <div><span>Closed test</span><strong>Oct 26 – Nov 8</strong></div>
+      <div class="launch"><span>Launch day</span><strong>Tue, Nov 17, 2026</strong></div>
+      <div><span>Paid spend</span><strong>$100–$200 at launch</strong></div>
+    </div>
+  </div>
+</section>
+
+<nav class="toc" aria-label="Sections">
+  <div class="container">
+    <a href="#timeline">Timeline</a>
+    <a href="#platforms">Platforms</a>
+    <a href="#prep">Before posting</a>
+    <a href="#pillars">Content pillars</a>
+    <a href="#rhythm">Weekly rhythm</a>
+    <a href="#budget">Budget</a>
+    <a href="#measure">Targets</a>
+    <a href="#rules">Rules</a>
+    <a href="#playbooks">Playbooks</a>
+  </div>
+</nav>
+
+<section class="block" id="timeline">
+  <div class="container">
+    <div class="eyebrow">Timeline</div>
+    <h2>Five phases, one launch day</h2>
+    <p class="lede">Dates are targets. If Google's approval moves, every later phase shifts by the same amount.</p>
+    <div class="timeline">
+      <div class="phase">
+        <div class="when"><span>Phase 0 · Foundation</span><strong>Oct 5 – Oct 18</strong></div>
+        <div class="body">
+          <h3>Set the stage</h3>
+          <ul>
+            <li>Claim <b>@forgelinksms</b> everywhere; set up profiles with the icon and feature graphic.</li>
+            <li>Publish the product page and privacy policy on azureforgeai.com.</li>
+            <li>Build a <b>demo phone with made-up contacts</b> and record the clip library.</li>
+            <li>Upload the Google Play SMS-declaration video to YouTube (unlisted); open the closed-test track.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="when"><span>Phase 1 · Testers</span><strong>Oct 19 – Nov 8</strong></div>
+        <div class="body">
+          <h3>Recruit 25 testers and build in public</h3>
+          <ul>
+            <li>Sources in order: <b>friends and family → Facebook groups → Reddit tester exchanges → LinkedIn → X</b>.</li>
+            <li>Closed test runs <b>Oct 26 – Nov 8</b>; remind testers on days 1, 7 and 12 to keep the app installed.</li>
+            <li>Post 3–4 times a week: glow-up clips, one feature at a time, developer updates.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="when"><span>Phase 2 · Pre-launch</span><strong>Nov 9 – Nov 16</strong></div>
+        <div class="body">
+          <h3>Apply for production and tease the date</h3>
+          <ul>
+            <li>Submit the listing, Data safety answers and SMS permission declaration.</li>
+            <li>Countdown posts and Stories; tester quotes with permission.</li>
+            <li>Schedule the Product Hunt page and the YouTube walkthrough Premiere.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="phase launch">
+        <div class="when"><span>Phase 3 · Launch</span><strong>Tue Nov 17 – Sun Nov 22</strong></div>
+        <div class="body">
+          <h3>Launch everywhere on one day</h3>
+          <ul>
+            <li><b>12:01 a.m. Pacific:</b> Product Hunt goes live; post the maker's first comment.</li>
+            <li>Morning: X, LinkedIn, Facebook, Instagram, TikTok, YouTube Premiere. Reddit post Wednesday morning.</li>
+            <li>Reply to every comment within two hours; one feature clip per day through Sunday.</li>
+            <li>Boost the best launch Reel on Facebook/Instagram.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="when"><span>Phase 4 · Holidays</span><strong>Nov 23 – Jan 10</strong></div>
+        <div class="body">
+          <h3>Ride the season</h3>
+          <ul>
+            <li><b>Thanksgiving (Nov 26):</b> family group chat survival — mute, snooze, scheduled greetings.</li>
+            <li><b>Black Friday / Cyber Monday:</b> "Every store is about to text you — Updates catches them."</li>
+            <li><b>December:</b> holiday greetings, forwarding photos to grandparents, Screener vs holiday spam.</li>
+            <li><b>New Year:</b> "Inbox reset for 2027" with Trash, Archive and filters.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block alt" id="platforms">
+  <div class="container">
+    <div class="eyebrow">Where to promote</div>
+    <h2>Eight platforms, each with a job</h2>
+    <div class="platforms">
+      <div class="platform"><h3>Facebook</h3><div class="role">Testers · community · paid boost</div><p>Parents, sports teams, church and neighborhood groups — ForgeLink's core audience.</p><div class="effort">Effort <b>Medium</b></div></div>
+      <div class="platform"><h3>Instagram</h3><div class="role">Visual showcase</div><p>Reels of the bubbles and color list; carousels comparing what a texting app should do.</p><div class="effort">Effort <b>Medium</b></div></div>
+      <div class="platform"><h3>TikTok</h3><div class="role">Widest organic reach</div><p>Short "inbox glow-up" demos reach people who don't follow you yet.</p><div class="effort">Effort <b>Medium</b></div></div>
+      <div class="platform"><h3>YouTube</h3><div class="role">Search · proof</div><p>Shorts, the full walkthrough, and the demo video Google requires for the SMS declaration.</p><div class="effort">Effort <b>Medium</b></div></div>
+      <div class="platform"><h3>Reddit</h3><div class="role">Feedback · tester exchange</div><p>Android enthusiasts who try new apps — if you're genuine and follow each community's rules.</p><div class="effort">Effort <b>Low–medium</b></div></div>
+      <div class="platform"><h3>X (Twitter)</h3><div class="role">Build in public · press</div><p>Android and .NET developers, indie makers and tech writers.</p><div class="effort">Effort <b>Low</b></div></div>
+      <div class="platform"><h3>LinkedIn</h3><div class="role">Credibility for AzureForge AI</div><p>Your professional network; the engineering story proves AzureForge ships real products.</p><div class="effort">Effort <b>Low</b></div></div>
+      <div class="platform"><h3>Product Hunt</h3><div class="role">One-day launch spike</div><p>Early adopters and tech press on Nov 17, plus a lasting page and possible badge.</p><div class="effort">Effort <b>High for one day</b></div></div>
+    </div>
+    <p class="note"><b>Record once, post three times:</b> TikTok, Instagram Reels and YouTube Shorts share the same vertical videos — that's where most of the reach comes from.</p>
+  </div>
+</section>
+
+<section class="block" id="prep">
+  <div class="container">
+    <div class="eyebrow">Before anything is posted</div>
+    <h2>Set up once, use everywhere</h2>
+    <div class="two">
+      <div>
+        <ul class="checks">
+          <li><b>Never show real conversations.</b> Record on a demo phone or emulator with made-up contacts: Mom, Coach Rivera, a fake bank, a fake delivery service.</li>
+          <li><b>One handle everywhere:</b> @forgelinksms (fallbacks @forgelinkapp, @getforgelink).</li>
+          <li><b>Product page and privacy policy live</b> on azureforgeai.com — every post links there.</li>
+          <li><b>A tester sign-up path:</b> email Tmd1124@outlook.com or a simple form asking for the Gmail used on their phone.</li>
+          <li><b>One link page:</b> Join the test · Watch the demo · Contact.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Clip library — vertical 1080×1920, 15–30 seconds</h3>
+        <div class="clips">
+          <div class="clip"><code>A</code><span>Inbox glow-up: mess → sorted → bubbles</span></div>
+          <div class="clip"><code>B</code><span>Bubbles bobbing, an unread one glowing</span></div>
+          <div class="clip"><code>C</code><span>Switching the three layouts live</span></div>
+          <div class="clip"><code>D</code><span>Screener: stranger arrives silently → Allow</span></div>
+          <div class="clip"><code>E</code><span>Updates: codes, banking, deliveries grouped</span></div>
+          <div class="clip"><code>F</code><span>Create "🥎 Softball" filter, add from search</span></div>
+          <div class="clip"><code>G</code><span>Schedule a group text for tomorrow</span></div>
+          <div class="clip"><code>H</code><span>Forward a photo → "Forwarded to Grandpa"</span></div>
+          <div class="clip"><code>I</code><span>No ads · no trackers · no account</span></div>
+          <div class="clip"><code>J</code><span>Two-minute walkthrough (YouTube + Play)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block alt" id="pillars">
+  <div class="container">
+    <div class="eyebrow">Content pillars</div>
+    <h2>Every post belongs to one of six themes</h2>
+    <div class="pillars">
+      <div class="pillar"><h3>Glow-up</h3><p>Before and after of a cluttered inbox — the hook that stops the scroll.</p></div>
+      <div class="pillar"><h3>Feature in 15 seconds</h3><p>One feature, one clip, one sentence.</p></div>
+      <div class="pillar"><h3>Real life</h3><p>Sports parents, family group chats, holidays, "Mom texted four times".</p></div>
+      <div class="pillar"><h3>Private by design</h3><p>No ads, no trackers, no account — messages stay on your phone.</p></div>
+      <div class="pillar"><h3>Build in public</h3><p>The developer's story, decisions, bugs fixed and what's next.</p></div>
+      <div class="pillar"><h3>Community</h3><p>Tester shout-outs, feature requests and polls: "Bubbles or color list?"</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="rhythm">
+  <div class="container">
+    <div class="eyebrow">After launch</div>
+    <h2>The weekly rhythm</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Day</th><th>What goes out</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td>Monday</td><td>Feature in 15 seconds</td><td>TikTok, Reels, Shorts, Facebook</td></tr>
+          <tr><td>Tuesday</td><td>Build-in-public update</td><td>LinkedIn, X</td></tr>
+          <tr><td>Wednesday</td><td>Real-life post or meme</td><td>Instagram, Facebook, TikTok</td></tr>
+          <tr><td>Thursday</td><td>Tip or how-to</td><td>YouTube Shorts, Reels, Facebook group</td></tr>
+          <tr><td>Friday</td><td>Community: poll, feature request, tester shout-out</td><td>All platforms</td></tr>
+          <tr><td>Saturday</td><td>Glow-up repost or user story</td><td>TikTok, Instagram</td></tr>
+          <tr><td>Monthly</td><td>What shipped and what's next</td><td>YouTube, Reddit (allowed threads), LinkedIn</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="block alt" id="budget">
+  <div class="container">
+    <div class="eyebrow">Budget</div>
+    <h2>Organic first, pay only where it proves out</h2>
+    <div class="budget">
+      <div class="spend"><strong>$0</strong><h3>Phases 0–2</h3><p>Everything before launch runs on free posts, groups and communities.</p></div>
+      <div class="spend"><strong>$100–$200</strong><h3>Launch week</h3><p>Boost the best Reel on Facebook/Instagram: US Android users, ages 30–60, parenting, youth sports and family interests.</p></div>
+      <div class="spend"><strong>$10–$20/day</strong><h3>After 50+ reviews</h3><p>Test Google App Campaigns, which optimize for installs. Skip influencer fees and press-release services for now.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="measure">
+  <div class="container">
+    <div class="eyebrow">What to measure</div>
+    <h2>Targets, checked every Friday</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Stage</th><th>Metric</th><th>Target</th></tr></thead>
+        <tbody>
+          <tr><td>Testers</td><td>Opted-in testers still installed on day 14</td><td class="target">≥ 12 (aim for 20)</td></tr>
+          <tr><td>Pre-launch</td><td>Tester and waitlist sign-ups</td><td class="target">100</td></tr>
+          <tr><td>Launch week</td><td>Product Hunt upvotes and daily rank</td><td class="target">150 · top 10</td></tr>
+          <tr><td>Launch week</td><td>Google Play installs</td><td class="target">250</td></tr>
+          <tr><td>60 days</td><td>Installs · average rating · reviews</td><td class="target">2,000 · 4.5★ · 50</td></tr>
+          <tr><td>Every week</td><td>Link clicks per post, follower growth, comments</td><td>Keep what earns installs; drop what doesn't</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="block alt" id="rules">
+  <div class="container">
+    <div class="eyebrow">Protect the account</div>
+    <h2>Rules for every platform</h2>
+    <ul class="checks">
+      <li><b>Follow each community's self-promotion rules.</b> Reddit and Facebook groups ban accounts that only post links — participate first.</li>
+      <li><b>Never promise what isn't built.</b> No encryption, RCS or texting from a computer yet; say "on the roadmap" only if it truly is.</li>
+      <li><b>Show the differences, don't trash competitors.</b> Link to the fair comparison on the product page.</li>
+      <li><b>Ask before quoting a tester</b> or showing their name.</li>
+      <li><b>Keep the story true.</b> The ready-to-post copy uses personal details as a starting point — edit each one so it's accurate before posting.</li>
+      <li><b>Stay on brand:</b> the ForgeLink icon, navy/blue/amber colors, and one pitch — "Your people up front. Everything else sorted."</li>
+    </ul>
+  </div>
+</section>
+
+<section class="block" id="playbooks">
+  <div class="container">
+    <div class="eyebrow">Platform playbooks</div>
+    <h2>Ready-to-post copy for each platform</h2>
+    <p class="lede">Each playbook in <code style="font-family:var(--font-mono);color:var(--signal)">docs/Marketing/</code> covers profile setup, formats and sizes, posting times, and a dated calendar of posts and scripts.</p>
+    <div class="files">
+      <code>Facebook/ForgeLink-Facebook-Playbook.md</code>
+      <code>Instagram/ForgeLink-Instagram-Playbook.md</code>
+      <code>TikTok/ForgeLink-TikTok-Playbook.md</code>
+      <code>YouTube/ForgeLink-YouTube-Playbook.md</code>
+      <code>Reddit/ForgeLink-Reddit-Playbook.md</code>
+      <code>X-Twitter/ForgeLink-X-Playbook.md</code>
+      <code>LinkedIn/ForgeLink-LinkedIn-Playbook.md</code>
+      <code>Product-Hunt/ForgeLink-Product-Hunt-Playbook.md</code>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div>ForgeLink SMS · AzureForge Solutions LLC · Tmd1124@outlook.com</div>
+    <span>Plan prepared September 2026</span>
+  </div>
+</footer>
+
+</body>
+</html>
