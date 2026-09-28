@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ForgeLink SMS — Google Play Review Brief</title>
+<meta name="description" content="How ForgeLink SMS meets Google Play's policies and technical requirements: default SMS handler, permissions, data safety, privacy and target API level.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B1220; --surface: #131B2E; --surface-2: #1A2438;
+    --ink: #E8ECF4; --ink-dim: #97A3BF; --line: #2A3550;
+    --signal: #3FA9F5; --signal-dim: rgba(63,169,245,0.14); --signal-border: rgba(63,169,245,0.35); --glow-signal: rgba(63,169,245,0.30);
+    --amber: #F5A623; --amber-dim: rgba(245,166,35,0.14); --amber-ink: #16110a;
+    --good: #22C55E; --good-dim: rgba(34,197,94,0.14); --danger: #E5636B;
+    --header-bg: rgba(11,18,32,0.86);
+    --font-display: 'Space Grotesk', 'IBM Plex Sans', sans-serif; --font-body: 'IBM Plex Sans', sans-serif; --font-mono: 'IBM Plex Mono', monospace;
+    --container: 1080px; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.65; }
+  a { color: var(--signal); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .container { max-width: var(--container); margin: 0 auto; padding: 0 28px; }
+  h1, h2, h3 { font-family: var(--font-display); margin: 0; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(2rem, 4vw, 2.9rem); line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 1.6rem; font-weight: 600; line-height: 1.25; }
+  h3 { font-size: 1.1rem; font-weight: 600; margin-top: 22px; }
+  p { color: var(--ink-dim); margin: 10px 0 0; }
+  .hl { color: var(--signal); }
+  .eyebrow { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--signal); margin-bottom: 12px; }
+  .eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 10px var(--glow-signal); }
+
+  .site-header { position: sticky; top: 0; z-index: 50; background: var(--header-bg); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .site-header .container { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 12px; color: var(--ink); }
+  .brand img { width: 36px; height: 36px; border-radius: 9px; }
+  .brand strong { font-family: var(--font-display); display: block; line-height: 1.1; }
+  .brand small { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.1em; color: var(--ink-dim); text-transform: uppercase; }
+  .tag { font-family: var(--font-mono); font-size: 0.7rem; color: var(--amber); border: 1px solid var(--amber); border-radius: 999px; padding: 3px 12px; letter-spacing: 0.06em; }
+
+  .hero { padding: 70px 0 44px; background: radial-gradient(800px 400px at 85% 0%, rgba(63,169,245,0.12), transparent 60%); }
+  .hero-grid { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 44px; align-items: center; }
+  .hero img.feature { width: 100%; border-radius: var(--radius); border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-top: 36px; }
+  .facts div { background: var(--surface); padding: 16px 18px; }
+  .facts span { display: block; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+  .facts strong { font-family: var(--font-display); font-size: 1.02rem; }
+
+  .toc { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .toc .container { display: flex; gap: 24px; overflow-x: auto; padding-top: 14px; padding-bottom: 14px; }
+  .toc a { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-dim); white-space: nowrap; }
+
+  section.block { padding: 60px 0; border-bottom: 1px solid var(--line); }
+  section.block:nth-of-type(even) { background: var(--surface); }
+  .num { display: inline-flex; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); color: var(--signal); font-family: var(--font-mono); font-size: 0.82rem; align-items: center; justify-content: center; margin-bottom: 14px; background: var(--bg); }
+
+  .checklist { list-style: none; padding: 0; margin: 18px 0 0; }
+  .checklist li { padding: 10px 0 10px 34px; position: relative; border-bottom: 1px solid var(--line); color: var(--ink-dim); }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li::before { content: "✓"; position: absolute; left: 4px; top: 10px; width: 20px; height: 20px; border-radius: 50%; background: var(--good-dim); color: var(--good); font-size: 0.75rem; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .checklist li b { color: var(--ink); }
+
+  .table-wrap { overflow-x: auto; margin-top: 18px; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 0.9rem; }
+  th { background: var(--surface-2); font-family: var(--font-display); font-weight: 600; }
+  td code, p code, li code { font-family: var(--font-mono); font-size: 0.8rem; color: var(--signal); background: var(--signal-dim); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+  td:first-child { width: 30%; }
+  tr:last-child td { border-bottom: none; }
+
+  .answer { background: var(--bg); border: 1px solid var(--line); border-left: 3px solid var(--amber); border-radius: var(--radius); padding: 18px 22px; margin-top: 18px; }
+  section.block:nth-of-type(odd) .answer { background: var(--surface); }
+  .answer .q { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--amber); }
+  .answer p { color: var(--ink); margin-top: 6px; }
+
+  ol.steps { margin: 16px 0 0; padding-left: 22px; color: var(--ink-dim); }
+  ol.steps li { margin: 8px 0; }
+  ol.steps li b { color: var(--ink); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 18px; }
+  .card { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+  section.block:nth-of-type(odd) .card { background: var(--surface); }
+  .card h3 { margin-top: 0; }
+
+  .site-footer { padding: 40px 0; font-size: 0.88rem; color: var(--ink-dim); }
+  .site-footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
+  .site-footer span { font-family: var(--font-mono); font-size: 0.74rem; }
+
+  @media (max-width: 860px) {
+    .hero-grid, .grid-2 { grid-template-columns: 1fr; }
+    .facts { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 520px) {
+    .container { padding: 0 16px; }
+    .facts { grid-template-columns: 1fr; }
+  }
+  @media print {
+    .site-header, .toc { display: none; }
+    body { background: #fff; color: #111; }
+    section.block, section.block:nth-of-type(even) { background: #fff; }
+    p, li, td { color: #333 !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <div class="brand"><img src="assets/forgelink-icon.png" alt="ForgeLink SMS icon"><span><strong>ForgeLink SMS</strong><small>by AzureForge AI</small></span></div>
+    <span class="tag">Google Play review brief</span>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container hero-grid">
+    <div>
+      <div class="eyebrow">Prepared for the Google Play review team</div>
+      <h1>ForgeLink SMS is a full <span class="hl">default SMS &amp; MMS app</span> built to Google Play's rules.</h1>
+      <p>This brief explains what ForgeLink SMS does, why each permission is needed, what happens to user data, and how the app meets Google Play's SMS permission policy, Data safety, User Data and target API requirements. Every answer below is taken from the shipping build.</p>
+    </div>
+    <img class="feature" src="assets/forgelink-feature.png" alt="ForgeLink SMS feature graphic">
+  </div>
+  <div class="container">
+    <div class="facts">
+      <div><span>Package</span><strong>com.forgelink.sms</strong></div>
+      <div><span>Category</span><strong>Communication</strong></div>
+      <div><span>Target / min SDK</span><strong>API 36 / API 24</strong></div>
+      <div><span>Developer</span><strong>AzureForge Solutions LLC</strong></div>
+      <div><span>Version</span><strong>1.0 (code 1)</strong></div>
+      <div><span>Format</span><strong>Signed AAB, 64-bit</strong></div>
+      <div><span>Ads / In-app purchases</span><strong>None / None</strong></div>
+      <div><span>Contact</span><strong>Tmd1124@outlook.com</strong></div>
+    </div>
+  </div>
+</section>
+
+<nav class="toc" aria-label="Sections">
+  <div class="container">
+    <a href="#core">01 Core functionality</a>
+    <a href="#sms-policy">02 SMS permission policy</a>
+    <a href="#permissions">03 Permissions</a>
+    <a href="#data-safety">04 Data safety</a>
+    <a href="#privacy">05 Privacy policy</a>
+    <a href="#technical">06 Technical requirements</a>
+    <a href="#content">07 Content &amp; audience</a>
+    <a href="#review">08 How to review</a>
+  </div>
+</nav>
+
+<section class="block" id="core">
+  <div class="container">
+    <div class="num">01</div>
+    <h2>Core functionality</h2>
+    <p>ForgeLink SMS is a complete replacement for the phone's built-in messaging app. Its only purpose is sending, receiving, reading and organizing the user's own SMS and MMS messages, and it must be the default SMS handler to work.</p>
+    <ul class="checklist">
+      <li><b>Send and receive</b> SMS and MMS: text, photos, video, audio, contact cards and real group conversations.</li>
+      <li><b>Organize the inbox:</b> a Chats lane for people, an Updates lane that groups automated business texts by topic, and a Screener that holds texts from unknown numbers without notifications until the user allows them.</li>
+      <li><b>Messaging tools:</b> reactions, reply-with-quote, voice messages, quick replies, scheduled messages (including to groups), forwarding, drafts, and replying or marking as read from the notification.</li>
+      <li><b>Personal organization:</b> favorites, color filters with emoji names, a bubble-based home screen, mute, snooze, archive, block, and Trash with 30-day recovery.</li>
+      <li><b>Search</b> across all conversations and within a conversation, plus a Photos &amp; links view per conversation.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="block" id="sms-policy">
+  <div class="container">
+    <div class="num">02</div>
+    <h2>SMS &amp; Call Log permission policy</h2>
+    <p>ForgeLink qualifies under the <b>Default SMS handler</b> core use case. It requests no Call Log permissions.</p>
+    <ul class="checklist">
+      <li><b>Default handler first.</b> On first launch, the setup screen asks the user to make ForgeLink the default SMS app through Android's <code>RoleManager</code> (<code>ROLE_SMS</code>). The "Grant permissions" step stays disabled until the role is granted, so SMS permissions are never requested before ForgeLink is the default handler.</li>
+      <li><b>Handles every default-SMS entry point:</b> <code>SMS_DELIVER</code> (protected by <code>BROADCAST_SMS</code>), <code>WAP_PUSH_DELIVER</code> for MMS (protected by <code>BROADCAST_WAP_PUSH</code>), a <code>RESPOND_VIA_MESSAGE</code> service (protected by <code>SEND_RESPOND_VIA_MESSAGE</code>), and a <code>SENDTO</code> compose activity for <code>sms:</code>, <code>smsto:</code>, <code>mms:</code> and <code>mmsto:</code> links.</li>
+      <li><b>Losing the role is handled.</b> If the user switches to another default SMS app, ForgeLink returns to its setup screen on next launch instead of using SMS permissions.</li>
+      <li><b>No access to data beyond messaging.</b> SMS data is used only to show, send, search and organize the user's messages on the device. It is never uploaded, sold or shared.</li>
+    </ul>
+    <div class="answer">
+      <div class="q">Permissions Declaration Form — description</div>
+      <p>ForgeLink SMS is a full replacement messaging app. It asks the user to make it the default SMS handler on first launch and only then requests SMS permissions. As the default handler it reads, sends and receives SMS and MMS so the user can read their conversations, send and receive text, picture and group messages, schedule messages, reply from notifications, and search their messages. Message data never leaves the device except when the user sends a message through their carrier.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="permissions">
+  <div class="container">
+    <div class="num">03</div>
+    <h2>Every permission, and why</h2>
+    <p>ForgeLink requests the minimum set needed for a default SMS app. There are no foreground services, no background location, no exact-alarm permission and no accessibility service.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Permission</th><th>Why ForgeLink needs it</th><th>When it's requested</th></tr></thead>
+        <tbody>
+          <tr><td><code>READ_SMS</code> <code>SEND_SMS</code> <code>RECEIVE_SMS</code></td><td>Read, send and receive the user's text messages as the default SMS app.</td><td>After becoming the default SMS app, on the setup screen.</td></tr>
+          <tr><td><code>RECEIVE_MMS</code> <code>RECEIVE_WAP_PUSH</code></td><td>Receive picture, video and group (MMS) messages.</td><td>Granted with the default SMS role.</td></tr>
+          <tr><td><code>READ_CONTACTS</code></td><td>Show contact names and photos instead of numbers, and pick recipients.</td><td>Setup screen, after the default SMS role.</td></tr>
+          <tr><td><code>READ_PHONE_STATE</code></td><td>Identify the user's own phone number so group picture messages (MMS) list the right participants.</td><td>Setup screen, after the default SMS role.</td></tr>
+          <tr><td><code>POST_NOTIFICATIONS</code></td><td>Notify the user of new messages, with Reply and Mark as read actions.</td><td>Setup screen.</td></tr>
+          <tr><td><code>RECORD_AUDIO</code></td><td>Record a voice message, only when the user taps the microphone.</td><td>At first use of voice recording.</td></tr>
+          <tr><td><code>ACCESS_FINE_LOCATION</code> <code>ACCESS_COARSE_LOCATION</code></td><td>Share the user's current location in a message, only when the user taps "Share location". Foreground only, read once, never stored.</td><td>At first use of location sharing.</td></tr>
+          <tr><td><code>RECEIVE_BOOT_COMPLETED</code></td><td>Re-arm scheduled messages and snoozed conversations after the phone restarts.</td><td>Install-time (normal permission).</td></tr>
+          <tr><td><code>INTERNET</code> <code>ACCESS_NETWORK_STATE</code></td><td>Download MMS through the carrier and show link previews for links from contacts, groups and the user's own messages.</td><td>Install-time (normal permissions).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="data-safety">
+  <div class="container">
+    <div class="num">04</div>
+    <h2>Data safety</h2>
+    <p>ForgeLink does not collect or share user data as Google Play defines it. The developer operates no servers and includes no analytics, crash-reporting, advertising or attribution SDKs.</p>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Stays on the device</h3>
+        <ul class="checklist">
+          <li>Messages, in Android's standard message storage</li>
+          <li>Contacts (read only, never copied)</li>
+          <li>App settings: drafts, filters, favorites, mutes, schedules, quick replies</li>
+          <li>Voice recordings and attachments the user sends</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Leaves the device only when</h3>
+        <ul class="checklist">
+          <li>The user sends a message (through their carrier, to their recipient)</li>
+          <li>A link preview is shown (the linked website receives a normal page request)</li>
+          <li>The user's own Android backup is enabled (managed by the user)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="answer">
+      <div class="q">Data safety form answers</div>
+      <p>Does your app collect or share any of the required user data types? <b>No.</b> · Account creation: <b>The app does not allow users to create an account.</b> · Data deletion: <b>not applicable</b> — uninstalling removes all app data, and users can delete any conversation in the app.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="privacy">
+  <div class="container">
+    <div class="num">05</div>
+    <h2>Privacy policy</h2>
+    <p>A public privacy policy is linked from the store listing and describes exactly the behavior above: what the app uses, what leaves the device, no selling or sharing, retention and deletion, children, and contact details.</p>
+    <ul class="checklist">
+      <li><b>URL:</b> <code>https://azureforgeai.com/forgelink/privacy</code> (published from <code>docs/play-store/privacy-policy.html</code>)</li>
+      <li><b>Contact:</b> Tmd1124@outlook.com · 770-865-4177</li>
+    </ul>
+  </div>
+</section>
+
+<section class="block" id="technical">
+  <div class="container">
+    <div class="num">06</div>
+    <h2>Technical requirements</h2>
+    <ul class="checklist">
+      <li><b>Target API level 36 (Android 16)</b>, meeting the requirement for new apps from August 31, 2026. Minimum API 24 (Android 7.0).</li>
+      <li><b>Android App Bundle</b> signed with a dedicated upload key; the developer opts in to <b>Play App Signing</b>.</li>
+      <li><b>64-bit native code</b> only (<code>arm64-v8a</code>, <code>x86_64</code>).</li>
+      <li><b>Edge-to-edge and predictive back</b> supported: content respects system bars, and the back gesture and button navigate within the app.</li>
+      <li><b>Battery-friendly scheduling:</b> scheduled sends and snoozes use <code>setAndAllowWhileIdle</code>, so no exact-alarm permission is required.</li>
+      <li><b>No foreground services, no background location, no accessibility service, no device admin.</b></li>
+      <li><b>Notification permission</b> (<code>POST_NOTIFICATIONS</code>) requested at runtime on Android 13+.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="block" id="content">
+  <div class="container">
+    <div class="num">07</div>
+    <h2>Content rating, audience and monetization</h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Content rating</h3>
+        <ul class="checklist">
+          <li>No violence, sexual content, profanity, drugs or gambling in the app itself</li>
+          <li>Users can exchange content with each other: <b>yes</b> (messaging)</li>
+          <li>Shares user location: <b>yes</b>, only when the user sends it in a message</li>
+          <li>Expected rating: Everyone, with "Users Interact" and "Shares Location"</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Audience and monetization</h3>
+        <ul class="checklist">
+          <li>Target audience: <b>13 and older</b>; not designed for children</li>
+          <li>No ads, no in-app purchases, no subscriptions</li>
+          <li>Sold as a paid app through a Google Play payments profile</li>
+          <li>Not a news, health, financial, or government app</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="review">
+  <div class="container">
+    <div class="num">08</div>
+    <h2>How to review ForgeLink</h2>
+    <p>No login or special access is needed. A device with a SIM (or an emulator with SMS support) shows every feature.</p>
+    <ol class="steps">
+      <li><b>Install and open</b> ForgeLink SMS. The setup screen appears.</li>
+      <li>Tap <b>1. Make this my default SMS app</b> and accept Android's prompt.</li>
+      <li>Tap <b>2. Grant permissions</b> (enabled only now) and allow SMS, Contacts, Phone and Notifications, then <b>Continue</b>.</li>
+      <li>The <b>Chats</b> screen shows conversations; <b>Updates</b> and <b>Screener</b> tabs hold business texts and unknown senders.</li>
+      <li>Open a conversation, send a text, and receive one. Long-press a message to react, reply, copy or forward.</li>
+      <li>Explore <b>Menu → Settings → Display</b> to change the home-screen layout, and <b>Menu → Filters</b> to create a color filter.</li>
+    </ol>
+    <div class="answer">
+      <div class="q">Demo video (SMS declaration)</div>
+      <p>A 30–60 second screen recording shows steps 1–5: the default-handler prompt appearing before any SMS permission, then sending and receiving a message.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div>ForgeLink SMS · AzureForge Solutions LLC · Ball Ground, GA · <a href="mailto:Tmd1124@outlook.com">Tmd1124@outlook.com</a> · <a href="tel:+17708654177">770-865-4177</a></div>
+    <span>Prepared September 2026</span>
+  </div>
+</footer>
+
+</body>
+</html>

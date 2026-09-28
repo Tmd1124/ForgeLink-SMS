@@ -13,7 +13,7 @@ namespace ForgeLinkSms.Platforms.Android;
 // Entry point for "send an SMS to…" links and for the system Share menu. Shared text and files
 // are handed to the New Message screen the same way a forwarded message is.
 [Activity(Exported = true)]
-[IntentFilter(new[] { Intent.ActionSendto }, Categories = new[] { Intent.CategoryDefault }, DataSchemes = new[] { "sms", "smsto" })]
+[IntentFilter(new[] { Intent.ActionSendto }, Categories = new[] { Intent.CategoryDefault }, DataSchemes = new[] { "sms", "smsto", "mms", "mmsto" })]
 [IntentFilter(new[] { Intent.ActionSend }, Categories = new[] { Intent.CategoryDefault },
     DataMimeTypes = new[] { "text/plain", "image/*", "video/*", "audio/*", "text/x-vcard", "text/vcard" })]
 public class ComposeSmsActivity : Activity
