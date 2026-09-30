@@ -11,3 +11,5 @@ public enum ScheduleRepeat
 }
 
 public sealed record ScheduledSend(DateTimeOffset SendAtUtc, ScheduleRepeat Repeat);
+
+public sealed record ScheduledEdit(int Id, string Body, DateTimeOffset SendAtUtc, ScheduleRepeat Repeat);

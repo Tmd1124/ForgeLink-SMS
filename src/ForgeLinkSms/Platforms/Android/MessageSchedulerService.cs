@@ -59,6 +59,22 @@ public class MessageSchedulerService : IMessageSchedulerService
         await _repository.RemoveAsync(scheduledMessageId);
     }
 
+    public async Task<bool> UpdateAsync(int scheduledMessageId, string body, DateTimeOffset sendAtUtc, ScheduleRepeat repeat)
+    {
+        if (await _repository.GetAsync(scheduledMessageId) is not { } message)
+        {
+            return false;
+        }
+        Disarm(scheduledMessageId);
+        message.Body = body;
+        message.SendAtUtc = sendAtUtc;
+        message.Repeat = repeat;
+        message.RepeatFromUtc = repeat == ScheduleRepeat.None ? null : sendAtUtc;
+        await _repository.UpdateAsync(message);
+        Arm(scheduledMessageId, sendAtUtc);
+        return true;
+    }
+
     public async Task CompleteAsync(int scheduledMessageId)
     {
         var message = await _repository.GetAsync(scheduledMessageId);

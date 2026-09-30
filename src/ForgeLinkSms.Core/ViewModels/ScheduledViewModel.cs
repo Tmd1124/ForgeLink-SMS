@@ -40,6 +40,29 @@ public partial class ScheduledViewModel : ObservableObject
 
     public string GetDisplayName(string address) => _displayNames.GetValueOrDefault(address, address);
 
+    [ObservableProperty]
+    private string? _editError;
+
+    public static string? ValidateEdit(string body, DateTimeOffset sendAtUtc, DateTimeOffset nowUtc) =>
+        string.IsNullOrWhiteSpace(body) ? "Write a message first."
+        : sendAtUtc <= nowUtc ? "Pick a time in the future."
+        : null;
+
+    [RelayCommand]
+    private async Task SaveEdit(ScheduledEdit edit)
+    {
+        EditError = ValidateEdit(edit.Body, edit.SendAtUtc, DateTimeOffset.UtcNow);
+        if (EditError is not null)
+        {
+            return;
+        }
+        if (!await _scheduler.UpdateAsync(edit.Id, edit.Body.Trim(), edit.SendAtUtc, edit.Repeat))
+        {
+            EditError = "This text was already sent.";
+        }
+        await Load();
+    }
+
     [RelayCommand]
     private async Task Cancel(int scheduledMessageId)
     {

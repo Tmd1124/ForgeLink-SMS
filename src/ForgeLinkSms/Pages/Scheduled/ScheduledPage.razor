@@ -1,5 +1,7 @@
 @page "/scheduled"
+@implements IDisposable
 @inject ForgeLinkSms.Core.ViewModels.ScheduledViewModel ViewModel
+@inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
 
 <div style="padding:12px;">
     <h3>Scheduled Messages</h3>
@@ -13,7 +15,7 @@
         @foreach (var message in ViewModel.ScheduledMessages)
         {
             <div style="padding:10px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <div style="min-width:0;">
+                <div @onclick="() => StartEdit(message)" role="button" tabindex="0" style="min-width:0;flex:1;cursor:pointer;">
                     <strong>@(message.IsGroup ? "👥 " + string.Join(", ", message.Recipients.Select(ViewModel.GetDisplayName)) : ViewModel.GetDisplayName(message.Address))</strong>
                     <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@message.Body</div>
                     <div style="color:#06b6d4;font-size:0.8em;">@(message.Repeat == ForgeLinkSms.Core.Models.ScheduleRepeat.None ? "Sends" : ForgeLinkSms.Core.Utils.ScheduleRepeatRules.Label(message.Repeat) + " · next") @message.SendAtUtc.LocalDateTime.ToString("ddd MMM d, h:mm tt")</div>
@@ -24,9 +26,101 @@
     }
 </div>
 
+@if (_editing is { } editing)
+{
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="CloseEdit">
+        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;box-sizing:border-box;" role="dialog" aria-modal="true" aria-label="Edit scheduled text" @onclick:stopPropagation="true">
+            <div style="font-weight:600;margin-bottom:10px;">Edit scheduled text</div>
+            <textarea @bind="_editBody" @bind:event="oninput" rows="4" aria-label="Message"
+                      style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1;font:inherit;box-sizing:border-box;background:var(--surface-color);color:var(--text-color);"></textarea>
+            <label style="display:block;margin:12px 0 6px;">When</label>
+            <input type="datetime-local" @bind="_editTime" @bind:event="oninput" min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")"
+                   style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1;font-size:1em;box-sizing:border-box;" />
+            <label style="display:block;margin:12px 0 6px;">Repeat</label>
+            <select @bind="_editRepeat"
+                    style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1;font-size:1em;box-sizing:border-box;background:var(--card-color);color:inherit;">
+                @foreach (var repeat in ForgeLinkSms.Core.Utils.ScheduleRepeatRules.All)
+                {
+                    <option value="@repeat">@ForgeLinkSms.Core.Utils.ScheduleRepeatRules.Label(repeat)</option>
+                }
+            </select>
+            @if ((ViewModel.EditError ?? LiveHint()) is { } hint)
+            {
+                <div role="alert" style="color:#ef4444;margin-top:10px;">@hint</div>
+            }
+            <div style="display:flex;gap:10px;margin-top:14px;">
+                <button @onclick="CloseEdit" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--surface-color);color:var(--text-color);font-size:1em;">Cancel</button>
+                <button @onclick="() => SaveEdit(editing)" disabled="@(LiveHint() is not null)"
+                        style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--accent-color);color:white;font-size:1em;font-weight:600;">Save</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
+    private ForgeLinkSms.Core.Models.ScheduledMessage? _editing;
+    private string _editBody = string.Empty;
+    private DateTime? _editTime;
+    private ForgeLinkSms.Core.Models.ScheduleRepeat _editRepeat;
+
     protected override async Task OnInitializedAsync()
     {
         await ViewModel.LoadCommand.ExecuteAsync(null);
+        HistoryTracker.LocalBackHandler = CloseEditForBack;
+    }
+
+    private void StartEdit(ForgeLinkSms.Core.Models.ScheduledMessage message)
+    {
+        ViewModel.EditError = null;
+        _editing = message;
+        _editBody = message.Body;
+        _editTime = message.SendAtUtc.LocalDateTime;
+        _editRepeat = message.Repeat;
+    }
+
+    private DateTimeOffset? EditTimeUtc() =>
+        _editTime is { } local ? new DateTimeOffset(DateTime.SpecifyKind(local, DateTimeKind.Local)) : null;
+
+    private string? LiveHint() =>
+        EditTimeUtc() is { } when
+            ? ForgeLinkSms.Core.ViewModels.ScheduledViewModel.ValidateEdit(_editBody, when, DateTimeOffset.UtcNow)
+            : "Pick a time in the future.";
+
+    private async Task SaveEdit(ForgeLinkSms.Core.Models.ScheduledMessage message)
+    {
+        if (EditTimeUtc() is not { } when)
+        {
+            return;
+        }
+        await ViewModel.SaveEditCommand.ExecuteAsync(new ForgeLinkSms.Core.Models.ScheduledEdit(message.Id, _editBody, when, _editRepeat));
+        if (ViewModel.EditError is null)
+        {
+            _editing = null;
+        }
+    }
+
+    private void CloseEdit()
+    {
+        _editing = null;
+        ViewModel.EditError = null;
+    }
+
+    private bool CloseEditForBack()
+    {
+        if (_editing is null)
+        {
+            return false;
+        }
+        CloseEdit();
+        _ = InvokeAsync(StateHasChanged);
+        return true;
+    }
+
+    public void Dispose()
+    {
+        if (HistoryTracker.LocalBackHandler == CloseEditForBack)
+        {
+            HistoryTracker.LocalBackHandler = null;
+        }
     }
 }
