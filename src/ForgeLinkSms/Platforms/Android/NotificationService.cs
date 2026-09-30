@@ -66,6 +66,36 @@ public class NotificationService : INotificationService
         NotificationManagerCompat.From(context).Notify(notificationId, notification);
     }
 
+    public void NotifyReminder(string chatName, ForgeLinkSms.Core.Models.MessageReminder reminder)
+    {
+        var context = AndroidApp.Context;
+        EnsureChannels(context);
+
+        // Kept apart from the per-conversation ids so a reminder never replaces that chat's message notification.
+        var notificationId = ReminderNotificationIdBase + reminder.Id;
+        var route = $"/conversations/thread?id={reminder.ThreadId}&address={Uri.EscapeDataString(reminder.Address)}"
+            + $"&jumpId={reminder.MessageId}&jumpTicks={reminder.MessageTimestamp.UtcTicks}";
+
+        var launchIntent = new Intent(context, typeof(MainActivity));
+        launchIntent.AddFlags(ActivityFlags.NewTask | ActivityFlags.ClearTop);
+        launchIntent.PutExtra("initial_route", route);
+        var contentIntent = PendingIntent.GetActivity(context, notificationId, launchIntent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
+
+        var body = $"{chatName}: {reminder.Preview}";
+        var notification = new NotificationCompat.Builder(context, ChannelId)
+            .SetContentTitle("⏰ Reminder")
+            .SetContentText(body)
+            .SetStyle(new NotificationCompat.BigTextStyle().BigText(body))
+            .SetSmallIcon(global::Android.Resource.Drawable.SymActionEmail)
+            .SetAutoCancel(true)
+            .SetContentIntent(contentIntent)
+            .Build();
+
+        NotificationManagerCompat.From(context).Notify(notificationId, notification);
+    }
+
+    private const int ReminderNotificationIdBase = 1_600_000_000;
+
     private static void EnsureChannels(Context context)
     {
         if (Build.VERSION.SdkInt < BuildVersionCodes.O)

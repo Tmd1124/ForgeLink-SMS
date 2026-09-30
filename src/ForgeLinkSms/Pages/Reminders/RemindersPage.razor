@@ -1,0 +1,51 @@
+@page "/reminders"
+@inject ForgeLinkSms.Core.ViewModels.RemindersViewModel ViewModel
+@inject NavigationManager Nav
+
+<div style="padding:12px;">
+    <h3 style="margin:0 0 12px;">Reminders</h3>
+
+    @if (ViewModel.Reminders.Count == 0)
+    {
+        <p>No reminders. Long-press a message and tap 🔔 Remind me to add one.</p>
+    }
+    else
+    {
+        @foreach (var (reminder, name) in ViewModel.Reminders)
+        {
+            <div style="padding:10px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px;">
+                <div @onclick="() => Open(reminder)" style="flex:1;min-width:0;cursor:pointer;">
+                    <strong>@name</strong>
+                    <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@reminder.Preview</div>
+                    <div style="color:#06b6d4;font-size:0.8em;">🔔 @FormatWhen(reminder.RemindAtUtc)</div>
+                </div>
+                <button @onclick="() => ViewModel.CancelCommand.ExecuteAsync(reminder.Id)" style="flex-shrink:0;">Cancel</button>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.LoadCommand.ExecuteAsync(null);
+    }
+
+    private void Open(ForgeLinkSms.Core.Models.MessageReminder reminder) =>
+        Nav.NavigateTo($"/conversations/thread?id={reminder.ThreadId}&address={Uri.EscapeDataString(reminder.Address)}&jumpId={reminder.MessageId}&jumpTicks={reminder.MessageTimestamp.UtcTicks}");
+
+    public static string FormatWhen(DateTimeOffset utc)
+    {
+        var local = utc.LocalDateTime;
+        var today = DateTime.Today;
+        if (local.Date == today)
+        {
+            return $"today {local:h:mm tt}";
+        }
+        if (local.Date == today.AddDays(1))
+        {
+            return $"tomorrow {local:h:mm tt}";
+        }
+        return local.ToString("ddd, MMM d h:mm tt");
+    }
+}

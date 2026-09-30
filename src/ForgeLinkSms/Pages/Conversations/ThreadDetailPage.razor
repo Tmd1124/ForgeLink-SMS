@@ -214,7 +214,7 @@
                             }
                         }
                     </div>
-                    @if (ReferenceEquals(_reactionTargetMessage, message) && !string.IsNullOrEmpty(message.Body))
+                    @if (ReferenceEquals(_reactionTargetMessage, message) && !string.IsNullOrEmpty(message.Body) && !_choosingReminder)
                     {
                         @* z-index lifts these above the reaction sheet's full-screen backdrop so they stay tappable while the sheet is open. *@
                         <div style="position:relative;z-index:1;display:flex;gap:8px;flex-shrink:0;flex-direction:@(message.IsOutgoing ? "row-reverse" : "row");">
@@ -256,6 +256,10 @@
                         @if (_forwardedTo.TryGetValue(ForwardedMessage.KeyFor(message), out var forwardedTo))
                         {
                             <span> · ↪ Forwarded to @forwardedTo</span>
+                        }
+                        @if (_reminders.TryGetValue(ForwardedMessage.KeyFor(message), out var remindAt))
+                        {
+                            <span> · ⏰ @ForgeLinkSms.Pages.Reminders.RemindersPage.FormatWhen(remindAt)</span>
                         }
                     </div>
                 </div>
@@ -346,7 +350,29 @@
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;" @onclick="CloseReactionBar">
         <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" @onclick:stopPropagation="true">
-            @if (_confirmingDelete)
+            @if (_choosingReminder)
+            {
+                <div style="padding:4px 4px 10px;font-weight:600;">Remind me about this message</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    @foreach (var preset in ForgeLinkSms.Core.Utils.SnoozePresets.For(DateTime.Now))
+                    {
+                        <button @onclick="() => SetReminder(preset.Until)" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--surface-color);color:var(--text-color);font-size:1em;text-align:left;">
+                            @preset.Label <span style="color:#94a3b8;font-size:0.85em;">· @preset.Until.ToString("ddd h:mm tt")</span>
+                        </button>
+                    }
+                    <div style="display:flex;gap:8px;">
+                        <input type="datetime-local" @bind="_customReminderTime" min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")"
+                               style="flex:1;min-width:0;padding:10px;border-radius:10px;border:1px solid rgba(127,127,127,0.35);background:var(--surface-color);color:var(--text-color);font-size:1em;" />
+                        <button @onclick="SetCustomReminder" disabled="@(_customReminderTime is null || _customReminderTime <= DateTime.Now)"
+                                style="padding:10px 14px;border:none;border-radius:10px;background:var(--accent-color);color:white;font-size:1em;">Set</button>
+                    </div>
+                    @if (_reactionTargetMessage is { } target && _reminders.ContainsKey(ForwardedMessage.KeyFor(target)))
+                    {
+                        <button @onclick="CancelReminder" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--surface-color);color:var(--text-color);font-size:1em;color:#ef4444;">Cancel reminder</button>
+                    }
+                </div>
+            }
+            else if (_confirmingDelete)
             {
                 <div style="padding:4px 4px 12px;">Delete this message? It can't be undone.</div>
                 <div style="display:flex;gap:10px;">
@@ -364,6 +390,7 @@
                 </div>
                 <div style="display:flex;gap:10px;margin-top:12px;border-top:1px solid rgba(127,127,127,0.25);padding-top:12px;">
                     <button @onclick="ForwardTargetMessage" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--surface-color);color:var(--text-color);font-size:1em;">↪ Forward</button>
+                    <button @onclick="OpenReminderChoices" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--surface-color);color:var(--text-color);font-size:1em;">🔔 Remind me</button>
                     <button @onclick="() => _confirmingDelete = true" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--surface-color);color:#ef4444;font-size:1em;">🗑 Delete</button>
                 </div>
             }
@@ -426,6 +453,9 @@
     private CancellationTokenSource? _saveToastCts;
     private readonly HashSet<long> _savedAttachmentPartIds = new();
     private IReadOnlyDictionary<string, string> _forwardedTo = new Dictionary<string, string>();
+    private IReadOnlyDictionary<string, DateTimeOffset> _reminders = new Dictionary<string, DateTimeOffset>();
+    private bool _choosingReminder;
+    private DateTime? _customReminderTime;
     private IContactService? _contactService;
     private readonly Dictionary<string, string> _memberNames = new();
     private bool _isRecording;
@@ -482,6 +512,7 @@
     {
         DisplayName = Address;
         _forwardedTo = await Services.GetRequiredService<ForgeLinkSms.Core.Data.IForwardedMessageRepository>().GetForThreadAsync(ThreadId);
+        _reminders = await Services.GetRequiredService<IReminderService>().GetForThreadAsync(ThreadId);
         _contactService = Services.GetRequiredService<IContactService>();
         var contact = await _contactService.LookupAsync(Address);
         if (contact is not null)
@@ -865,6 +896,46 @@
     {
         _reactionTargetMessage = null;
         _confirmingDelete = false;
+        _choosingReminder = false;
+    }
+
+    private void OpenReminderChoices()
+    {
+        _customReminderTime = DateTime.Today.AddDays(1).AddHours(9);
+        _choosingReminder = true;
+    }
+
+    private Task SetCustomReminder() =>
+        _customReminderTime is { } local ? SetReminder(local) : Task.CompletedTask;
+
+    private async Task SetReminder(DateTime local)
+    {
+        if (_reactionTargetMessage is not { } message)
+        {
+            return;
+        }
+        var reminders = Services.GetRequiredService<IReminderService>();
+        var remindAt = new DateTimeOffset(DateTime.SpecifyKind(local, DateTimeKind.Local));
+        await reminders.SetAsync(message, remindAt);
+        _reminders = await reminders.GetForThreadAsync(ThreadId);
+        CloseReactionBar();
+        ShowSaveToast($"I'll remind you {ForgeLinkSms.Pages.Reminders.RemindersPage.FormatWhen(remindAt)}");
+    }
+
+    private async Task CancelReminder()
+    {
+        if (_reactionTargetMessage is not { } message)
+        {
+            return;
+        }
+        var reminders = Services.GetRequiredService<IReminderService>();
+        if ((await reminders.GetAllAsync()).FirstOrDefault(r => r.MessageKey == ForwardedMessage.KeyFor(message)) is { } reminder)
+        {
+            await reminders.CancelAsync(reminder.Id);
+        }
+        _reminders = await reminders.GetForThreadAsync(ThreadId);
+        CloseReactionBar();
+        ShowSaveToast("Reminder cancelled");
     }
 
     private async Task DeleteTargetMessage()

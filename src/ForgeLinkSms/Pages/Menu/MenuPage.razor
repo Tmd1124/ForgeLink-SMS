@@ -48,6 +48,9 @@
     <div @onclick="@(() => Nav.NavigateTo("/scheduled"))" style="padding:12px 0;border-bottom:1px solid #eee;">
         ⏰ Scheduled
     </div>
+    <div @onclick="@(() => Nav.NavigateTo("/reminders"))" style="padding:12px 0;border-bottom:1px solid #eee;">
+        🔔 Reminders
+    </div>
     <div @onclick="() => ViewModel.MarkAllAsReadCommand.ExecuteAsync(null)" style="padding:12px 0;border-bottom:1px solid #eee;">
         ✓ Mark as Read
     </div>
