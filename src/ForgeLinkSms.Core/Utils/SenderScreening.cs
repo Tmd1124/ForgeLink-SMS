@@ -51,9 +51,4 @@ public static class SenderScreening
         }
         return hasOutgoing ? ConversationLane.Conversations : ConversationLane.Screener;
     }
-
-    // Updates and screened texts arrive silently, except one-time codes: the user is usually
-    // waiting on those right now, and they almost always come from automated senders.
-    public static bool ShouldNotify(ConversationLane lane, string body) =>
-        lane == ConversationLane.Conversations || OneTimeCodeDetector.Extract(body) is not null;
 }

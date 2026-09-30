@@ -11,9 +11,6 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _isDefaultSmsApp;
 
-    [ObservableProperty]
-    private bool _notificationsEnabled = true;
-
     public SettingsViewModel(IDefaultAppRoleService roleService)
     {
         _roleService = roleService;

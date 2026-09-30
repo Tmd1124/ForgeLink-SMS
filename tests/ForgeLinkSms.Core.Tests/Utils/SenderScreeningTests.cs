@@ -70,26 +70,4 @@ public class SenderScreeningTests
     {
         Assert.Equal(ConversationLane.Conversations, SenderScreening.LaneFor(MakeThread(address: "+1 855-201-4477"), new HashSet<string> { "8552014477" }));
     }
-
-    [Fact]
-    public void ShouldNotify_for_conversations()
-    {
-        Assert.True(SenderScreening.ShouldNotify(ConversationLane.Conversations, "hi"));
-    }
-
-    [Theory]
-    [InlineData(ConversationLane.Updates)]
-    [InlineData(ConversationLane.Screener)]
-    public void ShouldNotify_for_codes_in_any_lane(ConversationLane lane)
-    {
-        Assert.True(SenderScreening.ShouldNotify(lane, "Your verification code is 482913"));
-    }
-
-    [Theory]
-    [InlineData(ConversationLane.Updates)]
-    [InlineData(ConversationLane.Screener)]
-    public void ShouldNotify_is_false_for_other_updates_and_screened_texts(ConversationLane lane)
-    {
-        Assert.False(SenderScreening.ShouldNotify(lane, "Your package is out for delivery"));
-    }
 }

@@ -1,6 +1,7 @@
 using Android.Content;
 using Microsoft.Extensions.DependencyInjection;
 using ForgeLinkSms.Core.Data;
+using ForgeLinkSms.Core.Models;
 using ForgeLinkSms.Core.Services;
 using ForgeLinkSms.Core.Utils;
 using AndroidTelephony = global::Android.Provider.Telephony;
@@ -47,15 +48,21 @@ internal static class IncomingMessagePipeline
         var contact = services.GetRequiredService<IContactService>().LookupAsync(senderAddress).GetAwaiter().GetResult();
         var normalizedAddress = PhoneNumberFormatter.ToComparableDigits(senderAddress);
         var isAllowed = services.GetRequiredService<IAllowedSenderRepository>().IsAllowedAsync(normalizedAddress).GetAwaiter().GetResult();
-        var lane = SenderScreening.LaneFor(contact is not null, isFavorite: false, isAllowed, ThreadHasOutgoing(context, threadId), senderAddress);
-        if (!SenderScreening.ShouldNotify(lane, notificationBody))
+        var isFavorite = threadId != 0 && services.GetRequiredService<IFavoriteRepository>().IsFavoriteAsync(threadId).GetAwaiter().GetResult();
+        var lane = SenderScreening.LaneFor(contact is not null, isFavorite, isAllowed, ThreadHasOutgoing(context, threadId), senderAddress);
+        var outcome = NotificationRules.Decide(
+            NotificationRules.GroupFor(lane, isFavorite),
+            notificationBody,
+            services.GetRequiredService<INotificationSettingsStore>().Get(),
+            TimeOnly.FromDateTime(DateTime.Now));
+        if (outcome == NotifyOutcome.None)
         {
             return;
         }
 
         var senderName = contact?.DisplayName ?? senderAddress;
         var title = groupLabel is null ? senderName : $"{senderName} · {groupLabel}";
-        services.GetRequiredService<INotificationService>().NotifyIncomingMessage(title, notificationBody, threadId, senderAddress);
+        services.GetRequiredService<INotificationService>().NotifyIncomingMessage(title, notificationBody, threadId, senderAddress, outcome == NotifyOutcome.Sound);
     }
 
     public static bool ThreadHasOutgoing(Context context, long threadId)

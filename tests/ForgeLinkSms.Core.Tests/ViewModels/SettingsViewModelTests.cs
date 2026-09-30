@@ -17,13 +17,4 @@ public class SettingsViewModelTests
 
         Assert.True(viewModel.IsDefaultSmsApp);
     }
-
-    [Fact]
-    public void NotificationsEnabled_defaults_to_true()
-    {
-        var role = new Mock<IDefaultAppRoleService>();
-        var viewModel = new SettingsViewModel(role.Object);
-
-        Assert.True(viewModel.NotificationsEnabled);
-    }
 }

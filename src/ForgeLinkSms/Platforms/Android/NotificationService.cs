@@ -10,6 +10,8 @@ namespace ForgeLinkSms.Platforms.Android;
 public class NotificationService : INotificationService
 {
     private const string ChannelId = "incoming_sms";
+    // Android fixes a channel's sound when it is created, so silent notifications need their own channel.
+    private const string SilentChannelId = "incoming_sms_silent";
     private static int _notificationId;
 
     // One notification per conversation, so a new text replaces the last one and the Reply /
@@ -17,10 +19,10 @@ public class NotificationService : INotificationService
     public static int NotificationIdFor(long threadId) =>
         threadId != 0 ? (int)(threadId % int.MaxValue) : System.Threading.Interlocked.Increment(ref _notificationId) + int.MaxValue / 2;
 
-    public void NotifyIncomingMessage(string fromDisplayName, string body, long threadId, string address)
+    public void NotifyIncomingMessage(string fromDisplayName, string body, long threadId, string address, bool withSound = true)
     {
         var context = AndroidApp.Context;
-        EnsureChannel(context);
+        EnsureChannels(context);
 
         var notificationId = NotificationIdFor(threadId);
         var route = $"/conversations/thread?id={threadId}&address={Uri.EscapeDataString(address)}";
@@ -33,7 +35,8 @@ public class NotificationService : INotificationService
         // older notification would open whichever thread's route was set most recently.
         var contentIntent = PendingIntent.GetActivity(context, notificationId, launchIntent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
 
-        var builder = new NotificationCompat.Builder(context, ChannelId)
+        var builder = new NotificationCompat.Builder(context, withSound ? ChannelId : SilentChannelId)
+            .SetSilent(!withSound)
             .SetContentTitle(fromDisplayName)
             .SetContentText(body)
             .SetStyle(new NotificationCompat.BigTextStyle().BigText(body))
@@ -63,7 +66,7 @@ public class NotificationService : INotificationService
         NotificationManagerCompat.From(context).Notify(notificationId, notification);
     }
 
-    private static void EnsureChannel(Context context)
+    private static void EnsureChannels(Context context)
     {
         if (Build.VERSION.SdkInt < BuildVersionCodes.O)
         {
@@ -73,8 +76,14 @@ public class NotificationService : INotificationService
         var manager = (NotificationManager)context.GetSystemService(Context.NotificationService)!;
         if (manager.GetNotificationChannel(ChannelId) is null)
         {
-            var channel = new NotificationChannel(ChannelId, "Incoming Messages", NotificationImportance.High);
-            manager.CreateNotificationChannel(channel);
+            manager.CreateNotificationChannel(new NotificationChannel(ChannelId, "Incoming Messages", NotificationImportance.High));
+        }
+        if (manager.GetNotificationChannel(SilentChannelId) is null)
+        {
+            var silent = new NotificationChannel(SilentChannelId, "Incoming Messages (silent)", NotificationImportance.Low);
+            silent.SetSound(null, null);
+            silent.EnableVibration(false);
+            manager.CreateNotificationChannel(silent);
         }
     }
 }

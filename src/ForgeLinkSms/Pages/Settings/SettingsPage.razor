@@ -1,16 +1,70 @@
 @page "/settings"
 @inject ForgeLinkSms.Core.ViewModels.SettingsViewModel ViewModel
 @inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
+@inject ForgeLinkSms.Core.Services.INotificationSettingsStore NotificationStore
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Core.Utils
 
 <div style="padding:12px;padding-bottom:40px;">
     <h3>Settings</h3>
     <p>Default SMS app: @(ViewModel.IsDefaultSmsApp ? "Yes ✓" : "No — open Onboarding to fix this")</p>
-    <label>
-        <input type="checkbox" @bind="ViewModel.NotificationsEnabled" />
-        Notify me about incoming texts
+
+    <h4 style="margin:24px 0 4px;">Notifications</h4>
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;font-weight:600;">
+        <input type="checkbox" checked="@_notify.Enabled" @onchange="e => UpdateNotify(n => n.Enabled = e.Value is true)" style="width:20px;height:20px;" />
+        Notify me about new texts
     </label>
+    @if (_notify.Enabled)
+    {
+        <div style="@HintStyle">Choose who can notify you, and whether it makes a sound. Muted conversations never notify.</div>
+        <div style="display:grid;grid-template-columns:1fr 64px 64px;align-items:center;row-gap:4px;margin-top:8px;">
+            <span></span>
+            <span style="@HintStyle;text-align:center;">Notify</span>
+            <span style="@HintStyle;text-align:center;">Sound</span>
+            @foreach (var (group, icon, title, hint) in NotifyGroups)
+            {
+                var setting = _notify.For(group);
+                <div style="padding:8px 4px;">
+                    <div style="font-weight:600;">@icon @title</div>
+                    <div style="@HintStyle">@hint</div>
+                </div>
+                <input type="checkbox" checked="@setting.Notify" aria-label="@($"Notify for {title}")"
+                       @onchange="e => UpdateNotify(n => n.Set(group, new GroupNotifySetting(e.Value is true, e.Value is true)))"
+                       style="width:22px;height:22px;justify-self:center;" />
+                <input type="checkbox" checked="@setting.Sound" disabled="@(!setting.Notify)" aria-label="@($"Sound for {title}")"
+                       @onchange="e => UpdateNotify(n => n.Set(group, setting with { Sound = e.Value is true }))"
+                       style="width:22px;height:22px;justify-self:center;opacity:@(setting.Notify ? "1" : "0.35");" />
+            }
+        </div>
+
+        <div style="font-weight:600;margin:16px 0 6px;">Quick picks</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+            <button @onclick="() => ApplyNotify(NotificationRules.Everything)" style="@PresetStyle">🔔 Everything</button>
+            <button @onclick="() => ApplyNotify(NotificationRules.FavoritesOnly)" style="@PresetStyle">❤️ Favorites only</button>
+            <button @onclick="() => ApplyNotify(NotificationRules.EverythingSilent)" style="@PresetStyle">🔕 Everything, no sound</button>
+        </div>
+
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;margin-top:8px;">
+            <input type="checkbox" checked="@_notify.AlwaysAlertForCodes" @onchange="e => UpdateNotify(n => n.AlwaysAlertForCodes = e.Value is true)" style="width:20px;height:20px;" />
+            🔑 Always alert me for verification codes, even from Updates or Screener
+        </label>
+
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
+            <input type="checkbox" checked="@_notify.QuietHoursEnabled" @onchange="e => UpdateNotify(n => n.QuietHoursEnabled = e.Value is true)" style="width:20px;height:20px;" />
+            🌙 Quiet hours: notifications arrive without sound
+        </label>
+        @if (_notify.QuietHoursEnabled)
+        {
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:0 4px 8px 34px;">
+                <label>From <input type="time" value="@_notify.QuietStart.ToString("HH:mm")" @onchange="e => SetQuietTime(e, start: true)" style="font:inherit;" /></label>
+                <label>to <input type="time" value="@_notify.QuietEnd.ToString("HH:mm")" @onchange="e => SetQuietTime(e, start: false)" style="font:inherit;" /></label>
+            </div>
+            <label style="display:flex;align-items:center;gap:10px;padding:4px 4px 10px 34px;">
+                <input type="checkbox" checked="@_notify.FavoritesRingDuringQuietHours" @onchange="e => UpdateNotify(n => n.FavoritesRingDuringQuietHours = e.Value is true)" style="width:20px;height:20px;" />
+                Let ❤️ favorites ring during quiet hours
+            </label>
+        }
+    }
 
     <h4 style="margin:24px 0 4px;">Display</h4>
     <div style="@HintStyle">How your Chats list looks.</div>
@@ -104,7 +158,16 @@
         ("#e11d48", "Red"), ("#7c3aed", "Purple"), (null, "No color")
     };
 
+    private static readonly (NotifyGroup Group, string Icon, string Title, string Hint)[] NotifyGroups =
+    {
+        (NotifyGroup.Favorites, "❤️", "Favorites", "People you've hearted"),
+        (NotifyGroup.OtherChats, "💬", "Other chats", "Everyone else in Chats"),
+        (NotifyGroup.Updates, "📦", "Updates", "Banks, deliveries, stores, alerts"),
+        (NotifyGroup.Screener, "🛡️", "Screener", "Numbers you haven't talked with")
+    };
+
     private DisplaySettings _settings = new();
+    private NotificationSettings _notify = new();
 
     private static string OptionStyle(bool selected) =>
         $"display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:14px;cursor:pointer;background:var(--card-color);border:2px solid {(selected ? "var(--accent-color)" : "transparent")};";
@@ -124,7 +187,30 @@
     protected override async Task OnInitializedAsync()
     {
         _settings = DisplayStyles.GetDisplaySettings();
+        _notify = NotificationStore.Get();
         await ViewModel.RefreshCommand.ExecuteAsync(null);
+    }
+
+    private void UpdateNotify(Action<NotificationSettings> change)
+    {
+        var updated = _notify.Clone();
+        change(updated);
+        _notify = updated;
+        NotificationStore.Save(updated);
+    }
+
+    private void ApplyNotify(Func<NotificationSettings, NotificationSettings> preset)
+    {
+        _notify = preset(_notify);
+        NotificationStore.Save(_notify);
+    }
+
+    private void SetQuietTime(ChangeEventArgs e, bool start)
+    {
+        if (TimeOnly.TryParse(e.Value?.ToString(), out var time))
+        {
+            UpdateNotify(n => { if (start) n.QuietStart = time; else n.QuietEnd = time; });
+        }
     }
 
     private void Update(Action<DisplaySettings> change)
