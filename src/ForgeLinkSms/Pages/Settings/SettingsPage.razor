@@ -5,6 +5,7 @@
 @inject ForgeLinkSms.Core.Services.INotificationSettingsStore NotificationStore
 @inject Microsoft.JSInterop.IJSRuntime JS
 @inject ForgeLinkSms.Core.Services.IBackupService Backups
+@inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Core.Utils
 
@@ -349,7 +350,32 @@
         }
     }
 
-    public void Dispose() => _pageCts.Cancel();
+    public void Dispose()
+    {
+        _pageCts.Cancel();
+        if (HistoryTracker.LocalBackHandler == CloseSheetForBack)
+        {
+            HistoryTracker.LocalBackHandler = null;
+        }
+    }
+
+    private bool CloseSheetForBack()
+    {
+        if (_passwordSheet)
+        {
+            _passwordSheet = false;
+        }
+        else if (_restoreFile is not null)
+        {
+            _restoreFile = null;
+        }
+        else
+        {
+            return false;
+        }
+        _ = InvokeAsync(StateHasChanged);
+        return true;
+    }
 
     private async Task BackUpNow()
     {
@@ -420,7 +446,12 @@
         _restoreError = null;
         try
         {
-            _preview = await Backups.PreviewRestoreAsync(file, file.IsEncrypted ? _restorePassword : null);
+            var preview = await Backups.PreviewRestoreAsync(file, file.IsEncrypted ? _restorePassword : null);
+            // The sheet may have been closed (or another file picked) while the check was running.
+            if (_restoreFile == file)
+            {
+                _preview = preview;
+            }
         }
         catch (ForgeLinkSms.Core.Backup.BackupException e)
         {
@@ -452,6 +483,7 @@
         _notify = NotificationStore.Get();
         await ViewModel.RefreshCommand.ExecuteAsync(null);
         RefreshBackup();
+        HistoryTracker.LocalBackHandler = CloseSheetForBack;
     }
 
     private void UpdateNotify(Action<NotificationSettings> change)
