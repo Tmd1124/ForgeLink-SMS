@@ -10,6 +10,7 @@
 @inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
 @inject NavigationManager Nav
 @inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
+@inject ForgeLinkSms.Core.Services.IReviewPromptService ReviewPrompt
 @inject Microsoft.JSInterop.IJSRuntime JS
 @using ForgeLinkSms.Core.Utils
 @using ForgeLinkSms.Core.Models
@@ -456,6 +457,8 @@
         IncomingMessageNotifier.MessageReceived += OnMessageReceived;
         HistoryTracker.LocalBackHandler = TryCloseOverlayForBack;
         _ = RefreshCodeStripPeriodicallyAsync(_codeExpiryCts.Token);
+        // Back on the list after sending is a calm moment to (maybe) ask for a Play rating.
+        await ReviewPrompt.MaybeAskAsync();
     }
 
     // Raised from the SMS receiver's background thread, hence InvokeAsync.

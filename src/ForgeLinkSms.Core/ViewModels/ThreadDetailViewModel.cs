@@ -36,6 +36,7 @@ public partial class ThreadDetailViewModel : ObservableObject
     private readonly IReadOnlyList<string> _participants;
     private readonly Data.IDraftRepository? _drafts;
     private PendingSend? _pendingSend;
+    private readonly IReviewPromptService? _reviewPrompt;
 
     public ObservableCollection<Models.SmsMessage> Messages { get; } = new();
 
@@ -81,9 +82,10 @@ public partial class ThreadDetailViewModel : ObservableObject
     private DateTimeOffset? _oldestLoadedTimestamp;
     private DateTimeOffset? _newestLoadedTimestamp;
 
-    public ThreadDetailViewModel(ISmsService smsService, IMessageSchedulerService scheduler, long threadId, string address, TimeSpan? undoSendWindow = null, IReadOnlyList<string>? participants = null, Data.IDraftRepository? drafts = null)
+    public ThreadDetailViewModel(ISmsService smsService, IMessageSchedulerService scheduler, long threadId, string address, TimeSpan? undoSendWindow = null, IReadOnlyList<string>? participants = null, Data.IDraftRepository? drafts = null, IReviewPromptService? reviewPrompt = null)
     {
         _drafts = drafts;
+        _reviewPrompt = reviewPrompt;
         _participants = participants ?? Array.Empty<string>();
         _smsService = smsService;
         _scheduler = scheduler;
@@ -449,6 +451,7 @@ public partial class ThreadDetailViewModel : ObservableObject
             await _smsService.SendAsync(_address, outgoingText);
         }
 
+        _reviewPrompt?.RecordSent();
         await Load();
     }
 

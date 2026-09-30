@@ -504,7 +504,8 @@
         var smsService = Services.GetRequiredService<ISmsService>();
         var scheduler = Services.GetRequiredService<IMessageSchedulerService>();
         ViewModel = new ThreadDetailViewModel(smsService, scheduler, ThreadId, Address, participants: participants,
-            drafts: Services.GetRequiredService<ForgeLinkSms.Core.Data.IDraftRepository>());
+            drafts: Services.GetRequiredService<ForgeLinkSms.Core.Data.IDraftRepository>(),
+            reviewPrompt: Services.GetRequiredService<ForgeLinkSms.Core.Services.IReviewPromptService>());
         await ViewModel.LoadCommand.ExecuteAsync(null);
         if (JumpId is long jumpId && JumpTicks is long jumpTicks)
         {

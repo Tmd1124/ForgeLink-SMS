@@ -110,6 +110,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IThemeService, ThemeService>();
 		builder.Services.AddSingleton<IDisplayStyleService, DisplayStyleService>();
 		builder.Services.AddSingleton<INotificationSettingsStore, NotificationSettingsStore>();
+		builder.Services.AddSingleton<IReviewPromptService, ReviewPromptService>();
 		builder.Services.AddTransient<ThemeViewModel>();
 
 		builder.Services.AddTransient<SettingsViewModel>();

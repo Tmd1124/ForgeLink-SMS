@@ -75,6 +75,9 @@
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+        <!-- Play.Review pulls Fragment.Ktx 1.8.x, whose classes Fragment 1.9 (used by MAUI) already contains; R8 fails on the duplicates unless Ktx matches. -->
+        <PackageReference Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.9.0" />
+        <PackageReference Include="Xamarin.Google.Android.Play.Review" Version="2.0.2.10" />
     </ItemGroup>
 
     <ItemGroup>

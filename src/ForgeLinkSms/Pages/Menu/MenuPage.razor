@@ -2,6 +2,7 @@
 @inject ForgeLinkSms.Core.ViewModels.MenuViewModel ViewModel
 @inject ForgeLinkSms.Core.Services.IProfileService ProfileService
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
+@inject ForgeLinkSms.Core.Services.IReviewPromptService ReviewPrompt
 
 <div style="padding:12px;">
     @{ var profile = ProfileService.GetProfile(); }
@@ -55,6 +56,9 @@
     </div>
     <div @onclick="@(() => Nav.NavigateTo("/settings"))" style="padding:12px 0;border-bottom:1px solid #eee;">
         ⚙ Settings
+    </div>
+    <div @onclick="ReviewPrompt.OpenStoreListing" style="padding:12px 0;border-bottom:1px solid #eee;">
+        ⭐ Rate ForgeLink on Google Play
     </div>
 </div>
 

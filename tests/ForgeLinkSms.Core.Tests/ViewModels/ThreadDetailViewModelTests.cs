@@ -360,6 +360,36 @@ public class ThreadDetailViewModelTests
         Assert.False(viewModel.IsSendPending);
     }
 
+    [Fact]
+    public async Task A_sent_message_counts_toward_the_review_prompt()
+    {
+        var reviewPrompt = new Mock<IReviewPromptService>();
+        var viewModel = new ThreadDetailViewModel(new Mock<ISmsService>().Object, new Mock<IMessageSchedulerService>().Object, threadId: 1, address: "5550148890", undoSendWindow: TimeSpan.Zero, reviewPrompt: reviewPrompt.Object)
+        {
+            ComposeText = "See you then"
+        };
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        reviewPrompt.Verify(r => r.RecordSent(), Times.Once);
+    }
+
+    [Fact]
+    public async Task An_undone_message_does_not_count_toward_the_review_prompt()
+    {
+        var reviewPrompt = new Mock<IReviewPromptService>();
+        var viewModel = new ThreadDetailViewModel(new Mock<ISmsService>().Object, new Mock<IMessageSchedulerService>().Object, threadId: 1, address: "5550148890", undoSendWindow: TimeSpan.FromMinutes(1), reviewPrompt: reviewPrompt.Object)
+        {
+            ComposeText = "Oops"
+        };
+
+        var sending = viewModel.SendCommand.ExecuteAsync(null);
+        viewModel.UndoSend();
+        await sending;
+
+        reviewPrompt.Verify(r => r.RecordSent(), Times.Never);
+    }
+
     // The page only re-renders when the send handler first yields; if the draft save yields
     // before the undo state is set, the Undo bar never appears.
     [Fact]
