@@ -40,6 +40,7 @@ internal static class AppDataSnapshot
                 Key(s.ThreadId) ?? ConversationKey.From(string.IsNullOrEmpty(s.GroupAddresses) ? new[] { s.Address } : s.GroupAddresses.Split(',')),
                 s.Address, s.Body, s.SendAtUtc, s.GroupAddresses, s.Repeat, s.RepeatFromUtc)).ToList(),
             Archived = Keys(await services.GetRequiredService<IArchiveRepository>().GetArchivedThreadIdsAsync()),
+            Pinned = Keys(await services.GetRequiredService<IPinnedRepository>().GetPinnedThreadIdsAsync()),
             Trashed = Keys(await services.GetRequiredService<ITrashRepository>().GetTrashedThreadIdsAsync()),
             Snoozed = snoozed.Where(s => Key(s.ThreadId) is not null).Select(s => new BackupTimed(Key(s.ThreadId)!, s.UntilUtc)).ToList(),
             Muted = muted.Where(m => Key(m.ThreadId) is not null).Select(m => new BackupTimed(Key(m.ThreadId)!, m.UntilUtc)).ToList(),

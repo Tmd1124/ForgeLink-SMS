@@ -40,6 +40,7 @@ public sealed record AppData
     public IReadOnlyList<string> QuickReplies { get; init; } = [];
     public IReadOnlyList<BackupScheduled> Scheduled { get; init; } = [];
     public IReadOnlyList<string> Archived { get; init; } = [];
+    public IReadOnlyList<string> Pinned { get; init; } = [];
     public IReadOnlyList<string> Trashed { get; init; } = [];
     public IReadOnlyList<BackupTimed> Snoozed { get; init; } = [];
     public IReadOnlyList<BackupTimed> Muted { get; init; } = [];

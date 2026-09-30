@@ -70,7 +70,8 @@ public class ConversationsViewModelTests
         Mock<IAllowedSenderRepository>? allowedSenderRepository = null,
         Mock<IDraftRepository>? draftRepository = null,
         Mock<IMuteRepository>? muteRepository = null,
-        Mock<ISmsService>? smsService = null) =>
+        Mock<ISmsService>? smsService = null,
+        Mock<IPinnedRepository>? pinnedRepository = null) =>
         new(
             threadService.Object,
             (trashRepository ?? MakeEmptyTrashRepository()).Object,
@@ -84,7 +85,91 @@ public class ConversationsViewModelTests
             (allowedSenderRepository ?? MakeEmptyAllowedSenderRepository()).Object,
             (draftRepository ?? MakeEmptyDraftRepository()).Object,
             (muteRepository ?? MakeEmptyMuteRepository()).Object,
-            (smsService ?? new Mock<ISmsService>()).Object);
+            (smsService ?? new Mock<ISmsService>()).Object,
+            (pinnedRepository ?? MakePinnedRepository()).Object);
+
+    private static Mock<IPinnedRepository> MakePinnedRepository(params long[] pinned)
+    {
+        var ids = pinned.ToList();
+        var repository = new Mock<IPinnedRepository>();
+        repository.Setup(r => r.GetPinnedThreadIdsAsync()).ReturnsAsync(() => ids.ToList());
+        repository.Setup(r => r.PinThreadAsync(It.IsAny<long>())).Callback<long>(id => ids.Add(id)).Returns(Task.CompletedTask);
+        repository.Setup(r => r.UnpinThreadAsync(It.IsAny<long>())).Callback<long>(id => ids.Remove(id)).Returns(Task.CompletedTask);
+        return repository;
+    }
+
+    private static Mock<IThreadService> ThreadsOf(params SmsThread[] threads)
+    {
+        var service = new Mock<IThreadService>();
+        service.Setup(s => s.GetThreadsAsync()).ReturnsAsync(threads.ToList());
+        return service;
+    }
+
+    [Fact]
+    public async Task Pinned_chats_come_first_newest_first_ahead_of_unread_chats()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var viewModel = MakeViewModel(ThreadsOf(
+                MakeThread(1, "5550000001", "Unread", "hi", now, unreadCount: 2),
+                MakeThread(2, "5550000002", "Old pin", "hi", now.AddDays(-3)),
+                MakeThread(3, "5550000003", "New pin", "hi", now.AddDays(-1)),
+                MakeThread(4, "5550000004", "Plain", "hi", now.AddMinutes(-5))),
+            pinnedRepository: MakePinnedRepository(2, 3));
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(new[] { "New pin", "Old pin", "Unread", "Plain" }, viewModel.Threads.Select(t => t.DisplayName));
+        Assert.True(viewModel.Threads[0].IsPinned);
+    }
+
+    [Fact]
+    public async Task Searching_keeps_the_usual_order_instead_of_putting_pins_first()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var viewModel = MakeViewModel(ThreadsOf(
+                MakeThread(1, "5550000001", "Kim A", "hi", now),
+                MakeThread(2, "5550000002", "Kim B", "hi", now.AddDays(-3))),
+            pinnedRepository: MakePinnedRepository(2));
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        viewModel.SearchText = "Kim";
+
+        Assert.Equal(new[] { "Kim A", "Kim B" }, viewModel.Threads.Select(t => t.DisplayName));
+    }
+
+    [Fact]
+    public async Task Pinning_toggles_a_selection_and_stops_at_five()
+    {
+        var threads = Enumerable.Range(1, 7).Select(i => MakeThread(i, $"555000000{i}", $"C{i}", "hi")).ToArray();
+        var pins = MakePinnedRepository(1, 2, 3, 4);
+        var viewModel = MakeViewModel(ThreadsOf(threads), pinnedRepository: pins);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.PinThreadsCommand.ExecuteAsync(new long[] { 5, 6 });
+
+        Assert.Equal("You can pin up to 5 chats.", viewModel.PinNotice);
+        pins.Verify(r => r.PinThreadAsync(It.IsAny<long>()), Times.Never);
+
+        await viewModel.PinThreadsCommand.ExecuteAsync(new long[] { 5 });
+        Assert.Null(viewModel.PinNotice);
+        Assert.Equal(5, viewModel.Threads.Count(t => t.IsPinned));
+
+        await viewModel.PinThreadsCommand.ExecuteAsync(new long[] { 4, 5 });
+        Assert.Equal(3, viewModel.Threads.Count(t => t.IsPinned));
+    }
+
+    [Fact]
+    public async Task Pins_on_archived_or_deleted_chats_do_not_count_toward_the_limit()
+    {
+        var threads = Enumerable.Range(1, 3).Select(i => MakeThread(i, $"555000000{i}", $"C{i}", "hi")).ToArray();
+        var viewModel = MakeViewModel(ThreadsOf(threads), pinnedRepository: MakePinnedRepository(1, 90, 91, 92, 93));
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.PinThreadsCommand.ExecuteAsync(new long[] { 2 });
+
+        Assert.Null(viewModel.PinNotice);
+        Assert.Equal(2, viewModel.Threads.Count(t => t.IsPinned));
+    }
 
     [Fact]
     public async Task ReportSpam_forwards_to_7726_then_blocks_and_trashes_the_sender_and_the_report_chat()

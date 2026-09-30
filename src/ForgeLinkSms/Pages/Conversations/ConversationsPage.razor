@@ -26,6 +26,7 @@
             <button @onclick="ToggleFavoriteSelectedThreads" aria-label="@(AllSelectedAreFavorited() ? "Remove from favorites" : "Add to favorites")" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;font-size:1.2em;line-height:1;padding:0;">@(AllSelectedAreFavorited() ? "💔" : "❤️")</button>
             <button @onclick="OpenFilterAssignPicker" aria-label="Add to a filter" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;color:var(--text-color);display:flex;align-items:center;justify-content:center;padding:0;">@FunnelIcon</button>
             <button @onclick="ToggleSelectedThreadsReadState" aria-label="Mark as read or unread" style="width:40px;height:40px;flex-shrink:0;border:none;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;padding:0;">@(AllSelectedAreRead() ? EyeSlashIcon : EyeOpenIcon)</button>
+            <button @onclick="PinSelectedThreads" aria-label="@(AllSelectedArePinned() ? "Unpin" : "Pin")" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;font-size:1.2em;line-height:1;padding:0;opacity:@(AllSelectedArePinned() ? "0.5" : "1");">📌</button>
             <button @onclick="ArchiveSelectedThreads" aria-label="Archive" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;font-size:1.2em;line-height:1;padding:0;">📦</button>
             <button @onclick="TrashSelectedThreads" aria-label="Delete" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;font-size:1.2em;line-height:1;padding:0;">🗑</button>
             @if (_selectedThreadIds.Count == 1)
@@ -237,6 +238,10 @@
                     {
                         <div style="font-size:0.75em;font-weight:600;color:@(ViewModel.IsInActiveFilters(thread) ? "var(--accent-color)" : "#94a3b8");">@(ViewModel.IsInActiveFilters(thread) ? $"✓ In {ActiveFilterNames()}" : $"＋ Add to {ActiveFilterNames()}")</div>
                     }
+                    @if (thread.IsPinned && !ViewModel.IsSearching)
+                    {
+                        <span title="Pinned">📌 </span>
+                    }
                     <strong>@thread.DisplayNameOrAddress</strong>
                     @if (thread.IsFavorite)
                     {
@@ -340,6 +345,7 @@
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;" @onclick="CloseActionSheet">
         <div style="background:var(--card-color);width:100%;padding:12px;" role="dialog" aria-modal="true" aria-label="Chat options" @onclick:stopPropagation="true">
             <div @onclick="FavoriteSelectedThread" style="padding:12px;" role="button" tabindex="0">@(_actionSheetIsFavorite ? "💔 Unfavorite" : "❤️ Favorite")</div>
+            <div @onclick="PinSelectedThread" style="padding:12px;" role="button" tabindex="0">@(_actionSheetIsPinned ? "📌 Unpin" : "📌 Pin")</div>
             <div @onclick="MarkReadSelectedThread" style="padding:12px;display:flex;align-items:center;gap:8px;" role="button" tabindex="0">@(_actionSheetIsUnread ? EyeOpenIcon : EyeSlashIcon) <span>@(_actionSheetIsUnread ? "Mark as Read" : "Mark as Unread")</span></div>
             <div @onclick="OpenSnoozeSheet" style="padding:12px;" role="button" tabindex="0">💤 Snooze</div>
             @if (_actionSheetIsMuted)
@@ -430,6 +436,7 @@
     private bool _actionSheetIsFavorite;
     private bool _actionSheetIsUnread;
     private bool _actionSheetIsMuted;
+    private bool _actionSheetIsPinned;
     private long? _muteThreadId;
     private SmsThread? _reportThread;
     private bool _reporting;
@@ -1238,6 +1245,35 @@
         await ViewModel.MarkThreadsReadStateCommand.ExecuteAsync(ids);
     }
 
+    private bool AllSelectedArePinned() =>
+        _selectedThreadIds.Count > 0 && _selectedThreadIds.All(id => ViewModel.FindThread(id)?.IsPinned == true);
+
+    private async Task PinSelectedThreads()
+    {
+        var ids = _selectedThreadIds.ToList();
+        await ViewModel.PinThreadsCommand.ExecuteAsync(ids);
+        if (ViewModel.PinNotice is { } notice)
+        {
+            ShowInfoToast(notice);
+            return;
+        }
+        _selectedThreadIds.Clear();
+    }
+
+    private async Task PinSelectedThread()
+    {
+        if (_actionSheetThreadId is long id)
+        {
+            await ViewModel.PinThreadsCommand.ExecuteAsync(new[] { id });
+            if (ViewModel.PinNotice is { } notice)
+            {
+                ShowInfoToast(notice);
+            }
+        }
+        CloseActionSheet();
+        ClearSelection();
+    }
+
     private async Task ArchiveSelectedThreads()
     {
         var ids = _selectedThreadIds.ToList();
@@ -1269,6 +1305,7 @@
         _actionSheetThreadId = threadId;
         _actionSheetAddress = thread.Address;
         _actionSheetIsFavorite = thread.IsFavorite;
+        _actionSheetIsPinned = thread.IsPinned;
         _actionSheetIsUnread = thread.UnreadCount > 0;
         _actionSheetIsMuted = thread.IsMuted;
     }

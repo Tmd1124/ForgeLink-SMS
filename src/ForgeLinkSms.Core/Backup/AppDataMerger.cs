@@ -14,6 +14,7 @@ public sealed record MergePlan
     public IReadOnlyList<string> QuickRepliesToAdd { get; init; } = [];
     public IReadOnlyList<BackupScheduled> ScheduledToAdd { get; init; } = [];
     public IReadOnlyList<string> ArchiveToApply { get; init; } = [];
+    public IReadOnlyList<string> PinsToApply { get; init; } = [];
     public IReadOnlyList<string> TrashToApply { get; init; } = [];
     public IReadOnlyList<BackupTimed> SnoozesToApply { get; init; } = [];
     public IReadOnlyList<BackupTimed> MutesToApply { get; init; } = [];
@@ -61,6 +62,7 @@ public static class AppDataMerger
                 .Distinct()
                 .ToList(),
             ArchiveToApply = Missing(backup.Archived.Where(Restored), current.Archived),
+            PinsToApply = Missing(backup.Pinned.Where(Restored), current.Pinned),
             TrashToApply = Missing(backup.Trashed.Where(Restored), current.Trashed),
             SnoozesToApply = backup.Snoozed.Where(s => Restored(s.Conversation) && s.UntilUtc > now && !snoozed.Contains(s.Conversation)).ToList(),
             MutesToApply = backup.Muted.Where(m => Restored(m.Conversation) && (m.UntilUtc is null || m.UntilUtc > now) && !muted.Contains(m.Conversation)).ToList(),

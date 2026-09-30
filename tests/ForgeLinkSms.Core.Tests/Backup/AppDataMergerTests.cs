@@ -82,6 +82,14 @@ public class AppDataMergerTests
     }
 
     [Fact]
+    public void Pins_come_back_only_for_restored_chats_and_are_not_repeated()
+    {
+        var plan = Plan(new AppData { Pinned = new[] { "b" } }, new AppData { Pinned = new[] { "a", "b", "z" } });
+
+        Assert.Equal(new[] { "a" }, plan.PinsToApply);
+    }
+
+    [Fact]
     public void Scheduled_texts_are_re_added_only_when_the_user_opts_in()
     {
         var future = new BackupScheduled("a", "4045550199", "Happy birthday", Now.AddDays(3), "");

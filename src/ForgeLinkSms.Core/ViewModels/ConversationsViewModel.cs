@@ -23,6 +23,8 @@ public partial class ConversationsViewModel : ObservableObject
     private readonly IDraftRepository _draftRepository;
     private readonly IMuteRepository _muteRepository;
     private readonly ISmsService _smsService;
+    private readonly IPinnedRepository? _pinnedRepository;
+    public const int MaxPinned = 5;
     private int _messageSearchVersion;
     private const int MaxMessageResults = 50;
     private IReadOnlySet<string> _allowedSenders = new HashSet<string>();
@@ -98,8 +100,10 @@ public partial class ConversationsViewModel : ObservableObject
         IAllowedSenderRepository allowedSenderRepository,
         IDraftRepository draftRepository,
         IMuteRepository muteRepository,
-        ISmsService smsService)
+        ISmsService smsService,
+        IPinnedRepository? pinnedRepository = null)
     {
+        _pinnedRepository = pinnedRepository;
         _threadService = threadService;
         _trashRepository = trashRepository;
         _blockService = blockService;
@@ -186,6 +190,7 @@ public partial class ConversationsViewModel : ObservableObject
             var trashedIds = await _trashRepository.GetTrashedThreadIdsAsync();
             var blockedNumbers = await _blockService.GetBlockedNumbersAsync();
             var favoriteIds = await _favoriteRepository.GetFavoriteThreadIdsAsync();
+            var pinnedIds = _pinnedRepository is null ? new List<long>() : await _pinnedRepository.GetPinnedThreadIdsAsync();
             var archivedIds = await _archiveRepository.GetArchivedThreadIdsAsync();
             var filters = await _filterRepository.GetAllFiltersAsync();
             var assignments = await _filterRepository.GetAllAssignmentsAsync();
@@ -205,6 +210,7 @@ public partial class ConversationsViewModel : ObservableObject
                 .Select(t =>
                 {
                     t.IsFavorite = favoriteIds.Contains(t.Id);
+                    t.IsPinned = pinnedIds.Contains(t.Id);
                     t.FilterIds = assignments.TryGetValue(t.Id, out var ids) ? ids : new List<long>();
                     t.DraftText = drafts.TryGetValue(t.Id, out var draft) ? draft : null;
                     t.IsMuted = muted.Contains(t.Id);
@@ -307,6 +313,48 @@ public partial class ConversationsViewModel : ObservableObject
         }
 
         SortThreads();
+        ApplyFilter();
+    }
+
+    [ObservableProperty]
+    private string? _pinNotice;
+
+    // Like favorites: a selection that's all pinned gets unpinned, otherwise everything is pinned.
+    // Only chats in the list count toward the limit, so a pin left on an archived chat never blocks
+    // a new one (and comes back if that chat is restored).
+    [RelayCommand]
+    private async Task PinThreads(IReadOnlyList<long> threadIds)
+    {
+        PinNotice = null;
+        var threads = threadIds.Select(FindThread).Where(t => t is not null).Cast<SmsThread>().ToList();
+        if (threads.Count == 0 || _pinnedRepository is null)
+        {
+            return;
+        }
+
+        if (threads.All(t => t.IsPinned))
+        {
+            foreach (var thread in threads)
+            {
+                await _pinnedRepository.UnpinThreadAsync(thread.Id);
+                thread.IsPinned = false;
+            }
+        }
+        else
+        {
+            var toPin = threads.Where(t => !t.IsPinned).ToList();
+            if (_allThreads.Count(t => t.IsPinned) + toPin.Count > MaxPinned)
+            {
+                PinNotice = $"You can pin up to {MaxPinned} chats.";
+                return;
+            }
+            foreach (var thread in toPin)
+            {
+                await _pinnedRepository.PinThreadAsync(thread.Id);
+                thread.IsPinned = true;
+            }
+        }
+
         ApplyFilter();
     }
 
@@ -496,6 +544,8 @@ public partial class ConversationsViewModel : ObservableObject
     /// search looks through everything rather than only what's already in it.
     public bool IsAddingToFilter => ActiveFilterIds.Count > 0 && !string.IsNullOrWhiteSpace(SearchText);
 
+    public bool IsSearching => !string.IsNullOrWhiteSpace(SearchText);
+
     public SmsThread? FindThread(long threadId) => _allThreads.FirstOrDefault(t => t.Id == threadId);
 
     public bool IsInActiveFilters(SmsThread thread) => ActiveFilterIds.All(thread.FilterIds.Contains);
@@ -621,6 +671,15 @@ public partial class ConversationsViewModel : ObservableObject
         if (ActiveFilterIds.Count > 0 && string.IsNullOrEmpty(query))
         {
             matches = matches.Where(t => t.FilterIds.Any(id => ActiveFilterIds.Contains(id)));
+        }
+
+        // Pinned chats lead, newest first; everything else keeps the usual order (OrderBy is stable).
+        // Search results stay in the usual order so the best matches aren't pushed down.
+        if (string.IsNullOrEmpty(query))
+        {
+            matches = matches
+                .OrderByDescending(t => t.IsPinned)
+                .ThenByDescending(t => t.IsPinned ? t.LastMessageTimestamp : DateTimeOffset.MinValue);
         }
 
         foreach (var thread in matches)

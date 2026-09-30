@@ -60,6 +60,10 @@ public static class MauiProgram
 		favoriteRepository.InitializeAsync().GetAwaiter().GetResult();
 		builder.Services.AddSingleton<IFavoriteRepository>(favoriteRepository);
 
+		var pinnedRepository = new PinnedRepository(Path.Combine(FileSystem.AppDataDirectory, "ForgeLinkSms.db"));
+		pinnedRepository.InitializeAsync().GetAwaiter().GetResult();
+		builder.Services.AddSingleton<IPinnedRepository>(pinnedRepository);
+
 		var archiveRepository = new ArchiveRepository(Path.Combine(FileSystem.AppDataDirectory, "ForgeLinkSms.db"));
 		archiveRepository.InitializeAsync().GetAwaiter().GetResult();
 		builder.Services.AddSingleton<IArchiveRepository>(archiveRepository);

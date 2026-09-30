@@ -181,6 +181,10 @@ internal sealed class AndroidRestoreTarget(Context context, IServiceProvider ser
             }
         }
 
+        foreach (var conversation in plan.PinsToApply)
+        {
+            await services.GetRequiredService<IPinnedRepository>().PinThreadAsync(ThreadFor(conversation));
+        }
         foreach (var conversation in plan.ArchiveToApply)
         {
             await services.GetRequiredService<IArchiveRepository>().ArchiveThreadAsync(ThreadFor(conversation));

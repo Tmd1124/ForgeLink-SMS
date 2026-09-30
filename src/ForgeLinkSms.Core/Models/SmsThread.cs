@@ -10,6 +10,7 @@ public class SmsThread
     public required int UnreadCount { get; set; }
     public string? PhotoUri { get; init; }
     public bool IsFavorite { get; set; }
+    public bool IsPinned { get; set; }
     public bool HasOutgoing { get; init; }
     public IReadOnlyList<string> Participants { get; init; } = Array.Empty<string>();
     public string? DraftText { get; set; }

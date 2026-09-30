@@ -57,6 +57,15 @@ public class AccessibleLabelsTests
     }
 
     [Fact]
+    public void A_pinned_chat_says_so()
+    {
+        var thread = Thread("Kim", "Got it");
+        thread.IsPinned = true;
+
+        Assert.Equal("Kim, pinned. Last message: Got it. 4:12 PM", AccessibleLabels.ForThread(thread, Today));
+    }
+
+    [Fact]
     public void A_bubble_reads_the_name_and_unread_count()
     {
         Assert.Equal("Kim, 3 unread", AccessibleLabels.ForBubble(Thread("Kim", "x", unread: 3)));

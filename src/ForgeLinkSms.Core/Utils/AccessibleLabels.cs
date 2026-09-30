@@ -13,6 +13,10 @@ public static class AccessibleLabels
         {
             states.Add($"{thread.UnreadCount} unread");
         }
+        if (thread.IsPinned)
+        {
+            states.Add("pinned");
+        }
         if (thread.IsFavorite)
         {
             states.Add("favorite");
