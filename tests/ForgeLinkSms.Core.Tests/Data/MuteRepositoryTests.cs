@@ -59,4 +59,17 @@ public class MuteRepositoryTests : IDisposable
 
         Assert.Equal(new long[] { 1, 2 }, (await _repository.GetMutedThreadIdsAsync(_now)).OrderBy(id => id));
     }
+
+    [Fact]
+    public async Task GetAll_returns_every_mute_with_its_end_time()
+    {
+        await _repository.MuteAsync(4, _now.AddHours(1));
+        await _repository.MuteAsync(5, null);
+
+        var all = (await _repository.GetAllAsync()).OrderBy(m => m.ThreadId).ToList();
+
+        Assert.Equal(new long[] { 4, 5 }, all.Select(m => m.ThreadId));
+        Assert.NotNull(all[0].UntilUtc);
+        Assert.Null(all[1].UntilUtc);
+    }
 }

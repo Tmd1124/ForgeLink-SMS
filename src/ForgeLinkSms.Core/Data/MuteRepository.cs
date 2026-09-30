@@ -28,6 +28,9 @@ public class MuteRepository : IMuteRepository, IDisposable
             .Select(m => m.ThreadId)
             .ToHashSet();
 
+    public async Task<IReadOnlyList<MutedThread>> GetAllAsync() =>
+        await _db.Table<MutedThread>().ToListAsync().ConfigureAwait(false);
+
     private static bool IsActive(MutedThread mute, DateTimeOffset now) => mute.UntilUtc is null || mute.UntilUtc > now;
 
     public void Dispose()

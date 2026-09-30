@@ -93,6 +93,14 @@ public class MainActivity : MauiAppCompatActivity
         }
     }
 
+    protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
+    {
+        if (!ForgeLinkSms.Platforms.Android.Backup.ActivityResultBridge.Complete(requestCode, resultCode, data))
+        {
+            base.OnActivityResult(requestCode, resultCode, data);
+        }
+    }
+
     protected override void OnNewIntent(Intent? intent)
     {
         base.OnNewIntent(intent);

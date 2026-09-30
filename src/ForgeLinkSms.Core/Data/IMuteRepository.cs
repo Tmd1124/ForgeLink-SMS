@@ -10,4 +10,6 @@ public interface IMuteRepository
     Task UnmuteAsync(long threadId);
     Task<bool> IsMutedAsync(long threadId, DateTimeOffset now);
     Task<IReadOnlySet<long>> GetMutedThreadIdsAsync(DateTimeOffset now);
+
+    Task<IReadOnlyList<Models.MutedThread>> GetAllAsync();
 }

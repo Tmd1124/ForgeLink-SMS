@@ -126,6 +126,18 @@ ForgeLink SMS is a full replacement messaging app. It asks the user to make it t
   3. Tap "2. Grant permissions" → allow SMS/Contacts/Phone/Notifications → Continue.
   4. Show the conversation list, open a conversation, send a text, and receive one.
 
+## Foreground service permission (backup and restore)
+
+ForgeLink declares the `dataSync` foreground service type (`FOREGROUND_SERVICE_DATA_SYNC`) for
+Settings → Backup. Play Console → App content → Foreground service permissions:
+
+- **Type:** Data sync
+- **Description:** "Backs up the user's messages, photos and app settings to a file or folder the
+  user chooses, and restores them from such a file. Runs only when the user taps Back up now or
+  Restore, or weekly if the user turned on automatic backups."
+- **Video:** a short screen recording of Settings → Backup → Back up now showing the progress
+  notification.
+
 ## Location permission
 
 Location is requested only when the user taps **Share location** in the attachment drawer

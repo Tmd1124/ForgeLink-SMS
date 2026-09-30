@@ -1,8 +1,10 @@
 @page "/settings"
+@implements IDisposable
 @inject ForgeLinkSms.Core.ViewModels.SettingsViewModel ViewModel
 @inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
 @inject ForgeLinkSms.Core.Services.INotificationSettingsStore NotificationStore
 @inject Microsoft.JSInterop.IJSRuntime JS
+@inject ForgeLinkSms.Core.Services.IBackupService Backups
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Core.Utils
 
@@ -149,6 +151,95 @@
         <input type="checkbox" checked="@_settings.ShowLinkPreviews" @onchange="e => Update(s => s.ShowLinkPreviews = e.Value is true)" style="width:20px;height:20px;" />
         <span>Show link previews<br /><span style="@HintStyle">To build a preview, ForgeLink opens the linked page — the only time the app uses the internet. Turn off and links stay plain.</span></span>
     </label>
+
+    <h4 style="margin:24px 0 4px;">Backup</h4>
+    <div style="@HintStyle">Saves all texts, photos and videos, plus favorites, filters, quick replies, scheduled texts and settings, to a file you choose. Restoring only adds what's missing — nothing is deleted.</div>
+    <div style="margin:8px 4px;">
+        @if (_backup.LastRunUtc is { } when)
+        {
+            <span>@(_backup.LastSucceeded == true ? "✅" : "⚠️") Last: @when.ToLocalTime().ToString("MMM d, h:mm tt") — @_backup.LastMessage</span>
+        }
+        else
+        {
+            <span style="@HintStyle">No backups yet.</span>
+        }
+        @if (_backup.IsRunning)
+        {
+            <div style="@HintStyle">A backup or restore is running — see the notification.</div>
+        }
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+        <button @onclick="BackUpNow" disabled="@_backup.IsRunning" style="@PresetStyle">💾 Back up now</button>
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
+            <input type="checkbox" checked="@_backup.WeeklyEnabled" @onchange="ToggleWeekly" style="width:20px;height:20px;" />
+            <span>Back up automatically every week (while charging)@(_backup.WeeklyFolderName is { } f ? $" to {f}" : "")<br /><span style="@HintStyle">Keeps the newest 4 backups in that folder.</span></span>
+        </label>
+        <button @onclick="() => _passwordSheet = true" style="@PresetStyle">🔒 @(_backup.HasPassword ? "Change or remove backup password" : "Protect backups with a password")</button>
+        <button @onclick="PickRestore" disabled="@_backup.IsRunning" style="@PresetStyle">♻️ Restore from a backup</button>
+    </div>
+
+    @if (_passwordSheet)
+    {
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="() => _passwordSheet = false">
+            <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" @onclick:stopPropagation="true">
+                <div style="font-weight:600;">Backup password</div>
+                <div style="@HintStyle;margin:6px 0 10px;">If you forget it, backups made with it can't be opened — there's no way to recover it.</div>
+                <input type="password" @bind="_newPassword" placeholder="New password" style="width:100%;padding:10px;margin-bottom:8px;font:inherit;" />
+                <input type="password" @bind="_confirmPassword" placeholder="Type it again" style="width:100%;padding:10px;font:inherit;" />
+                @if (_passwordError is not null) { <div style="color:#b91c1c;margin-top:6px;">@_passwordError</div> }
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap;">
+                    @if (_backup.HasPassword) { <button @onclick="RemovePassword" style="@PresetStyle">Remove password</button> }
+                    <button @onclick="SavePassword" style="@PresetStyle">Save</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_restoreFile is { } restoreFile)
+    {
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="() => _restoreFile = null">
+            <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" @onclick:stopPropagation="true">
+                <div style="font-weight:600;">Restore @restoreFile.FileName?</div>
+                <div style="@HintStyle;margin:6px 0 10px;">Adds messages and ForgeLink data that aren't already on this phone. Nothing is deleted, and running it again is safe.</div>
+                @if (restoreFile.IsEncrypted)
+                {
+                    <input type="password" @bind="_restorePassword" placeholder="Backup password" style="width:100%;padding:10px;font:inherit;" />
+                }
+                @if (_restoreError is not null)
+                {
+                    <div style="color:#b91c1c;margin-top:8px;">@_restoreError</div>
+                }
+                @if (_preview is { } preview)
+                {
+                    <div style="margin:10px 0;">
+                        Backup from @preview.CreatedUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt"): @preview.Messages.ToString("N0") messages, @preview.MediaFiles.ToString("N0") photos/videos.<br />
+                        <strong>Restoring would add @preview.WouldAdd.ToString("N0") messages</strong> (@preview.AlreadyPresent.ToString("N0") are already on this phone).
+                    </div>
+                    <label style="display:flex;align-items:center;gap:10px;padding:10px 0;">
+                        <input type="checkbox" @bind="_restoreSettings" style="width:20px;height:20px;" /> Also restore my settings
+                    </label>
+                    @if (preview.ScheduledTexts > 0)
+                    {
+                        <label style="display:flex;align-items:center;gap:10px;padding:10px 0;">
+                            <input type="checkbox" @bind="_restoreScheduled" style="width:20px;height:20px;" />
+                            Also re-add @preview.ScheduledTexts scheduled @(preview.ScheduledTexts == 1 ? "text" : "texts") (they will be sent at their scheduled times)
+                        </label>
+                    }
+                }
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button @onclick="() => _restoreFile = null" style="@PresetStyle">Cancel</button>
+                    @if (_preview is null)
+                    {
+                        <button @onclick="CheckRestore" disabled="@(_checking || (restoreFile.IsEncrypted && string.IsNullOrEmpty(_restorePassword)))" style="@PresetStyle">@(_checking ? "Checking… (can take a minute)" : "Check backup")</button>
+                    }
+                    else
+                    {
+                        <button @onclick="StartRestore" style="@PresetStyle">Restore</button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -206,11 +297,161 @@
         yield return ("🏷️ People assigned to a filter", _settings.BubbleFiltered, (s, v) => s.BubbleFiltered = v);
     }
 
+    private ForgeLinkSms.Core.Services.BackupStatus _backup = new(null, null, null, false, null, false, false);
+    private bool _passwordSheet;
+    private string _newPassword = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private string? _passwordError;
+    private ForgeLinkSms.Core.Services.RestoreFile? _restoreFile;
+    private string _restorePassword = string.Empty;
+    private bool _restoreSettings;
+    private bool _restoreScheduled;
+
+    private readonly CancellationTokenSource _pageCts = new();
+    private bool _polling;
+
+    // Backups run in the background; while one is running, keep the status line and buttons current.
+    private void RefreshBackup()
+    {
+        _backup = Backups.GetStatus();
+        if (_backup.IsRunning && !_polling)
+        {
+            _ = PollBackupAsync();
+        }
+    }
+
+    private async Task PollBackupAsync()
+    {
+        _polling = true;
+        try
+        {
+            while (!_pageCts.IsCancellationRequested)
+            {
+                await Task.Delay(3000, _pageCts.Token);
+                var status = await Task.Run(Backups.GetStatus);
+                await InvokeAsync(() =>
+                {
+                    _backup = status;
+                    StateHasChanged();
+                });
+                if (!status.IsRunning)
+                {
+                    break;
+                }
+            }
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        finally
+        {
+            _polling = false;
+        }
+    }
+
+    public void Dispose() => _pageCts.Cancel();
+
+    private async Task BackUpNow()
+    {
+        await Backups.BackUpNowAsync();
+        RefreshBackup();
+    }
+
+    private async Task ToggleWeekly(ChangeEventArgs e)
+    {
+        if (e.Value is true)
+        {
+            await Backups.EnableWeeklyAsync();
+        }
+        else
+        {
+            Backups.DisableWeekly();
+        }
+        RefreshBackup();
+    }
+
+    private async Task SavePassword()
+    {
+        if (_newPassword.Length < 6)
+        {
+            _passwordError = "Use at least 6 characters.";
+            return;
+        }
+        if (_newPassword != _confirmPassword)
+        {
+            _passwordError = "The two passwords don't match.";
+            return;
+        }
+        await Backups.SetPasswordAsync(_newPassword);
+        _newPassword = _confirmPassword = string.Empty;
+        _passwordError = null;
+        _passwordSheet = false;
+        RefreshBackup();
+    }
+
+    private async Task RemovePassword()
+    {
+        await Backups.SetPasswordAsync(null);
+        _passwordSheet = false;
+        RefreshBackup();
+    }
+
+    private ForgeLinkSms.Core.Backup.RestorePreview? _preview;
+    private bool _checking;
+    private string? _restoreError;
+
+    private async Task PickRestore()
+    {
+        _restorePassword = string.Empty;
+        _restoreSettings = false;
+        _restoreScheduled = false;
+        _preview = null;
+        _restoreError = null;
+        _restoreFile = await Backups.PickRestoreFileAsync();
+    }
+
+    private async Task CheckRestore()
+    {
+        if (_restoreFile is not { } file)
+        {
+            return;
+        }
+        _checking = true;
+        _restoreError = null;
+        try
+        {
+            _preview = await Backups.PreviewRestoreAsync(file, file.IsEncrypted ? _restorePassword : null);
+        }
+        catch (ForgeLinkSms.Core.Backup.BackupException e)
+        {
+            _restoreError = e.Message;
+        }
+        catch (Exception e)
+        {
+            _restoreError = $"Couldn't read this backup: {e.Message}";
+        }
+        finally
+        {
+            _checking = false;
+        }
+    }
+
+    private async Task StartRestore()
+    {
+        if (_restoreFile is { } file)
+        {
+            await Backups.StartRestoreAsync(file, file.IsEncrypted ? _restorePassword : null, _restoreSettings, _restoreScheduled);
+            _restoreFile = null;
+            RefreshBackup();
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _settings = DisplayStyles.GetDisplaySettings();
         _notify = NotificationStore.Get();
         await ViewModel.RefreshCommand.ExecuteAsync(null);
+        RefreshBackup();
     }
 
     private void UpdateNotify(Action<NotificationSettings> change)
