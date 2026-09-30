@@ -50,16 +50,24 @@ window.forgeLinkBubblePond = {
         }
         var delta = row.getBoundingClientRect().top - anchor.top;
         if (delta !== 0) {
-            var scroller = document.scrollingElement || document.documentElement;
-            for (var el = row.parentElement; el; el = el.parentElement) {
-                var overflowY = getComputedStyle(el).overflowY;
-                if ((overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight) {
-                    scroller = el;
-                    break;
-                }
-            }
-            scroller.scrollTop += delta;
+            this.scrollerFor(row).scrollTop += delta;
         }
+    },
+    // Selection puts the long-pressed row first in the list, so showing it means scrolling to the top.
+    scrollListToTop: function (rowId) {
+        var row = document.getElementById(rowId);
+        if (row) {
+            this.scrollerFor(row).scrollTop = 0;
+        }
+    },
+    scrollerFor: function (row) {
+        for (var el = row.parentElement; el; el = el.parentElement) {
+            var overflowY = getComputedStyle(el).overflowY;
+            if ((overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight) {
+                return el;
+            }
+        }
+        return document.scrollingElement || document.documentElement;
     },
     dispose: function () {
         if (this.handler) {

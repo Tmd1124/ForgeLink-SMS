@@ -424,6 +424,8 @@
     private long? _snoozeThreadId;
     private readonly HashSet<UpdateCategory> _expandedUpdateGroups = new();
     private bool _restoreRowAnchor;
+    private long? _pinnedThreadId;
+    private bool _scrollPinnedToTop;
     private CancellationTokenSource? _messageSearchCts;
     private DateTime? _customSnoozeTime;
     private readonly CancellationTokenSource _codeExpiryCts = new();
@@ -574,6 +576,11 @@
             _restoreRowAnchor = false;
             await JS.InvokeVoidAsync("forgeLinkBubblePond.restoreRow");
         }
+        if (_scrollPinnedToTop && _pinnedThreadId is { } pinnedId)
+        {
+            _scrollPinnedToTop = false;
+            await JS.InvokeVoidAsync("forgeLinkBubblePond.scrollListToTop", RowId(pinnedId));
+        }
         if (_shouldFocusSearch)
         {
             _shouldFocusSearch = false;
@@ -618,11 +625,9 @@
             {
                 await Task.Delay(500, token);
                 _longPressTriggered = true;
-                await InvokeAsync(async () =>
+                await InvokeAsync(() =>
                 {
-                    var anchored = await RememberRowPosition(threadId);
-                    _selectedThreadIds.Add(threadId);
-                    _restoreRowAnchor = anchored;
+                    StartSelection(threadId);
                     StateHasChanged();
                 });
             }
@@ -837,7 +842,18 @@
         return local.Year == DateTime.Today.Year ? local.ToString("MMM d") : local.ToString("MMM d, yyyy");
     }
 
-    private void SelectFromPond(SmsThread thread) => _selectedThreadIds.Add(thread.Id);
+    private void SelectFromPond(SmsThread thread) => StartSelection(thread.Id);
+
+    // The long-pressed chat leads the selection list; later taps just add to the selection.
+    private void StartSelection(long threadId)
+    {
+        if (_selectedThreadIds.Count == 0)
+        {
+            _pinnedThreadId = threadId;
+            _scrollPinnedToTop = true;
+        }
+        _selectedThreadIds.Add(threadId);
+    }
 
     private IEnumerable<(ConversationLane Lane, string Label, int Count)> LaneTabs()
     {
@@ -853,7 +869,7 @@
         if (ViewModel.Lane != ConversationLane.Updates || !string.IsNullOrWhiteSpace(ViewModel.SearchText))
         {
             // While selecting, the bubbles hide, so every thread (bubbled ones included) must be in the list.
-            var rows = _selectedThreadIds.Count == 0 ? ViewModel.ListThreads : ViewModel.Threads;
+            var rows = _selectedThreadIds.Count == 0 ? ViewModel.ListThreads : SelectionOrder.PinFirst(ViewModel.Threads, _pinnedThreadId);
             foreach (var thread in rows)
             {
                 yield return (null, thread);
@@ -861,12 +877,17 @@
             yield break;
         }
 
+        var pinned = _selectedThreadIds.Count > 0 ? ViewModel.Threads.FirstOrDefault(t => t.Id == _pinnedThreadId) : null;
+        if (pinned is not null)
+        {
+            yield return (null, pinned);
+        }
         foreach (var group in ViewModel.UpdateGroups)
         {
             yield return (group, null);
             if (_expandedUpdateGroups.Contains(group.Category))
             {
-                foreach (var thread in group.Threads)
+                foreach (var thread in group.Threads.Where(t => t.Id != pinned?.Id))
                 {
                     yield return (null, thread);
                 }
@@ -1027,24 +1048,14 @@
         {
             // The JS call is queued ahead of this handler's render batch, so it measures the row
             // before the pond reappears above it.
-            _ = JS.InvokeVoidAsync("forgeLinkBubblePond.rememberRow", RowId(_selectedThreadIds.First()));
+            _ = JS.InvokeVoidAsync("forgeLinkBubblePond.rememberRow", RowId(_pinnedThreadId ?? _selectedThreadIds.First()));
             _restoreRowAnchor = true;
         }
         _selectedThreadIds.Clear();
+        _pinnedThreadId = null;
     }
 
     private static string RowId(long threadId) => $"thread-row-{threadId}";
-
-    // Only needed when the pond is showing, since that's what shifts the list.
-    private async Task<bool> RememberRowPosition(long threadId)
-    {
-        if (ViewModel.PondThreads.Count == 0)
-        {
-            return false;
-        }
-        await JS.InvokeVoidAsync("forgeLinkBubblePond.rememberRow", RowId(threadId));
-        return true;
-    }
 
     private bool AllSelectedAreFavorited() =>
         _selectedThreadIds.Count > 0 &&
