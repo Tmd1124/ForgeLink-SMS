@@ -135,4 +135,34 @@ public class DisplayRulesTests
         Assert.True(preset.BubbleFavorites && preset.BubbleUnread);
         Assert.False(preset.BubbleEveryone || preset.BubbleRecent || preset.BubbleFiltered);
     }
+
+    [Fact]
+    public void Choosing_Bubbles_starts_with_everyone()
+    {
+        var chosen = DisplayRules.WithLayout(new DisplaySettings { Layout = ConversationDisplayStyle.BubblesAndCards }, ConversationDisplayStyle.Bubbles);
+
+        Assert.Equal(ConversationDisplayStyle.Bubbles, chosen.Layout);
+        Assert.True(chosen.BubbleEveryone);
+    }
+
+    [Fact]
+    public void Choosing_Bubbles_plus_list_after_Bubbles_brings_the_list_back()
+    {
+        var bubbles = DisplayRules.WithLayout(new DisplaySettings { Layout = ConversationDisplayStyle.BubblesAndCards, BubbleFavorites = true, BubbleUnread = true, BubbleRecent = true }, ConversationDisplayStyle.Bubbles);
+
+        var withList = DisplayRules.WithLayout(bubbles, ConversationDisplayStyle.BubblesAndCards);
+
+        Assert.Equal(ConversationDisplayStyle.BubblesAndCards, withList.Layout);
+        Assert.False(withList.BubbleEveryone);
+        Assert.True(withList.BubbleFavorites && withList.BubbleUnread && withList.BubbleRecent);
+    }
+
+    [Fact]
+    public void Choosing_Color_list_leaves_the_bubble_choices_alone()
+    {
+        var chosen = DisplayRules.WithLayout(new DisplaySettings { Layout = ConversationDisplayStyle.Bubbles, BubbleEveryone = true }, ConversationDisplayStyle.Cards);
+
+        Assert.Equal(ConversationDisplayStyle.Cards, chosen.Layout);
+        Assert.True(chosen.BubbleEveryone);
+    }
 }

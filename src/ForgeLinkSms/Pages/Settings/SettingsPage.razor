@@ -135,15 +135,7 @@
         DisplayStyles.SaveDisplaySettings(updated);
     }
 
-    // Switching to Bubbles starts with everyone, as the layout always did; uncheck to narrow it.
-    private void ChooseLayout(ConversationDisplayStyle layout) => Update(s =>
-    {
-        if (layout == ConversationDisplayStyle.Bubbles && s.Layout != layout)
-        {
-            s.BubbleEveryone = true;
-        }
-        s.Layout = layout;
-    });
+    private void ChooseLayout(ConversationDisplayStyle layout) => Apply(s => DisplayRules.WithLayout(s, layout));
 
     private void Apply(Func<DisplaySettings, DisplaySettings> preset)
     {

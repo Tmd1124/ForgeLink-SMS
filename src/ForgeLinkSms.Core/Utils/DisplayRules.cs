@@ -41,6 +41,23 @@ public static class DisplayRules
         };
     }
 
+    // Switching to Bubbles starts with everyone, as the layout always did. Everyone in
+    // Bubbles + list would leave the list empty, so switching there turns it back off.
+    public static DisplaySettings WithLayout(DisplaySettings current, ConversationDisplayStyle layout)
+    {
+        var chosen = current.Clone();
+        if (layout == ConversationDisplayStyle.Bubbles && current.Layout != layout)
+        {
+            chosen.BubbleEveryone = true;
+        }
+        else if (layout == ConversationDisplayStyle.BubblesAndCards)
+        {
+            chosen.BubbleEveryone = false;
+        }
+        chosen.Layout = layout;
+        return chosen;
+    }
+
     public static DisplaySettings FavoritesAndUnreadPreset(DisplaySettings current)
     {
         var preset = current.Clone();
