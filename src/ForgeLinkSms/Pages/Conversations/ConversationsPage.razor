@@ -106,13 +106,19 @@
             }
             @if (showLaneTabs)
             {
-                <div style="display:flex;gap:6px;">
+                @* Large text leaves little room for three tabs, so the count is a badge and tabs share space by their text. *@
+                var largeText = ViewModel.Display.TextScale >= 115;
+                <div style="display:flex;gap:@(largeText ? "4px" : "6px");container-type:inline-size;">
                     @foreach (var (lane, label, count) in LaneTabs())
                     {
                         var isActive = ViewModel.Lane == lane;
-                        <button @onclick="() => ViewModel.SelectLane(lane)"
-                                style="flex:1;min-width:0;border:none;border-radius:999px;padding:8px 4px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:@(isActive ? "var(--accent-color)" : "#e2e8f0");color:@(isActive ? "white" : "#1e293b");">
-                            @label @(count > 0 ? $"({count})" : "")
+                        <button @onclick="() => ViewModel.SelectLane(lane)" aria-label="@(count > 0 ? $"{label}, {count} conversation{(count == 1 ? "" : "s")}" : label)"
+                                style="flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px;border:none;border-radius:999px;padding:8px @(largeText ? "6px" : "10px");font-weight:600;white-space:nowrap;background:@(isActive ? "var(--accent-color)" : "#e2e8f0");color:@(isActive ? "white" : "#1e293b");">
+                            <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:min(@(largeText ? "0.92em" : "1em"), 5cqi);">@label</span>
+                            @if (count > 0)
+                            {
+                                <span style="flex-shrink:0;min-width:1.5em;padding:0 5px;border-radius:999px;font-size:min(0.75em, 3.8cqi);line-height:1.5;background:@(isActive ? "rgba(255,255,255,0.3)" : "#94a3b8");color:white;">@count</span>
+                            }
                         </button>
                     }
                 </div>
