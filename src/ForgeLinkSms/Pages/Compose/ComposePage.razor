@@ -41,6 +41,18 @@
         cursor: pointer;
         color: #94a3b8;
         margin-left: 2px;
+        position: relative;
+    }
+
+    /* An invisible 44px touch area around the small ✕, so it's easy to hit without changing the chip's look. */
+    .chip-remove::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 44px;
+        height: 44px;
+        transform: translate(-50%, -50%);
     }
 
     .contact-row {

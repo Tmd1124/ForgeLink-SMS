@@ -2,7 +2,8 @@ namespace ForgeLinkSms.Core.Backup;
 
 public interface IRestoreTarget
 {
-    Task<IReadOnlyList<ExistingMessage>> ReadExistingMessagesAsync();
+    // Streamed: a large phone's messages are added to the duplicate index one by one.
+    Task<IEnumerable<ExistingMessage>> ReadExistingMessagesAsync();
     Task<AppData> ReadAppDataAsync();
     Task InsertSmsAsync(BackupMessage message);
     Task InsertMmsAsync(BackupMessage message, Func<string, Stream> openMedia);

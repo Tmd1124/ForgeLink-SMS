@@ -63,13 +63,17 @@ public sealed class BackupWorker(Context context, WorkerParameters parameters) :
 
             var password = SecureStorage.GetAsync(BackupFiles.PasswordKey).GetAwaiter().GetResult();
             var source = new AndroidBackupSource(context, MauiApplication.Current.Services);
+            var throttle = new ProgressThrottle(TimeSpan.FromSeconds(1));
             var progress = new InlineProgress(p =>
             {
                 if (IsStopped)
                 {
                     throw new OperationCanceledException();
                 }
-                TryForeground(BackupNotifier.Progress(context, "Backing up messages", p.Done, p.Total, Id));
+                if (throttle.ShouldReport(DateTime.UtcNow, p.Done, p.Total))
+                {
+                    TryForeground(BackupNotifier.Progress(context, "Backing up messages", p.Done, p.Total, Id));
+                }
             });
             BackupManifest manifest;
             using (var output = context.ContentResolver!.OpenOutputStream(file, "wt") ?? throw new IOException("Could not open the backup file."))

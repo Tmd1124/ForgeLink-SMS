@@ -44,13 +44,17 @@ public sealed class RestoreWorker(Context context, WorkerParameters parameters) 
             using var input = context.ContentResolver!.OpenInputStream(uri) ?? throw new IOException("Could not open the backup file.");
             using var reader = BackupReader.Open(input, password, BackupFiles.RestoreWorkDirectory);
             var target = new AndroidRestoreTarget(context, MauiApplication.Current.Services);
+            var throttle = new ProgressThrottle(TimeSpan.FromSeconds(1));
             var progress = new InlineProgress(p =>
             {
                 if (IsStopped)
                 {
                     throw new OperationCanceledException();
                 }
-                TryForeground(BackupNotifier.Progress(context, "Restoring messages", p.Done, p.Total, Id));
+                if (throttle.ShouldReport(DateTime.UtcNow, p.Done, p.Total))
+                {
+                    TryForeground(BackupNotifier.Progress(context, "Restoring messages", p.Done, p.Total, Id));
+                }
             });
             var result = RestoreRunner.RunAsync(reader, target, includeSettings, includeScheduled, DateTimeOffset.UtcNow, progress, CancellationToken.None).GetAwaiter().GetResult();
             var summary = $"Added {result.Added:N0} messages. {result.Skipped:N0} were already on this phone.";

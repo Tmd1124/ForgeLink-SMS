@@ -38,6 +38,7 @@ public partial class ThreadDetailViewModel : ObservableObject
     private readonly Data.IDraftRepository? _drafts;
     private PendingSend? _pendingSend;
     private readonly IReviewPromptService? _reviewPrompt;
+    private readonly ConversationListRefresher? _listRefresher;
 
     public ObservableCollection<Models.SmsMessage> Messages { get; } = new();
 
@@ -83,8 +84,9 @@ public partial class ThreadDetailViewModel : ObservableObject
     private DateTimeOffset? _oldestLoadedTimestamp;
     private DateTimeOffset? _newestLoadedTimestamp;
 
-    public ThreadDetailViewModel(ISmsService smsService, IMessageSchedulerService scheduler, long threadId, string address, TimeSpan? undoSendWindow = null, IReadOnlyList<string>? participants = null, Data.IDraftRepository? drafts = null, IReviewPromptService? reviewPrompt = null)
+    public ThreadDetailViewModel(ISmsService smsService, IMessageSchedulerService scheduler, long threadId, string address, TimeSpan? undoSendWindow = null, IReadOnlyList<string>? participants = null, Data.IDraftRepository? drafts = null, IReviewPromptService? reviewPrompt = null, ConversationListRefresher? listRefresher = null)
     {
+        _listRefresher = listRefresher;
         _drafts = drafts;
         _reviewPrompt = reviewPrompt;
         _participants = participants ?? Array.Empty<string>();
@@ -453,6 +455,9 @@ public partial class ThreadDetailViewModel : ObservableObject
         }
 
         _reviewPrompt?.RecordSent();
+        // After the send, not when the undo window ends: the text only exists once it's sent, and
+        // this also covers leaving the chat mid-undo, where the send finishes after the page closed.
+        _listRefresher?.RequestRefresh();
         await Load();
     }
 

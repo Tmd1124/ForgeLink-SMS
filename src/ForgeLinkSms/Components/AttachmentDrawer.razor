@@ -135,7 +135,7 @@
 @if (_isOpen)
 {
     <div class="drawer-overlay" @onclick="Close">
-        <div class="drawer-sheet" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+        <div class="drawer-sheet" role="dialog" aria-modal="true" aria-label="Attach" @onclick:stopPropagation="true">
             @if (_mode == DrawerMode.Grid)
             {
                 <div class="drawer-grid">

@@ -351,7 +351,7 @@
 @if (_reactionTargetMessage is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;" @onclick="CloseReactionBar">
-        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" aria-label="@(_choosingReminder ? "Remind me about this message" : _confirmingDelete ? "Delete message" : "Message options")" @onclick:stopPropagation="true">
             @if (_choosingReminder)
             {
                 <div style="padding:4px 4px 10px;font-weight:600;">Remind me about this message</div>
@@ -484,7 +484,6 @@
             var attachment = _pendingAttachment;
             _pendingAttachment = null;
             await ViewModel!.SendCommand.ExecuteAsync(attachment);
-            ListRefresher.RequestRefresh();
         }
         else if (_scheduledSendTime is { } sendAt)
         {
@@ -539,7 +538,8 @@
         var scheduler = Services.GetRequiredService<IMessageSchedulerService>();
         ViewModel = new ThreadDetailViewModel(smsService, scheduler, ThreadId, Address, participants: participants,
             drafts: Services.GetRequiredService<ForgeLinkSms.Core.Data.IDraftRepository>(),
-            reviewPrompt: Services.GetRequiredService<ForgeLinkSms.Core.Services.IReviewPromptService>());
+            reviewPrompt: Services.GetRequiredService<ForgeLinkSms.Core.Services.IReviewPromptService>(),
+            listRefresher: ListRefresher);
         await ViewModel.LoadCommand.ExecuteAsync(null);
         if (JumpId is long jumpId && JumpTicks is long jumpTicks)
         {
@@ -568,7 +568,6 @@
         }
         IncomingMessageNotifier.MessageReceived += OnMessageReceived;
         Playback.PlaybackChanged += OnPlaybackChanged;
-        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         HistoryTracker.LocalBackHandler = TryCloseOverlayForBack;
     }
 
@@ -588,15 +587,6 @@
             StateHasChanged();
             await MarkThreadAsReadBestEffortAsync();
         });
-    }
-
-    // A text leaves its undo window here, so the list beside the chat can show it as the latest message.
-    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ThreadDetailViewModel.IsSendPending) && ViewModel is { IsSendPending: false })
-        {
-            ListRefresher.RequestRefresh();
-        }
     }
 
     private async Task MarkThreadAsReadBestEffortAsync()
@@ -829,10 +819,6 @@
         _ = ViewModel?.SaveDraftAsync();
 
         IncomingMessageNotifier.MessageReceived -= OnMessageReceived;
-        if (ViewModel is not null)
-        {
-            ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
-        }
 
         // Blazor's router can create the next page before disposing this one, so only clear the
         // handler if it's still ours — otherwise this would wipe out a registration the next page
@@ -1112,7 +1098,6 @@
             return;
         }
         await ViewModel!.SendCommand.ExecuteAsync(recording);
-        ListRefresher.RequestRefresh();
     }
 
     private void CancelRecording()

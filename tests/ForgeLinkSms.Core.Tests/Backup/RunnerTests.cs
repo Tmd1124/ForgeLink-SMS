@@ -30,7 +30,7 @@ public class RunnerTests : IDisposable
         public List<MergePlan> Plans { get; } = new();
         public AppData Current { get; set; } = new();
 
-        public Task<IReadOnlyList<ExistingMessage>> ReadExistingMessagesAsync() => Task.FromResult<IReadOnlyList<ExistingMessage>>(Existing.ToList());
+        public Task<IEnumerable<ExistingMessage>> ReadExistingMessagesAsync() => Task.FromResult<IEnumerable<ExistingMessage>>(Existing.ToList());
         public Task<AppData> ReadAppDataAsync() => Task.FromResult(Current);
 
         public Task InsertSmsAsync(BackupMessage message)

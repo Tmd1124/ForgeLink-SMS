@@ -18,14 +18,13 @@ internal sealed class AndroidRestoreTarget(Context context, IServiceProvider ser
     private const int MessageTypeSendReq = 128;
     private const int MessageTypeRetrieveConf = 132;
 
-    public Task<IReadOnlyList<ExistingMessage>> ReadExistingMessagesAsync()
+    public Task<IEnumerable<ExistingMessage>> ReadExistingMessagesAsync()
     {
         var source = new AndroidBackupSource(context, services);
         source.ReadAppDataAsync().GetAwaiter().GetResult();
         var existing = source.ReadMessages()
-            .Select(m => new ExistingMessage(ConversationKey.From(m.Message.Addresses), m.Message.TimestampMs, m.Message.Outgoing, m.Message.Body, m.Attachments.Count))
-            .ToList();
-        return Task.FromResult<IReadOnlyList<ExistingMessage>>(existing);
+            .Select(m => new ExistingMessage(ConversationKey.From(m.Message.Addresses), m.Message.TimestampMs, m.Message.Outgoing, m.Message.Body, m.Attachments.Count));
+        return Task.FromResult(existing);
     }
 
     public async Task<AppData> ReadAppDataAsync() => (await AppDataSnapshot.ReadAsync(services)).Data;

@@ -338,7 +338,7 @@
 @if (_actionSheetThreadId is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;" @onclick="CloseActionSheet">
-        <div style="background:var(--card-color);width:100%;padding:12px;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:12px;" role="dialog" aria-modal="true" aria-label="Chat options" @onclick:stopPropagation="true">
             <div @onclick="FavoriteSelectedThread" style="padding:12px;" role="button" tabindex="0">@(_actionSheetIsFavorite ? "💔 Unfavorite" : "❤️ Favorite")</div>
             <div @onclick="MarkReadSelectedThread" style="padding:12px;display:flex;align-items:center;gap:8px;" role="button" tabindex="0">@(_actionSheetIsUnread ? EyeOpenIcon : EyeSlashIcon) <span>@(_actionSheetIsUnread ? "Mark as Read" : "Mark as Unread")</span></div>
             <div @onclick="OpenSnoozeSheet" style="padding:12px;" role="button" tabindex="0">💤 Snooze</div>
@@ -360,7 +360,7 @@
 @if (_reportThread is { } reportThread)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="() => _reportThread = null">
-        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" aria-label="Report spam" @onclick:stopPropagation="true">
             <div style="font-weight:600;font-size:1.1em;">Report @reportThread.DisplayNameOrAddress as spam?</div>
             <div style="color:#94a3b8;margin:8px 0 16px;">ForgeLink forwards the message to 7726 (SPAM), the free spam-reporting number used by all major US carriers, then blocks the sender and moves the chat to Trash.</div>
             <div style="display:flex;gap:10px;justify-content:flex-end;">
@@ -374,7 +374,7 @@
 @if (_muteThreadId is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="() => _muteThreadId = null">
-        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" aria-label="Mute notifications" @onclick:stopPropagation="true">
             <div style="padding:4px 12px 8px;font-weight:600;">Mute notifications for…</div>
             @foreach (var preset in ForgeLinkSms.Core.Utils.MutePresets.For(DateTimeOffset.UtcNow))
             {
@@ -387,7 +387,7 @@
 @if (_snoozeThreadId is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="CloseSnoozeSheet">
-        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" aria-label="Snooze until" @onclick:stopPropagation="true">
             <div style="padding:4px 12px 8px;font-weight:600;">Snooze until…</div>
             @foreach (var preset in ForgeLinkSms.Core.Utils.SnoozePresets.For(DateTime.Now))
             {

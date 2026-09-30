@@ -182,7 +182,7 @@
     @if (_passwordSheet)
     {
         <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="() => _passwordSheet = false">
-            <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+            <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" aria-label="Backup password" @onclick:stopPropagation="true">
                 <div style="font-weight:600;">Backup password</div>
                 <div style="@HintStyle;margin:6px 0 10px;">If you forget it, backups made with it can't be opened — there's no way to recover it.</div>
                 <input type="password" @bind="_newPassword" placeholder="New password" style="width:100%;padding:10px;margin-bottom:8px;font:inherit;" />
@@ -199,7 +199,7 @@
     @if (_restoreFile is { } restoreFile)
     {
         <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="() => _restoreFile = null">
-            <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+            <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" aria-label="Restore from a backup" @onclick:stopPropagation="true">
                 <div style="font-weight:600;">Restore @restoreFile.FileName?</div>
                 <div style="@HintStyle;margin:6px 0 10px;">Adds messages and ForgeLink data that aren't already on this phone. Nothing is deleted, and running it again is safe.</div>
                 @if (restoreFile.IsEncrypted)

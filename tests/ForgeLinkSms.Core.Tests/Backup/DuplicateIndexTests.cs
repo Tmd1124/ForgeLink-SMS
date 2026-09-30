@@ -58,3 +58,32 @@ public class DuplicateIndexTests
         Assert.True(index.Contains(Sms(1_000_000, "all", true, "7705550101", "4045550199")));
     }
 }
+
+// Measures retained memory, so it must not run alongside other tests that allocate.
+[CollectionDefinition(nameof(DuplicateIndexMemoryTests), DisableParallelization = true)]
+public class DuplicateIndexMemoryCollection;
+
+[Collection(nameof(DuplicateIndexMemoryTests))]
+public class DuplicateIndexMemoryTests
+{
+    private static BackupMessage Sms(long ms, string body) =>
+        new(false, new[] { "4045550199" }, null, ms, ms, false, true, 0, body, null, Array.Empty<BackupAttachment>());
+
+    // A phone with years of texts would otherwise hold every message body twice while restoring.
+    [Fact]
+    public void The_index_keeps_no_message_text()
+    {
+        var before = GC.GetTotalMemory(forceFullCollection: true);
+        var index = new DuplicateIndex();
+        for (var i = 0; i < 10_000; i++)
+        {
+            index.Add(new ExistingMessage("4045550199", i * 10_000L, false, i + new string('x', 2_000), 0));
+        }
+        var grown = GC.GetTotalMemory(forceFullCollection: true) - before;
+
+        Assert.True(grown < 5_000_000, $"index grew by {grown:N0} bytes");
+        Assert.True(index.Contains(Sms(70_000, 7 + new string('x', 2_000))));
+        Assert.False(index.Contains(Sms(70_000, 8 + new string('x', 2_000))));
+        GC.KeepAlive(index);
+    }
+}

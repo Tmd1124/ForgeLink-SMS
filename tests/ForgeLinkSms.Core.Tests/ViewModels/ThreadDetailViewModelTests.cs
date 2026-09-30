@@ -361,6 +361,26 @@ public class ThreadDetailViewModelTests
     }
 
     [Fact]
+    public async Task The_chat_list_is_asked_to_refresh_only_after_the_text_has_actually_been_sent()
+    {
+        var sms = new Mock<ISmsService>();
+        var refresher = new ConversationListRefresher();
+        var sentBeforeRefresh = false;
+        refresher.RefreshRequested += () => sentBeforeRefresh = sms.Invocations.Any(i => i.Method.Name == nameof(ISmsService.SendAsync));
+        var viewModel = new ThreadDetailViewModel(sms.Object, new Mock<IMessageSchedulerService>().Object, threadId: 1, address: "5550148890",
+            undoSendWindow: TimeSpan.FromMinutes(1), listRefresher: refresher)
+        {
+            ComposeText = "On my way"
+        };
+
+        var sending = viewModel.SendCommand.ExecuteAsync(null);
+        viewModel.FlushPendingSend();
+        await sending;
+
+        Assert.True(sentBeforeRefresh);
+    }
+
+    [Fact]
     public async Task A_sent_message_counts_toward_the_review_prompt()
     {
         var reviewPrompt = new Mock<IReviewPromptService>();

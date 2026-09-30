@@ -7,6 +7,15 @@ public class BackupCryptoTests
 {
     private const int FastIterations = 1_000;
 
+    // A backup over 4 GiB has more than 4,096 one-MiB chunks; the chunk number must never wrap,
+    // or chunks could be swapped without detection.
+    [Fact]
+    public void Chunk_numbers_past_four_billion_stay_distinct()
+    {
+        Assert.NotEqual(BackupCrypto.Aad(5, false), BackupCrypto.Aad((1L << 32) + 5, false));
+        Assert.NotEqual(BackupCrypto.Aad(int.MaxValue, false), BackupCrypto.Aad((long)int.MaxValue + 1, false));
+    }
+
     private static byte[] Encrypt(byte[] plain, string password)
     {
         var output = new MemoryStream();
