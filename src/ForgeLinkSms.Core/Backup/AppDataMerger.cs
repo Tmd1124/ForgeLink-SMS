@@ -1,3 +1,5 @@
+using ForgeLinkSms.Core.Models;
+
 namespace ForgeLinkSms.Core.Backup;
 
 public sealed record FilterToCreate(string Name, string ColorHex);
@@ -55,7 +57,7 @@ public static class AppDataMerger
             QuickRepliesToAdd = Missing(backup.QuickReplies.Select(q => q.Trim()), current.QuickReplies.Select(q => q.Trim())),
             // A re-added scheduled text really gets sent, so it's only restored when the user opts in.
             ScheduledToAdd = !includeScheduled ? [] : backup.Scheduled
-                .Where(s => s.SendAtUtc > now && !current.Scheduled.Any(c => c.Conversation == s.Conversation && c.SendAtUtc == s.SendAtUtc && c.Body == s.Body))
+                .Where(s => (s.SendAtUtc > now || s.Repeat != ScheduleRepeat.None) && !current.Scheduled.Any(c => SameScheduled(c, s)))
                 .Distinct()
                 .ToList(),
             ArchiveToApply = Missing(backup.Archived.Where(Restored), current.Archived),
@@ -68,6 +70,11 @@ public static class AppDataMerger
             Settings = includeSettings ? backup.Settings : null
         };
     }
+
+    // A repeating text's send time moves on after every send, so the series is matched by what it is.
+    private static bool SameScheduled(BackupScheduled a, BackupScheduled b) =>
+        a.Conversation == b.Conversation && a.Body == b.Body && a.Repeat == b.Repeat
+        && (a.Repeat != ScheduleRepeat.None || a.SendAtUtc == b.SendAtUtc);
 
     private static List<string> Missing(IEnumerable<string> wanted, IEnumerable<string> have)
     {

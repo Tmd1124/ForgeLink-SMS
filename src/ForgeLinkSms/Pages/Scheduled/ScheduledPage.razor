@@ -16,9 +16,9 @@
                 <div style="min-width:0;">
                     <strong>@(message.IsGroup ? "👥 " + string.Join(", ", message.Recipients.Select(ViewModel.GetDisplayName)) : ViewModel.GetDisplayName(message.Address))</strong>
                     <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@message.Body</div>
-                    <div style="color:#06b6d4;font-size:0.8em;">Sends @message.SendAtUtc.LocalDateTime.ToString("MMM d, h:mm tt")</div>
+                    <div style="color:#06b6d4;font-size:0.8em;">@(message.Repeat == ForgeLinkSms.Core.Models.ScheduleRepeat.None ? "Sends" : ForgeLinkSms.Core.Utils.ScheduleRepeatRules.Label(message.Repeat) + " · next") @message.SendAtUtc.LocalDateTime.ToString("ddd MMM d, h:mm tt")</div>
                 </div>
-                <button @onclick="() => ViewModel.CancelCommand.ExecuteAsync(message.Id)" style="flex-shrink:0;">Cancel</button>
+                <button @onclick="() => ViewModel.CancelCommand.ExecuteAsync(message.Id)" style="flex-shrink:0;">@(message.Repeat == ForgeLinkSms.Core.Models.ScheduleRepeat.None ? "Cancel" : "Stop repeating")</button>
             </div>
         }
     }

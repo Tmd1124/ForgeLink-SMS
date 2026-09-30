@@ -309,10 +309,10 @@ public class ComposeViewModelTests
         viewModel.AddRecipientCommand.Execute("5550148890");
         viewModel.AddRecipientCommand.Execute("5550142231");
 
-        await viewModel.ScheduleSendCommand.ExecuteAsync(sendAt);
+        await viewModel.ScheduleSendCommand.ExecuteAsync(new ScheduledSend(sendAt, ScheduleRepeat.Weekly));
 
-        scheduler.Verify(s => s.ScheduleGroupAsync(0, It.Is<IReadOnlyList<string>>(a => a.SequenceEqual(new[] { "5550148890", "5550142231" })), "Dinner at 7", sendAt), Times.Once);
-        scheduler.Verify(s => s.ScheduleAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>()), Times.Never);
+        scheduler.Verify(s => s.ScheduleGroupAsync(0, It.Is<IReadOnlyList<string>>(a => a.SequenceEqual(new[] { "5550148890", "5550142231" })), "Dinner at 7", sendAt, ScheduleRepeat.Weekly), Times.Once);
+        scheduler.Verify(s => s.ScheduleAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<ScheduleRepeat>()), Times.Never);
     }
 
     [Fact]

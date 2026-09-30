@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ForgeLinkSms.Core.Models;
 using ForgeLinkSms.Core.Services;
 
 namespace ForgeLinkSms.Core.ViewModels;
@@ -481,7 +482,7 @@ public partial class ThreadDetailViewModel : ObservableObject
     public void FlushPendingSend() => _pendingSend?.Cancellation.Cancel();
 
     [RelayCommand]
-    private async Task ScheduleSend(DateTimeOffset sendAtUtc)
+    private async Task ScheduleSend(ScheduledSend schedule)
     {
         var text = ComposeText.Trim();
         if (string.IsNullOrEmpty(text))
@@ -492,11 +493,11 @@ public partial class ThreadDetailViewModel : ObservableObject
         var outgoingText = WithReplyQuote(text, ReplyingTo);
         if (IsGroup)
         {
-            await _scheduler.ScheduleGroupAsync(_threadId, _participants, outgoingText, sendAtUtc);
+            await _scheduler.ScheduleGroupAsync(_threadId, _participants, outgoingText, schedule.SendAtUtc, schedule.Repeat);
         }
         else
         {
-            await _scheduler.ScheduleAsync(_address, outgoingText, sendAtUtc);
+            await _scheduler.ScheduleAsync(_address, outgoingText, schedule.SendAtUtc, schedule.Repeat);
         }
         ComposeText = string.Empty;
         ReplyingTo = null;

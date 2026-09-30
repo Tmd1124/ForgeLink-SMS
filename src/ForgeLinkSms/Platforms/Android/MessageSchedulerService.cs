@@ -1,6 +1,7 @@
 using ForgeLinkSms.Core.Data;
 using ForgeLinkSms.Core.Models;
 using ForgeLinkSms.Core.Services;
+using ForgeLinkSms.Core.Utils;
 using AndroidApp = global::Android.App.Application;
 using AndroidAlarmManager = global::Android.App.AlarmManager;
 using AndroidAlarmType = global::Android.App.AlarmType;
@@ -22,17 +23,26 @@ public class MessageSchedulerService : IMessageSchedulerService
         _repository = repository;
     }
 
-    public async Task<int> ScheduleAsync(string address, string body, DateTimeOffset sendAtUtc)
+    public async Task<int> ScheduleAsync(string address, string body, DateTimeOffset sendAtUtc, ScheduleRepeat repeat)
     {
-        var id = await _repository.AddAsync(new ScheduledMessage { Address = address, Body = body, SendAtUtc = sendAtUtc });
+        var id = await _repository.AddAsync(new ScheduledMessage
+        {
+            Address = address,
+            Body = body,
+            SendAtUtc = sendAtUtc,
+            Repeat = repeat,
+            RepeatFromUtc = repeat == ScheduleRepeat.None ? null : sendAtUtc
+        });
         Arm(id, sendAtUtc);
         return id;
     }
 
-    public async Task<int> ScheduleGroupAsync(long threadId, IReadOnlyList<string> addresses, string body, DateTimeOffset sendAtUtc)
+    public async Task<int> ScheduleGroupAsync(long threadId, IReadOnlyList<string> addresses, string body, DateTimeOffset sendAtUtc, ScheduleRepeat repeat)
     {
         var id = await _repository.AddAsync(new ScheduledMessage
         {
+            Repeat = repeat,
+            RepeatFromUtc = repeat == ScheduleRepeat.None ? null : sendAtUtc,
             Address = addresses.FirstOrDefault() ?? string.Empty,
             Body = body,
             SendAtUtc = sendAtUtc,
@@ -47,6 +57,24 @@ public class MessageSchedulerService : IMessageSchedulerService
     {
         Disarm(scheduledMessageId);
         await _repository.RemoveAsync(scheduledMessageId);
+    }
+
+    public async Task CompleteAsync(int scheduledMessageId)
+    {
+        var message = await _repository.GetAsync(scheduledMessageId);
+        if (message is null)
+        {
+            return;
+        }
+        var next = ScheduleRepeatRules.Next(message.RepeatFromUtc ?? message.SendAtUtc, message.Repeat, DateTimeOffset.UtcNow, TimeZoneInfo.Local);
+        if (next is not { } nextUtc)
+        {
+            await _repository.RemoveAsync(scheduledMessageId);
+            return;
+        }
+        message.SendAtUtc = nextUtc;
+        await _repository.UpdateAsync(message);
+        Arm(message.Id, nextUtc);
     }
 
     public async Task RescheduleAllPendingAsync()

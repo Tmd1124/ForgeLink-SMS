@@ -19,6 +19,11 @@ public class ScheduledMessage
     /// Comma-separated recipients of a group message; empty for a plain one-to-one text.
     public string GroupAddresses { get; set; } = string.Empty;
 
+    public ScheduleRepeat Repeat { get; set; }
+
+    /// The first send time of a repeating text; later times are counted from it. Null for older rows.
+    public DateTimeOffset? RepeatFromUtc { get; set; }
+
     [Ignore]
     public bool IsGroup => !string.IsNullOrEmpty(GroupAddresses);
 

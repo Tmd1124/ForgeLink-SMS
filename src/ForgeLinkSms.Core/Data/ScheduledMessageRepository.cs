@@ -22,6 +22,8 @@ public class ScheduledMessageRepository : IScheduledMessageRepository, IDisposab
 
     public Task RemoveAsync(int id) => _db.DeleteAsync<ScheduledMessage>(id);
 
+    public Task UpdateAsync(ScheduledMessage message) => _db.UpdateAsync(message);
+
     public async Task<ScheduledMessage?> GetAsync(int id) => await _db.FindAsync<ScheduledMessage>(id);
 
     public async Task<IReadOnlyList<ScheduledMessage>> GetAllAsync() =>

@@ -280,7 +280,7 @@
             }
         </div>
         <PendingAttachmentPreview Attachment="_pendingAttachment" OnRemove="() => _pendingAttachment = null" />
-        <ScheduledSendPreview SendAt="_scheduledSendTime" OnRemove="() => _scheduledSendTime = null" />
+        <ScheduledSendPreview Schedule="_scheduledSendTime" OnRemove="() => _scheduledSendTime = null" />
         @if (ViewModel.ReplyingTo is { } replyingTo)
         {
             <div style="display:flex;align-items:center;gap:10px;margin:0 8px;padding:8px 12px;border-left:3px solid var(--accent-color);background:var(--card-color);border-radius:0 8px 8px 0;">
@@ -420,7 +420,7 @@
     private ElementReference _composeInput;
     private ForgeLinkSms.Components.AttachmentDrawer? _drawer;
     private ForgeLinkSms.Core.Models.PickedAttachment? _pendingAttachment;
-    private DateTimeOffset? _scheduledSendTime;
+    private ForgeLinkSms.Core.Models.ScheduledSend? _scheduledSendTime;
     private bool _showSaveToast;
     private string _saveToastMessage = string.Empty;
     private CancellationTokenSource? _saveToastCts;

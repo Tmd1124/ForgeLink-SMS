@@ -181,7 +181,7 @@
     }
 
     <PendingAttachmentPreview Attachment="_pendingAttachment" OnRemove="() => _pendingAttachment = null" />
-    <ScheduledSendPreview SendAt="_scheduledSendTime" OnRemove="() => _scheduledSendTime = null" />
+    <ScheduledSendPreview Schedule="_scheduledSendTime" OnRemove="() => _scheduledSendTime = null" />
     <div style="display:flex;align-items:flex-end;padding:8px;border-top:1px solid #eee;">
         <button @onclick="() => _drawer?.Open()"
                 style="width:40px;height:40px;border-radius:50%;border:none;background:var(--card-color);color:var(--text-color);font-size:1.4em;margin-right:8px;flex-shrink:0;">
@@ -213,7 +213,7 @@
     private CancellationTokenSource? _longPressCts;
     private ForgeLinkSms.Components.AttachmentDrawer? _drawer;
     private ForgeLinkSms.Core.Models.PickedAttachment? _pendingAttachment;
-    private DateTimeOffset? _scheduledSendTime;
+    private ForgeLinkSms.Core.Models.ScheduledSend? _scheduledSendTime;
     private ForgeLinkSms.Core.Services.ForwardRequest? _forwardSource;
 
     private async Task SendOrSchedule()

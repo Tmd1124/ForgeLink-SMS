@@ -550,10 +550,25 @@ public class ThreadDetailViewModelTests
             ReplyingTo = MakeMessage(7, "Coming Sunday?", DateTimeOffset.UtcNow)
         };
 
-        await viewModel.ScheduleSendCommand.ExecuteAsync(sendAt);
+        await viewModel.ScheduleSendCommand.ExecuteAsync(new ScheduledSend(sendAt, ScheduleRepeat.None));
 
-        scheduler.Verify(s => s.ScheduleAsync("5550148890", "Re: \"Coming Sunday?\"\nYes", sendAt), Times.Once);
+        scheduler.Verify(s => s.ScheduleAsync("5550148890", "Re: \"Coming Sunday?\"\nYes", sendAt, ScheduleRepeat.None), Times.Once);
         Assert.Null(viewModel.ReplyingTo);
+    }
+
+    [Fact]
+    public async Task ScheduleSendCommand_passes_the_chosen_repeat_to_the_scheduler()
+    {
+        var scheduler = new Mock<IMessageSchedulerService>();
+        var sendAt = DateTimeOffset.UtcNow.AddHours(1);
+        var viewModel = new ThreadDetailViewModel(new Mock<ISmsService>().Object, scheduler.Object, threadId: 1, address: "5550148890")
+        {
+            ComposeText = "Take your vitamins"
+        };
+
+        await viewModel.ScheduleSendCommand.ExecuteAsync(new ScheduledSend(sendAt, ScheduleRepeat.Daily));
+
+        scheduler.Verify(s => s.ScheduleAsync("5550148890", "Take your vitamins", sendAt, ScheduleRepeat.Daily), Times.Once);
     }
 
     [Fact]
@@ -652,10 +667,10 @@ public class ThreadDetailViewModelTests
             ComposeText = "later"
         };
 
-        await viewModel.ScheduleSendCommand.ExecuteAsync(sendAt);
+        await viewModel.ScheduleSendCommand.ExecuteAsync(new ScheduledSend(sendAt, ScheduleRepeat.None));
 
-        scheduler.Verify(s => s.ScheduleGroupAsync(3, It.Is<IReadOnlyList<string>>(a => a.SequenceEqual(group)), "later", sendAt), Times.Once);
-        scheduler.Verify(s => s.ScheduleAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>()), Times.Never);
+        scheduler.Verify(s => s.ScheduleGroupAsync(3, It.Is<IReadOnlyList<string>>(a => a.SequenceEqual(group)), "later", sendAt, ScheduleRepeat.None), Times.Once);
+        scheduler.Verify(s => s.ScheduleAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<ScheduleRepeat>()), Times.Never);
         Assert.Equal(string.Empty, viewModel.ComposeText);
     }
 

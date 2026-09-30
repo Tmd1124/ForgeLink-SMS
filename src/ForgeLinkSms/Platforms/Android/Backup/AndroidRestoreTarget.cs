@@ -3,6 +3,7 @@ using ForgeLinkSms.Core.Backup;
 using ForgeLinkSms.Core.Data;
 using ForgeLinkSms.Core.Models;
 using ForgeLinkSms.Core.Services;
+using ForgeLinkSms.Core.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using AndroidTelephony = Android.Provider.Telephony;
 using AndroidUri = Android.Net.Uri;
@@ -157,13 +158,27 @@ internal sealed class AndroidRestoreTarget(Context context, IServiceProvider ser
         var scheduler = services.GetRequiredService<IMessageSchedulerService>();
         foreach (var s in plan.ScheduledToAdd)
         {
+            var from = s.RepeatFromUtc ?? s.SendAtUtc;
+            // A repeating series whose last time has passed restarts at its next future time instead of sending now.
+            var sendAt = s.SendAtUtc > DateTimeOffset.UtcNow ? s.SendAtUtc
+                : ScheduleRepeatRules.Next(from, s.Repeat, DateTimeOffset.UtcNow, TimeZoneInfo.Local) ?? s.SendAtUtc;
+            int id;
             if (string.IsNullOrEmpty(s.GroupAddresses))
             {
-                await scheduler.ScheduleAsync(s.Address, s.Body, s.SendAtUtc);
+                id = await scheduler.ScheduleAsync(s.Address, s.Body, sendAt, s.Repeat);
             }
             else
             {
-                await scheduler.ScheduleGroupAsync(ThreadFor(s.Conversation), s.GroupAddresses.Split(','), s.Body, s.SendAtUtc);
+                id = await scheduler.ScheduleGroupAsync(ThreadFor(s.Conversation), s.GroupAddresses.Split(','), s.Body, sendAt, s.Repeat);
+            }
+            if (s.Repeat != ScheduleRepeat.None && sendAt != from)
+            {
+                var repository = services.GetRequiredService<IScheduledMessageRepository>();
+                if (await repository.GetAsync(id) is { } row)
+                {
+                    row.RepeatFromUtc = from;
+                    await repository.UpdateAsync(row);
+                }
             }
         }
 

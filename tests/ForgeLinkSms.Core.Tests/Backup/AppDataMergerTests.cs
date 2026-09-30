@@ -65,6 +65,23 @@ public class AppDataMergerTests
     }
 
     [Fact]
+    public void A_repeating_scheduled_text_is_kept_even_when_its_last_time_has_passed()
+    {
+        var weekly = new BackupScheduled("a", "4045550199", "Trash day", Now.AddDays(-2), "", ScheduleRepeat.Weekly, Now.AddDays(-30));
+
+        Assert.Equal(new[] { weekly }, Plan(new AppData(), new AppData { Scheduled = new[] { weekly } }).ScheduledToAdd);
+    }
+
+    [Fact]
+    public void A_repeating_scheduled_text_already_on_the_phone_is_not_added_again_after_it_moved_on()
+    {
+        var backedUp = new BackupScheduled("a", "4045550199", "Trash day", Now.AddDays(-2), "", ScheduleRepeat.Weekly, Now.AddDays(-30));
+        var onPhone = backedUp with { SendAtUtc = Now.AddDays(5) };
+
+        Assert.Empty(Plan(new AppData { Scheduled = new[] { onPhone } }, new AppData { Scheduled = new[] { backedUp } }).ScheduledToAdd);
+    }
+
+    [Fact]
     public void Scheduled_texts_are_re_added_only_when_the_user_opts_in()
     {
         var future = new BackupScheduled("a", "4045550199", "Happy birthday", Now.AddDays(3), "");

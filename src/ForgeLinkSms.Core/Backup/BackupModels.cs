@@ -24,7 +24,8 @@ public sealed record BackupMessage(
 
 public sealed record BackupFilter(string Name, string ColorHex, IReadOnlyList<string> Members);
 
-public sealed record BackupScheduled(string Conversation, string Address, string Body, DateTimeOffset SendAtUtc, string GroupAddresses);
+public sealed record BackupScheduled(string Conversation, string Address, string Body, DateTimeOffset SendAtUtc, string GroupAddresses,
+    ScheduleRepeat Repeat = ScheduleRepeat.None, DateTimeOffset? RepeatFromUtc = null);
 
 public sealed record BackupTimed(string Conversation, DateTimeOffset? UntilUtc);
 

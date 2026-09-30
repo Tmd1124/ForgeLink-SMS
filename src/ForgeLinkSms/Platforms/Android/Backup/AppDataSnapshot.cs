@@ -38,7 +38,7 @@ internal static class AppDataSnapshot
             QuickReplies = (await services.GetRequiredService<IQuickReplyRepository>().GetAllAsync()).OrderBy(q => q.SortOrder).Select(q => q.Text).ToList(),
             Scheduled = scheduled.Select(s => new BackupScheduled(
                 Key(s.ThreadId) ?? ConversationKey.From(string.IsNullOrEmpty(s.GroupAddresses) ? new[] { s.Address } : s.GroupAddresses.Split(',')),
-                s.Address, s.Body, s.SendAtUtc, s.GroupAddresses)).ToList(),
+                s.Address, s.Body, s.SendAtUtc, s.GroupAddresses, s.Repeat, s.RepeatFromUtc)).ToList(),
             Archived = Keys(await services.GetRequiredService<IArchiveRepository>().GetArchivedThreadIdsAsync()),
             Trashed = Keys(await services.GetRequiredService<ITrashRepository>().GetTrashedThreadIdsAsync()),
             Snoozed = snoozed.Where(s => Key(s.ThreadId) is not null).Select(s => new BackupTimed(Key(s.ThreadId)!, s.UntilUtc)).ToList(),

@@ -27,6 +27,7 @@ public class ScheduledMessageReceiver : BroadcastReceiver
                 var services = MauiApplication.Current.Services;
                 var repository = services.GetRequiredService<IScheduledMessageRepository>();
                 var smsService = services.GetRequiredService<ISmsService>();
+                var scheduler = services.GetRequiredService<IMessageSchedulerService>();
 
                 var message = await repository.GetAsync(id);
                 if (message is not null)
@@ -39,7 +40,7 @@ public class ScheduledMessageReceiver : BroadcastReceiver
                     {
                         await smsService.SendAsync(message.Address, message.Body);
                     }
-                    await repository.RemoveAsync(id);
+                    await scheduler.CompleteAsync(id);
                 }
             }
             finally

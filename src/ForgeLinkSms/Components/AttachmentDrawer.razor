@@ -232,6 +232,14 @@
                 <p style="margin:0 0 12px;">When should this be sent?</p>
                 <input type="datetime-local" @bind="_scheduleInputValue" min="@_minScheduleValue.ToString("yyyy-MM-ddTHH:mm")"
                        style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1;font-size:1em;box-sizing:border-box;" />
+                <label style="display:block;margin:12px 0 6px;">Repeat</label>
+                <select @bind="_scheduleRepeat"
+                        style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1;font-size:1em;box-sizing:border-box;background:var(--card-color);color:inherit;">
+                    @foreach (var repeat in ForgeLinkSms.Core.Utils.ScheduleRepeatRules.All)
+                    {
+                        <option value="@repeat">@ForgeLinkSms.Core.Utils.ScheduleRepeatRules.Label(repeat)</option>
+                    }
+                </select>
                 <button @onclick="ConfirmSchedule" disabled="@(_scheduleInputValue is null)"
                         style="width:100%;margin-top:12px;padding:10px;border-radius:8px;border:none;background:var(--accent-color);color:white;font-size:1em;">
                     Confirm
@@ -257,6 +265,7 @@
     private List<ContactInfo>? _contacts;
     private CancellationTokenSource? _toastCts;
     private DateTime? _scheduleInputValue;
+    private ForgeLinkSms.Core.Models.ScheduleRepeat _scheduleRepeat;
     private DateTime _minScheduleValue;
     private long? _editingReplyId;
     private string _editingReplyText = string.Empty;
@@ -269,7 +278,7 @@
     public EventCallback<PickedAttachment> OnAttachmentPicked { get; set; }
 
     [Parameter]
-    public EventCallback<DateTimeOffset> OnScheduleTimePicked { get; set; }
+    public EventCallback<ForgeLinkSms.Core.Models.ScheduledSend> OnScheduleTimePicked { get; set; }
 
     public void Open()
     {
@@ -387,6 +396,7 @@
         var now = DateTime.Now;
         _minScheduleValue = now;
         _scheduleInputValue = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0).AddHours(1);
+        _scheduleRepeat = ForgeLinkSms.Core.Models.ScheduleRepeat.None;
         _mode = DrawerMode.Schedule;
     }
 
@@ -399,7 +409,7 @@
 
         var sendAt = new DateTimeOffset(DateTime.SpecifyKind(localTime, DateTimeKind.Local));
         Close();
-        await OnScheduleTimePicked.InvokeAsync(sendAt);
+        await OnScheduleTimePicked.InvokeAsync(new ForgeLinkSms.Core.Models.ScheduledSend(sendAt, _scheduleRepeat));
     }
 
     private Task ShowComingSoon() => ShowToast("Coming soon");

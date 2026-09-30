@@ -173,7 +173,7 @@ public partial class ComposeViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task ScheduleSend(DateTimeOffset sendAtUtc)
+    private async Task ScheduleSend(ScheduledSend schedule)
     {
         LastSendSucceeded = false;
         var text = MessageBody.Trim();
@@ -184,13 +184,13 @@ public partial class ComposeViewModel : ObservableObject
 
         if (IsGroupSend && SendAsGroup)
         {
-            await _scheduler.ScheduleGroupAsync(0, Recipients.ToList(), text, sendAtUtc);
+            await _scheduler.ScheduleGroupAsync(0, Recipients.ToList(), text, schedule.SendAtUtc, schedule.Repeat);
         }
         else
         {
             foreach (var recipient in Recipients)
             {
-                await _scheduler.ScheduleAsync(recipient, text, sendAtUtc);
+                await _scheduler.ScheduleAsync(recipient, text, schedule.SendAtUtc, schedule.Repeat);
             }
         }
         MessageBody = string.Empty;
