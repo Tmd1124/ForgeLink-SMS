@@ -114,4 +114,61 @@ public class NavigationHistoryTrackerTests
         Assert.False(secondBack);
         Assert.Equal(["conversations"], visited);
     }
+
+    [Fact]
+    public void Back_asks_the_side_pane_only_after_the_page_had_nothing_to_close()
+    {
+        var tracker = new NavigationHistoryTracker();
+        var paneAsked = 0;
+        tracker.PaneBackHandler = () => { paneAsked++; return true; };
+
+        tracker.LocalBackHandler = () => true;
+        Assert.True(tracker.TryConsumeLocalBack());
+        Assert.Equal(0, paneAsked);
+
+        tracker.LocalBackHandler = () => false;
+        Assert.True(tracker.TryConsumeLocalBack());
+        Assert.Equal(1, paneAsked);
+
+        tracker.LocalBackHandler = null;
+        tracker.PaneBackHandler = () => false;
+        Assert.False(tracker.TryConsumeLocalBack());
+    }
+
+    [Fact]
+    public void Chat_switches_replace_each_other_when_collapsing_is_on()
+    {
+        var tracker = new NavigationHistoryTracker { CollapseChatSwitches = true };
+        tracker.RecordNavigation("conversations");
+        tracker.RecordNavigation("conversations/thread?id=1");
+        tracker.RecordNavigation("conversations/thread?id=2");
+        string? navigatedTo = null;
+        tracker.NavigateAction = path => navigatedTo = path;
+
+        Assert.True(tracker.TryGoBack());
+        Assert.Equal("conversations", navigatedTo);
+    }
+
+    [Fact]
+    public void Chat_switches_stack_up_when_collapsing_is_off()
+    {
+        var tracker = new NavigationHistoryTracker();
+        tracker.RecordNavigation("conversations");
+        tracker.RecordNavigation("conversations/thread?id=1");
+        tracker.RecordNavigation("conversations/thread?id=2");
+
+        Assert.Equal(3, tracker.Snapshot().Count);
+    }
+
+    [Fact]
+    public void Collapsing_leaves_other_pages_on_the_stack()
+    {
+        var tracker = new NavigationHistoryTracker { CollapseChatSwitches = true };
+        tracker.RecordNavigation("conversations");
+        tracker.RecordNavigation("conversations/thread?id=1");
+        tracker.RecordNavigation("conversations/media?id=1");
+        tracker.RecordNavigation("conversations/thread?id=1");
+
+        Assert.Equal(4, tracker.Snapshot().Count);
+    }
 }

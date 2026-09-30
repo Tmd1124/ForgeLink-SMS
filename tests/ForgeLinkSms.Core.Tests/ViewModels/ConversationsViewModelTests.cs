@@ -167,6 +167,31 @@ public class ConversationsViewModelTests
     }
 
     [Fact]
+    public async Task ReloadCommand_during_a_load_runs_one_more_load_afterwards()
+    {
+        var first = new TaskCompletionSource<IReadOnlyList<SmsThread>>();
+        var threadService = new Mock<IThreadService>();
+        var callCount = 0;
+        threadService.Setup(s => s.GetThreadsAsync()).Returns(() =>
+        {
+            callCount++;
+            return callCount == 1
+                ? first.Task
+                : Task.FromResult<IReadOnlyList<SmsThread>>(new List<SmsThread> { MakeThread(1, "5550142231", "Alice Smith", "read now") });
+        });
+        var viewModel = MakeViewModel(threadService);
+
+        var load = viewModel.LoadCommand.ExecuteAsync(null);
+        var reload = viewModel.ReloadCommand.ExecuteAsync(null);
+        var alsoReload = viewModel.ReloadCommand.ExecuteAsync(null);
+        first.SetResult(new List<SmsThread> { MakeThread(1, "5550142231", "Alice Smith", "stale", unreadCount: 3) });
+        await Task.WhenAll(load, reload, alsoReload);
+
+        Assert.Equal(2, callCount);
+        Assert.Equal("read now", Assert.Single(viewModel.Threads).LastMessageBody);
+    }
+
+    [Fact]
     public async Task LoadCommand_populates_Threads_from_the_service()
     {
         var threadService = new Mock<IThreadService>();

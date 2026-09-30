@@ -22,7 +22,16 @@ public class NavigationHistoryTracker
     /// to dismiss, or back presses could no longer leave that screen at all.
     public Func<bool>? LocalBackHandler { get; set; }
 
-    public bool TryConsumeLocalBack() => LocalBackHandler?.Invoke() ?? false;
+    /// The chat list when it sits beside an open chat: its selection and sheets are closed by Back
+    /// only after the chat had nothing of its own to close. A separate slot, because the two panes
+    /// finish loading in either order and would otherwise overwrite each other's handler.
+    public Func<bool>? PaneBackHandler { get; set; }
+
+    public bool TryConsumeLocalBack() => (LocalBackHandler?.Invoke() ?? false) || (PaneBackHandler?.Invoke() ?? false);
+
+    /// Set while chats are shown beside the list: picking another chat there swaps the right
+    /// pane, so Back should close the chat rather than step through every chat looked at.
+    public bool CollapseChatSwitches { get; set; }
 
     public void RecordNavigation(string relativePath)
     {
@@ -41,9 +50,17 @@ public class NavigationHistoryTracker
                 return;
             }
 
+            if (CollapseChatSwitches && IsChat(_stack[^1]) && IsChat(relativePath))
+            {
+                _stack[^1] = relativePath;
+                return;
+            }
+
             _stack.Add(relativePath);
         }
     }
+
+    private static bool IsChat(string relativePath) => relativePath.Split('?')[0].Trim('/') == "conversations/thread";
 
     public bool TryGoBack()
     {

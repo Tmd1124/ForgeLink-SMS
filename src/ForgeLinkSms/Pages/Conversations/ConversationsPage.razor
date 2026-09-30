@@ -12,6 +12,7 @@
 @inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
 @inject ForgeLinkSms.Core.Services.IReviewPromptService ReviewPrompt
 @inject Microsoft.JSInterop.IJSRuntime JS
+@inject ForgeLinkSms.Core.Services.ConversationListRefresher ListRefresher
 @using ForgeLinkSms.Core.Utils
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Components
@@ -457,6 +458,10 @@
         {
             return "rgba(99,102,241,0.2)";
         }
+        if (TwoPane && thread.Id == _openThreadId)
+        {
+            return "rgba(99,102,241,0.28)";
+        }
         // A speech-bubble card tinted per the Display settings (person, filter or unread color).
         var color = ViewModel.RowColor(thread);
         if (color is null)
@@ -473,13 +478,46 @@
         ViewModel.Display = DisplayStyles.GetDisplaySettings();
         await ViewModel.LoadCommand.ExecuteAsync(null);
         _isLoading = false;
+        // Blazor can dispose a page while it is still loading; subscribing after that would leak it.
+        if (_disposed)
+        {
+            return;
+        }
         AppResumeNotifier.Resumed += OnAppResumed;
         IncomingMessageNotifier.MessageReceived += OnMessageReceived;
-        HistoryTracker.LocalBackHandler = TryCloseOverlayForBack;
+        if (TwoPane)
+        {
+            HistoryTracker.PaneBackHandler = TryCloseOverlayForBack;
+            _openThreadId = ForgeLinkSms.Core.Utils.TwoPaneRules.OpenThreadId(Nav.ToBaseRelativePath(Nav.Uri));
+            Nav.LocationChanged += OnListLocationChanged;
+            ListRefresher.RefreshRequested += OnRefreshRequested;
+        }
+        else
+        {
+            HistoryTracker.LocalBackHandler = TryCloseOverlayForBack;
+        }
         _ = RefreshCodeStripPeriodicallyAsync(_codeExpiryCts.Token);
         // Back on the list after sending is a calm moment to (maybe) ask for a Play rating.
         await ReviewPrompt.MaybeAskAsync();
     }
+
+    [CascadingParameter(Name = "TwoPane")]
+    public bool TwoPane { get; set; }
+
+    private long? _openThreadId;
+    private bool _disposed;
+
+    private void OnListLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _openThreadId = ForgeLinkSms.Core.Utils.TwoPaneRules.OpenThreadId(Nav.ToBaseRelativePath(e.Location));
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnRefreshRequested() => _ = InvokeAsync(async () =>
+    {
+        await ViewModel.ReloadCommand.ExecuteAsync(null);
+        StateHasChanged();
+    });
 
     // Raised from the SMS receiver's background thread, hence InvokeAsync.
     private void OnMessageReceived(long threadId)
@@ -577,8 +615,11 @@
 
     public void Dispose()
     {
+        _disposed = true;
         AppResumeNotifier.Resumed -= OnAppResumed;
         IncomingMessageNotifier.MessageReceived -= OnMessageReceived;
+        Nav.LocationChanged -= OnListLocationChanged;
+        ListRefresher.RefreshRequested -= OnRefreshRequested;
 
         // Fire-and-forget: the WebView may already be tearing down, and a leftover listener only
         // looks up elements that no longer exist.
@@ -592,6 +633,10 @@
         if (HistoryTracker.LocalBackHandler == TryCloseOverlayForBack)
         {
             HistoryTracker.LocalBackHandler = null;
+        }
+        if (HistoryTracker.PaneBackHandler == TryCloseOverlayForBack)
+        {
+            HistoryTracker.PaneBackHandler = null;
         }
     }
 

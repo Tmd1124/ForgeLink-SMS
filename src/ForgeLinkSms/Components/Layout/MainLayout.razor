@@ -1,3 +1,81 @@
 ﻿@inherits LayoutComponentBase
+@implements IAsyncDisposable
+@inject NavigationManager Nav
+@inject Microsoft.JSInterop.IJSRuntime JS
+@inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
 
-@Body
+@* The routed page keeps the same place in the tree in both modes, so folding or unfolding doesn't rebuild an open chat. *@
+<div style="@(_twoPane ? "display:flex;height:100vh;width:100%;" : "")">
+    @if (_twoPane)
+    {
+        <div data-no-back-swipe style="flex:0 0 40%;min-width:320px;height:100vh;overflow-y:auto;position:relative;transform:translateZ(0);border-right:1px solid rgba(127,127,127,0.3);">
+            <CascadingValue Name="TwoPane" Value="true">
+                <ForgeLinkSms.Pages.Conversations.ConversationsPage />
+            </CascadingValue>
+        </div>
+    }
+    <div style="@(_twoPane ? "flex:1;min-width:0;height:100vh;overflow:hidden;position:relative;transform:translateZ(0);" : "")">
+        @if (!_twoPane || ForgeLinkSms.Core.Utils.TwoPaneRules.IsChat(Nav.ToBaseRelativePath(Nav.Uri)))
+        {
+            <CascadingValue Name="TwoPane" Value="_twoPane">
+                @* The chat page loads its conversation once, so switching chats must rebuild it rather than reuse it. *@
+                <div @key="Nav.Uri" style="@(_twoPane ? "height:100%;" : "")">
+                    @Body
+                </div>
+            </CascadingValue>
+        }
+        else
+        {
+            <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#94a3b8;text-align:center;padding:24px;">
+                <div style="font-size:2.4em;">💬</div>
+                <div style="font-size:1.1em;">Select a chat</div>
+                <div style="font-size:0.9em;">Pick a conversation on the left to read and reply here.</div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private DotNetObjectReference<MainLayout>? _ref;
+    private double _widthPx;
+    private bool _twoPane;
+
+    // Runs before the router's render for a new route, so a page is never first created in the
+    // wrong mode and then thrown away mid-load.
+    protected override void OnParametersSet() => Update();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _ref = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("forgeLinkTwoPane.watch", _ref, ForgeLinkSms.Core.Utils.TwoPaneRules.MinWidthPx);
+        }
+    }
+
+    [JSInvokable]
+    public void OnWidthChanged(double widthPx)
+    {
+        _widthPx = widthPx;
+        Update();
+        StateHasChanged();
+    }
+
+    private void Update()
+    {
+        _twoPane = ForgeLinkSms.Core.Utils.TwoPaneRules.ShowsTwoPanes(_widthPx, Nav.ToBaseRelativePath(Nav.Uri));
+        HistoryTracker.CollapseChatSwitches = _twoPane;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("forgeLinkTwoPane.dispose");
+        }
+        catch (Exception)
+        {
+        }
+        _ref?.Dispose();
+    }
+}

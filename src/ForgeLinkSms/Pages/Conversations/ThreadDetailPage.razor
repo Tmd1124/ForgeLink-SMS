@@ -8,6 +8,7 @@
 @inject ForgeLinkSms.Core.Services.IIncomingMessageNotifier IncomingMessageNotifier
 @inject ForgeLinkSms.Core.Services.IVoiceRecorderService Recorder
 @inject ForgeLinkSms.Core.Services.IAudioPlaybackService Playback
+@inject ForgeLinkSms.Core.Services.ConversationListRefresher ListRefresher
 @using Microsoft.Extensions.DependencyInjection
 @using ForgeLinkSms.Components
 @using ForgeLinkSms.Core.Models
@@ -482,6 +483,7 @@
             var attachment = _pendingAttachment;
             _pendingAttachment = null;
             await ViewModel!.SendCommand.ExecuteAsync(attachment);
+            ListRefresher.RequestRefresh();
         }
         else if (_scheduledSendTime is { } sendAt)
         {
@@ -558,10 +560,18 @@
         // meant a slow or failing "mark as read" call blocked the messages from ever showing.
         _ = MarkThreadAsReadBestEffortAsync();
 
+        // Blazor can dispose a page while it is still loading; subscribing after that would leak it.
+        if (_disposed)
+        {
+            return;
+        }
         IncomingMessageNotifier.MessageReceived += OnMessageReceived;
         Playback.PlaybackChanged += OnPlaybackChanged;
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         HistoryTracker.LocalBackHandler = TryCloseOverlayForBack;
     }
+
+    private bool _disposed;
 
     // Raised from the SMS receiver's background thread, hence InvokeAsync.
     private void OnMessageReceived(long threadId)
@@ -579,11 +589,21 @@
         });
     }
 
+    // A text leaves its undo window here, so the list beside the chat can show it as the latest message.
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ThreadDetailViewModel.IsSendPending) && ViewModel is { IsSendPending: false })
+        {
+            ListRefresher.RequestRefresh();
+        }
+    }
+
     private async Task MarkThreadAsReadBestEffortAsync()
     {
         try
         {
             await Services.GetRequiredService<IMarkAsReadService>().MarkThreadAsReadAsync(ThreadId);
+            ListRefresher.RequestRefresh();
         }
         catch (Exception)
         {
@@ -789,6 +809,7 @@
 
     public void Dispose()
     {
+        _disposed = true;
         Playback.PlaybackChanged -= OnPlaybackChanged;
         Playback.Stop();
         if (_isRecording)
@@ -803,6 +824,10 @@
         _ = ViewModel?.SaveDraftAsync();
 
         IncomingMessageNotifier.MessageReceived -= OnMessageReceived;
+        if (ViewModel is not null)
+        {
+            ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        }
 
         // Blazor's router can create the next page before disposing this one, so only clear the
         // handler if it's still ours — otherwise this would wipe out a registration the next page
@@ -1082,6 +1107,7 @@
             return;
         }
         await ViewModel!.SendCommand.ExecuteAsync(recording);
+        ListRefresher.RequestRefresh();
     }
 
     private void CancelRecording()

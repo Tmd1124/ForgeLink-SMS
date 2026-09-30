@@ -124,6 +124,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<SettingsViewModel>();
 		builder.Services.AddSingleton<PendingNavigationStore>();
 		builder.Services.AddSingleton<NavigationHistoryTracker>();
+		builder.Services.AddSingleton<ConversationListRefresher>();
 
 		builder.Services.AddSingleton<IProfileService, ProfileService>();
 		builder.Services.AddTransient<ProfileViewModel>();

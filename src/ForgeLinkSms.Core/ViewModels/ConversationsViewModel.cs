@@ -149,6 +149,21 @@ public partial class ConversationsViewModel : ObservableObject
         }
     }
 
+    private bool _reloadPending;
+
+    // For refreshes that must not be lost (a chat was just marked read, a text was just sent):
+    // if a load is already running it may have read the old state, so one more runs after it.
+    [RelayCommand]
+    private async Task Reload()
+    {
+        if (_isLoadingThreads)
+        {
+            _reloadPending = true;
+            return;
+        }
+        await Load();
+    }
+
     [RelayCommand]
     private async Task Load()
     {
@@ -202,6 +217,12 @@ public partial class ConversationsViewModel : ObservableObject
         finally
         {
             _isLoadingThreads = false;
+        }
+
+        if (_reloadPending)
+        {
+            _reloadPending = false;
+            await Load();
         }
     }
 
