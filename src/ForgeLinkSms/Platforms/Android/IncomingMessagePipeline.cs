@@ -62,7 +62,7 @@ internal static class IncomingMessagePipeline
 
         var senderName = contact?.DisplayName ?? senderAddress;
         var title = groupLabel is null ? senderName : $"{senderName} · {groupLabel}";
-        services.GetRequiredService<INotificationService>().NotifyIncomingMessage(title, notificationBody, threadId, senderAddress, outcome == NotifyOutcome.Sound);
+        services.GetRequiredService<INotificationService>().NotifyIncomingMessage(title, ReactionParser.Describe(notificationBody) ?? notificationBody, threadId, senderAddress, outcome == NotifyOutcome.Sound);
     }
 
     public static bool ThreadHasOutgoing(Context context, long threadId)

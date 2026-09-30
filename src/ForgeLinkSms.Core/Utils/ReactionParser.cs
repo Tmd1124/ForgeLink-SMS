@@ -2,7 +2,12 @@ using System.Text.RegularExpressions;
 
 namespace ForgeLinkSms.Core.Utils;
 
-public sealed record ParsedReaction(string Emoji, string? QuotedText, bool TargetsImage, bool IsRemoval);
+// TargetNoun is set when the reaction is to an attachment rather than quoted text: "image",
+// "video", "voice message" or "attachment" (any kind).
+public sealed record ParsedReaction(string Emoji, string? QuotedText, string? TargetNoun, bool IsRemoval)
+{
+    public bool TargetsImage => TargetNoun == "image";
+}
 
 // Recognizes the plain-text messages phones send for a reaction when the other side can't
 // receive a real one: iPhone tapbacks ("Loved “…”"), newer custom ones ("Reacted 🎉 to “…”"),
@@ -30,7 +35,17 @@ public static partial class ReactionParser
     };
 
     private const string Quoted = @"[“""](?<quote>.+)[”""]";
-    private const string Target = @"(?:" + Quoted + @"|(?<image>an image))";
+    private const string Target = @"(?:" + Quoted + @"|(?<object>an image|a sticker|a movie|a video|an audio message|an attachment))";
+
+    private static readonly Dictionary<string, string> ObjectNoun = new()
+    {
+        ["an image"] = "image",
+        ["a sticker"] = "image",
+        ["a movie"] = "video",
+        ["a video"] = "video",
+        ["an audio message"] = "voice message",
+        ["an attachment"] = "attachment"
+    };
 
     [GeneratedRegex(@"^(?<verb>Loved|Liked|Disliked|Laughed at|Emphasized|Questioned) " + Target + "$")]
     private static partial Regex TapbackRegex();
@@ -73,7 +88,21 @@ public static partial class ReactionParser
     }
 
     private static ParsedReaction Build(string emoji, Match match, bool isRemoval) =>
-        match.Groups["image"].Success
-            ? new ParsedReaction(emoji, null, TargetsImage: true, isRemoval)
-            : new ParsedReaction(emoji, match.Groups["quote"].Value, TargetsImage: false, isRemoval);
+        match.Groups["object"].Success
+            ? new ParsedReaction(emoji, null, ObjectNoun[match.Groups["object"].Value], isRemoval)
+            : new ParsedReaction(emoji, match.Groups["quote"].Value, null, isRemoval);
+
+    // A short form for places that show a message on its own (chat list, notifications), where
+    // "Loved “Sounds good”" reads like a message rather than a reaction.
+    public static string? Describe(string body)
+    {
+        if (Parse(body) is not { } reaction)
+        {
+            return null;
+        }
+        var target = reaction.TargetNoun is { } noun
+            ? (noun is "image" or "attachment" ? "an " : "a ") + noun
+            : $"“{reaction.QuotedText}”";
+        return reaction.IsRemoval ? $"Removed {reaction.Emoji} from {target}" : $"{reaction.Emoji} to {target}";
+    }
 }

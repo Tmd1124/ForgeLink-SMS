@@ -20,9 +20,12 @@ public class SmsThread
 
     public string DisplayNameOrAddress => string.IsNullOrWhiteSpace(DisplayName) ? Address : DisplayName;
 
-    public string PreviewText => LastMessageBody.Length > 60
-        ? LastMessageBody[..60] + "…"
-        : LastMessageBody;
+    /// The last message as the list shows it; a reaction reads as "❤️ to “…”" rather than "Loved “…”".
+    public string LastMessageText => Utils.ReactionParser.Describe(LastMessageBody) ?? LastMessageBody;
+
+    public string PreviewText => LastMessageText.Length > 60
+        ? LastMessageText[..60] + "…"
+        : LastMessageText;
 
     public string Initials
     {

@@ -57,6 +57,13 @@ public class AccessibleLabelsTests
     }
 
     [Fact]
+    public void A_reaction_as_the_last_message_is_read_in_its_short_form()
+    {
+        Assert.Equal("Kim. Last message: 😂 to an image. 4:12 PM",
+            AccessibleLabels.ForThread(Thread("Kim", "Laughed at an image"), Today));
+    }
+
+    [Fact]
     public void A_pinned_chat_says_so()
     {
         var thread = Thread("Kim", "Got it");

@@ -22,6 +22,22 @@ public class SmsThreadTests
     }
 
     [Fact]
+    public void PreviewText_shows_a_reaction_in_its_short_form()
+    {
+        var thread = new SmsThread
+        {
+            Id = 1,
+            Address = "5550142231",
+            DisplayName = null,
+            LastMessageBody = "Loved “Sounds good”",
+            LastMessageTimestamp = DateTimeOffset.UtcNow,
+            UnreadCount = 0
+        };
+
+        Assert.Equal("❤️ to “Sounds good”", thread.PreviewText);
+    }
+
+    [Fact]
     public void PreviewText_leaves_short_bodies_unchanged()
     {
         var thread = new SmsThread

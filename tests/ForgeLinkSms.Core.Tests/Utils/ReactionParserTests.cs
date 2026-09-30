@@ -37,6 +37,33 @@ public class ReactionParserTests
     }
 
     [Theory]
+    [InlineData("Loved a movie", "❤️", "video")]
+    [InlineData("Liked a video", "👍", "video")]
+    [InlineData("Emphasized an attachment", "‼️", "attachment")]
+    [InlineData("Laughed at a sticker", "😂", "image")]
+    [InlineData("Liked an audio message", "👍", "voice message")]
+    [InlineData("Removed a heart from a movie", "❤️", "video")]
+    public void Parse_recognizes_reactions_to_videos_files_and_stickers(string body, string emoji, string target)
+    {
+        var reaction = ReactionParser.Parse(body);
+
+        Assert.NotNull(reaction);
+        Assert.Equal(emoji, reaction.Emoji);
+        Assert.Equal(target, reaction.TargetNoun);
+    }
+
+    [Theory]
+    [InlineData("Loved “Sounds good”", "❤️ to “Sounds good”")]
+    [InlineData("Laughed at an image", "😂 to an image")]
+    [InlineData("Liked a movie", "👍 to a video")]
+    [InlineData("Removed a heart from “Sounds good”", "Removed ❤️ from “Sounds good”")]
+    [InlineData("See you at 6", null)]
+    public void Describe_shortens_a_reaction_for_the_chat_list_and_notifications(string body, string? expected)
+    {
+        Assert.Equal(expected, ReactionParser.Describe(body));
+    }
+
+    [Theory]
     [InlineData("Removed a heart from “Sounds good”", "❤️")]
     [InlineData("Removed a like from “Sounds good”", "👍")]
     [InlineData("Removed a laugh from “Sounds good”", "😂")]

@@ -27,7 +27,7 @@ public static class AccessibleLabels
         }
 
         var content = string.IsNullOrWhiteSpace(thread.DraftText)
-            ? $"Last message: {thread.LastMessageBody}"
+            ? $"Last message: {thread.LastMessageText}"
             : $"Draft: {thread.DraftText}";
         var local = thread.LastMessageTimestamp.LocalDateTime;
         var when = local.Date == todayLocal.Date ? local.ToString("h:mm tt") : local.ToString("MMM d");

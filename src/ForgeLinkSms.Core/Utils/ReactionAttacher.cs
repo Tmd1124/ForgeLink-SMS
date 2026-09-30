@@ -50,9 +50,14 @@ public static class ReactionAttacher
             {
                 continue;
             }
-            var matches = reaction.TargetsImage
-                ? candidate.Attachments.Any(a => a.Kind is AttachmentKind.Image or AttachmentKind.Gif)
-                : QuoteMatches(candidate.Body, reaction.QuotedText!);
+            var matches = reaction.TargetNoun switch
+            {
+                null => QuoteMatches(candidate.Body, reaction.QuotedText!),
+                "image" => candidate.Attachments.Any(a => a.Kind is AttachmentKind.Image or AttachmentKind.Gif),
+                "video" => candidate.Attachments.Any(a => a.Kind == AttachmentKind.Video),
+                "voice message" => candidate.Attachments.Any(a => a.Kind == AttachmentKind.Audio),
+                _ => candidate.Attachments.Count > 0
+            };
             if (matches)
             {
                 return candidate;

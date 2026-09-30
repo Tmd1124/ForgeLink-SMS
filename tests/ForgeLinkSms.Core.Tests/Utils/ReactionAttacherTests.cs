@@ -35,6 +35,55 @@ public class ReactionAttacherTests
         Assert.True(reaction.IsHiddenReaction);
     }
 
+    private static SmsMessage WithAttachment(int minute, AttachmentKind kind, bool outgoing = true) => new()
+    {
+        Id = ++_id,
+        ThreadId = 1,
+        Address = "555",
+        Body = string.Empty,
+        Timestamp = Start.AddMinutes(minute),
+        IsOutgoing = outgoing,
+        Status = SmsMessageStatus.Delivered,
+        Attachments = new[] { new MessageAttachment { FileName = "f", Kind = kind, PartId = _id } }
+    };
+
+    [Fact]
+    public void A_reaction_to_a_movie_lands_on_the_latest_video_not_a_later_photo()
+    {
+        var video = WithAttachment(1, AttachmentKind.Video);
+        var photo = WithAttachment(2, AttachmentKind.Image);
+        var reaction = Message("Loved a movie", 3);
+
+        ReactionAttacher.Apply(new List<SmsMessage> { video, photo, reaction });
+
+        Assert.Equal(new[] { "❤️" }, video.Reactions);
+        Assert.Empty(photo.Reactions);
+        Assert.True(reaction.IsHiddenReaction);
+    }
+
+    [Fact]
+    public void A_reaction_to_an_attachment_lands_on_the_latest_message_with_any_attachment()
+    {
+        var file = WithAttachment(1, AttachmentKind.File);
+        var reaction = Message("Emphasized an attachment", 2);
+
+        ReactionAttacher.Apply(new List<SmsMessage> { file, reaction });
+
+        Assert.Equal(new[] { "‼️" }, file.Reactions);
+    }
+
+    [Fact]
+    public void A_reaction_to_a_movie_with_no_video_loaded_stays_as_text()
+    {
+        var photo = WithAttachment(1, AttachmentKind.Image);
+        var reaction = Message("Loved a movie", 2);
+
+        ReactionAttacher.Apply(new List<SmsMessage> { photo, reaction });
+
+        Assert.Empty(photo.Reactions);
+        Assert.False(reaction.IsHiddenReaction);
+    }
+
     [Fact]
     public void A_shortened_quote_matches_the_start_of_a_long_message()
     {
