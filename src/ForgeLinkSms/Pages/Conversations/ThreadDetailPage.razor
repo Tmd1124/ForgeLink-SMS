@@ -585,7 +585,11 @@
     // Fetching a preview visits the link, which would tell a stranger's link your number is
     // active, so previews only load for your own messages, contacts, and group chats.
     private bool AllowLinkPreviews(ForgeLinkSms.Core.Models.SmsMessage message) =>
-        message.IsOutgoing || _isKnownContact || ViewModel!.IsGroup;
+        ShowLinkPreviews && (message.IsOutgoing || _isKnownContact || ViewModel!.IsGroup);
+
+    private bool? _showLinkPreviews;
+    private bool ShowLinkPreviews => _showLinkPreviews ??=
+        Services.GetRequiredService<ForgeLinkSms.Core.Services.IDisplayStyleService>().GetDisplaySettings().ShowLinkPreviews;
 
     private static string? FirstLink(string body) =>
         string.IsNullOrEmpty(body) ? null : MessageLinkParser.Parse(body).FirstOrDefault(s => s.Kind == MessageLinkKind.Url)?.Data as string;

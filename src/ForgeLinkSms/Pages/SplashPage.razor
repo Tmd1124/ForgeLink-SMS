@@ -5,6 +5,7 @@
 @inject ForgeLinkSms.Core.Services.IBootDetectionService BootDetection
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
 @inject Microsoft.JSInterop.IJSRuntime JS
+@inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
 
 @if (_showSplash)
 {
@@ -86,6 +87,7 @@
     protected override async Task OnInitializedAsync()
     {
         await JS.InvokeVoidAsync("applyTheme", ThemeService.GetThemeMode().ToString(), ThemeService.GetAccentColor());
+        await JS.InvokeVoidAsync("applyTextScale", ForgeLinkSms.Core.Utils.DisplayRules.TextScaleOrDefault(DisplayStyles.GetDisplaySettings().TextScale));
 
         var pendingRoute = PendingNav.ConsumePendingRoute();
         if (!string.IsNullOrEmpty(pendingRoute))

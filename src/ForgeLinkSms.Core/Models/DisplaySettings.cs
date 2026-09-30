@@ -28,5 +28,11 @@ public class DisplaySettings
     /// Overrides ColorBy for unread conversations; null means unread rows get no color.
     public string? UnreadColor { get; set; } = Gray;
 
+    // Building a preview fetches the linked page — the app's only use of the internet.
+    public bool ShowLinkPreviews { get; set; } = true;
+
+    /// Percent of the normal text size; one of DisplayRules.TextScales.
+    public int TextScale { get; set; } = 100;
+
     public DisplaySettings Clone() => (DisplaySettings)MemberwiseClone();
 }

@@ -135,7 +135,7 @@
     {
         @if (ViewModel.Lane == ConversationLane.Screener)
         {
-            <div style="color:#94a3b8;font-size:0.85em;margin:0 4px 8px;">Texts from numbers that aren't in your contacts and that you've never replied to — often spam, wrong numbers or someone new. They arrive without a notification (except verification codes). Tap Allow to move a sender to Chats, or Block to stop them.</div>
+            <div style="color:#94a3b8;font-size:0.85em;margin:0 4px 8px;">Texts from numbers that aren't in your contacts and that you've never replied to — often spam, wrong numbers or someone new. They arrive without a notification (except verification codes). Tap Allow to move a sender to Chats, Block to stop them, or Report to send the spam to your carrier (7726) and block it.</div>
         }
         else if (ViewModel.Lane == ConversationLane.Updates)
         {
@@ -201,7 +201,7 @@
                  @onpointerup="e => OnPointerUp(thread.Id, thread.Address, e)"
                  @onpointermove="OnPointerMove"
                  @onpointerleave="CancelLongPress"
-                 style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin:0 0 8px;border-radius:18px 18px 18px 4px;touch-action:pan-y;user-select:none;-webkit-user-select:none;background:@RowBackground(thread);">
+                 style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;margin:0 0 8px;border-radius:18px 18px 18px 4px;touch-action:pan-y;user-select:none;-webkit-user-select:none;background:@RowBackground(thread);">
                 @if (_selectedThreadIds.Count > 0)
                 {
                     <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.3em;background:@(_selectedThreadIds.Contains(thread.Id) ? "var(--accent-color)" : "transparent");border:2px solid var(--accent-color);color:white;">
@@ -261,13 +261,16 @@
                 </div>
                 @if (_selectedThreadIds.Count == 0 && ViewModel.Lane != ConversationLane.Conversations && string.IsNullOrWhiteSpace(ViewModel.SearchText))
                 {
-                    <div style="display:flex;gap:6px;flex-shrink:0;">
+                    <div style="display:flex;gap:6px;flex-basis:100%;justify-content:flex-end;">
                         <button @onclick="() => AllowSender(thread.Address)" @onclick:stopPropagation="true"
                                 @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
                                 style="border:none;border-radius:8px;padding:6px 10px;background:var(--accent-color);color:white;font-weight:600;">Allow</button>
                         <button @onclick="() => BlockSender(thread.Address)" @onclick:stopPropagation="true"
                                 @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
                                 style="border:none;border-radius:8px;padding:6px 10px;background:#e2e8f0;color:#b91c1c;font-weight:600;">Block</button>
+                        <button @onclick="() => _reportThread = thread" @onclick:stopPropagation="true"
+                                @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
+                                style="border:none;border-radius:8px;padding:6px 10px;background:#fee2e2;color:#b91c1c;font-weight:600;">Report</button>
                     </div>
                 }
                 else if (_selectedThreadIds.Count == 0 && !thread.IsGroup && PhoneNumberFormatter.IsValidPhoneNumber(thread.Address))
@@ -341,6 +344,21 @@
             }
             <div @onclick="TrashSelectedThread" style="padding:12px;">🗑 Trash</div>
             <div @onclick="BlockSelectedThread" style="padding:12px;">🚫 Block</div>
+            <div @onclick="OpenReportSheet" style="padding:12px;color:#b91c1c;">🚩 Report spam</div>
+        </div>
+    </div>
+}
+
+@if (_reportThread is { } reportThread)
+{
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="() => _reportThread = null">
+        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" @onclick:stopPropagation="true">
+            <div style="font-weight:600;font-size:1.1em;">Report @reportThread.DisplayNameOrAddress as spam?</div>
+            <div style="color:#94a3b8;margin:8px 0 16px;">ForgeLink forwards the message to 7726 (SPAM), the free spam-reporting number used by all major US carriers, then blocks the sender and moves the chat to Trash.</div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button @onclick="() => _reportThread = null" style="border:none;border-radius:10px;padding:10px 16px;background:#e2e8f0;color:#1e293b;font-weight:600;">Cancel</button>
+                <button @onclick="ConfirmReport" disabled="@_reporting" style="border:none;border-radius:10px;padding:10px 16px;background:#b91c1c;color:white;font-weight:600;">@(_reporting ? "Reporting…" : "Report")</button>
+            </div>
         </div>
     </div>
 }
@@ -405,6 +423,8 @@
     private bool _actionSheetIsUnread;
     private bool _actionSheetIsMuted;
     private long? _muteThreadId;
+    private SmsThread? _reportThread;
+    private bool _reporting;
     private CancellationTokenSource? _longPressCts;
     private bool _longPressTriggered;
     private long? _activePointerDownThreadId;
@@ -507,6 +527,13 @@
     // multi-select itself instead of falling through to exiting the app.
     private bool TryCloseOverlayForBack()
     {
+        if (_reportThread is not null)
+        {
+            _reportThread = null;
+            StateHasChanged();
+            return true;
+        }
+
         if (_snoozeThreadId is not null)
         {
             CloseSnoozeSheet();
@@ -930,6 +957,31 @@
     {
         await ViewModel.AllowSenderCommand.ExecuteAsync(address);
         ShowUndoToast("Allowed");
+    }
+
+    private void OpenReportSheet()
+    {
+        _reportThread = ViewModel.Threads.FirstOrDefault(t => t.Id == _actionSheetThreadId);
+        CloseActionSheet();
+        ClearSelection();
+    }
+
+    private async Task ConfirmReport()
+    {
+        if (_reportThread is not { } thread || _reporting)
+        {
+            return;
+        }
+        _reporting = true;
+        try
+        {
+            await ViewModel.ReportSpamCommand.ExecuteAsync(thread);
+        }
+        finally
+        {
+            _reporting = false;
+            _reportThread = null;
+        }
     }
 
     private async Task BlockSender(string address)

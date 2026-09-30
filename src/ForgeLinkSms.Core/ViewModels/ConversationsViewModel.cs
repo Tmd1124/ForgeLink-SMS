@@ -427,6 +427,26 @@ public partial class ConversationsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ReportSpam(SmsThread thread)
+    {
+        var messages = await _smsService.GetMessagesAsync(thread.Id, beforeTimestamp: null, pageSize: 20) ?? Array.Empty<SmsMessage>();
+        var latest = messages.Where(m => !m.IsOutgoing).OrderByDescending(m => m.Timestamp).FirstOrDefault();
+        foreach (var text in SpamReport.MessagesFor(latest?.Body, thread.Address))
+        {
+            await _smsService.SendAsync(SpamReport.Number, text);
+        }
+        await BlockThread(thread.Address);
+        await TrashThreads(new[] { thread.Id });
+
+        // Sending to 7726 starts a conversation of its own; it's noise, so it goes to Trash too.
+        var reportThreads = (await _threadService.GetThreadsAsync()).Where(t => SpamReport.IsReportThread(t.Address)).Select(t => t.Id).ToList();
+        if (reportThreads.Count > 0)
+        {
+            await TrashThreads(reportThreads);
+        }
+    }
+
+    [RelayCommand]
     private async Task BlockThread(string address)
     {
         var normalizedAddress = PhoneNumberFormatter.ToComparableDigits(address);

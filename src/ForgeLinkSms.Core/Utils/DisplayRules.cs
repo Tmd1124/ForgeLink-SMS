@@ -6,6 +6,10 @@ public static class DisplayRules
 {
     private const int RecentCount = 8;
 
+    public static readonly IReadOnlyList<int> TextScales = new[] { 90, 100, 115, 130 };
+
+    public static int TextScaleOrDefault(int stored) => TextScales.Contains(stored) ? stored : 100;
+
     // Unnamed numbers never get a bubble: an initials-less "+1813…" bubble is just noise.
     public static IReadOnlyList<SmsThread> BubbleMembers(IEnumerable<SmsThread> chats, DisplaySettings settings)
     {

@@ -86,6 +86,36 @@ public class ConversationsViewModelTests
             (muteRepository ?? MakeEmptyMuteRepository()).Object,
             (smsService ?? new Mock<ISmsService>()).Object);
 
+    [Fact]
+    public async Task ReportSpam_forwards_to_7726_then_blocks_and_trashes_the_sender_and_the_report_chat()
+    {
+        var spammer = MakeThread(5, "+1 404-555-0199", null, "You WON", hasOutgoing: false);
+        var reportChat = MakeThread(9, "7726", null, "Thanks. Reply with the number");
+        var threadService = new Mock<IThreadService>();
+        threadService.SetupSequence(s => s.GetThreadsAsync())
+            .ReturnsAsync(new List<SmsThread> { spammer })
+            .ReturnsAsync(new List<SmsThread> { spammer, reportChat });
+        var sms = new Mock<ISmsService>();
+        sms.Setup(s => s.GetMessagesAsync(5, null, It.IsAny<int>())).ReturnsAsync(new List<SmsMessage>
+        {
+            new() { Id = 1, ThreadId = 5, Address = spammer.Address, Body = "Old promo", IsOutgoing = false, Status = SmsMessageStatus.Delivered, Timestamp = DateTimeOffset.UtcNow.AddHours(-2) },
+            new() { Id = 2, ThreadId = 5, Address = spammer.Address, Body = "You WON a gift card", IsOutgoing = false, Status = SmsMessageStatus.Delivered, Timestamp = DateTimeOffset.UtcNow }
+        });
+        var sent = new List<(string To, string Body)>();
+        sms.Setup(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>())).Callback<string, string>((to, body) => sent.Add((to, body))).Returns(Task.CompletedTask);
+        var block = MakeEmptyBlockService();
+        var trash = MakeEmptyTrashRepository();
+        var viewModel = MakeViewModel(threadService, trashRepository: trash, blockService: block, smsService: sms);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.ReportSpamCommand.ExecuteAsync(spammer);
+
+        Assert.Equal(new[] { ("7726", "You WON a gift card"), ("7726", "+1 404-555-0199") }, sent);
+        block.Verify(b => b.BlockAsync("4045550199"), Times.Once);
+        trash.Verify(t => t.TrashThreadAsync(5), Times.Once);
+        trash.Verify(t => t.TrashThreadAsync(9), Times.Once);
+    }
+
     private static Mock<IMuteRepository> MakeEmptyMuteRepository()
     {
         var repository = new Mock<IMuteRepository>();

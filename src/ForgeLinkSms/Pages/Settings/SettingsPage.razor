@@ -2,6 +2,7 @@
 @inject ForgeLinkSms.Core.ViewModels.SettingsViewModel ViewModel
 @inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
 @inject ForgeLinkSms.Core.Services.INotificationSettingsStore NotificationStore
+@inject Microsoft.JSInterop.IJSRuntime JS
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Core.Utils
 
@@ -132,6 +133,22 @@
             </div>
         }
     </div>
+
+    <h4 style="margin:24px 0 4px;">Text size</h4>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+        @foreach (var (scale, label) in TextSizes)
+        {
+            var selected = DisplayRules.TextScaleOrDefault(_settings.TextScale) == scale;
+            <button @onclick="() => SetTextScale(scale)"
+                    style="border:2px solid @(selected ? "var(--accent-color)" : "transparent");border-radius:12px;padding:10px 14px;background:var(--card-color);color:var(--text-color);font-size:@(scale / 100.0)em;font-weight:600;">@label</button>
+        }
+    </div>
+
+    <h4 style="margin:24px 0 4px;">Privacy</h4>
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
+        <input type="checkbox" checked="@_settings.ShowLinkPreviews" @onchange="e => Update(s => s.ShowLinkPreviews = e.Value is true)" style="width:20px;height:20px;" />
+        <span>Show link previews<br /><span style="@HintStyle">To build a preview, ForgeLink opens the linked page — the only time the app uses the internet. Turn off and links stay plain.</span></span>
+    </label>
 </div>
 
 @code {
@@ -164,6 +181,11 @@
         (NotifyGroup.OtherChats, "💬", "Other chats", "Everyone else in Chats"),
         (NotifyGroup.Updates, "📦", "Updates", "Banks, deliveries, stores, alerts"),
         (NotifyGroup.Screener, "🛡️", "Screener", "Numbers you haven't talked with")
+    };
+
+    private static readonly (int Scale, string Label)[] TextSizes =
+    {
+        (90, "Small"), (100, "Default"), (115, "Large"), (130, "Extra large")
     };
 
     private DisplaySettings _settings = new();
@@ -219,6 +241,12 @@
         change(updated);
         _settings = updated;
         DisplayStyles.SaveDisplaySettings(updated);
+    }
+
+    private async Task SetTextScale(int scale)
+    {
+        Update(s => s.TextScale = scale);
+        await JS.InvokeVoidAsync("applyTextScale", scale);
     }
 
     private void ChooseLayout(ConversationDisplayStyle layout) => Apply(s => DisplayRules.WithLayout(s, layout));
