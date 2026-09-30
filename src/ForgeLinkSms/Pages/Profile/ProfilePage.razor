@@ -8,7 +8,7 @@
 
     @if (!string.IsNullOrEmpty(_photoDataUri))
     {
-        <img src="@_photoDataUri"
+        <img src="@_photoDataUri" alt="Profile photo"
              @onclick="PickPhoto"
              style="width:80px;height:80px;border-radius:50%;object-fit:cover;" />
     }

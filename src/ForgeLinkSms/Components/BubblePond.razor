@@ -14,7 +14,7 @@
              @onpointerdown="() => StartPress(thread)"
              @onpointerup="() => EndPress(thread)"
              @onpointerleave="CancelPress"
-             @onpointercancel="CancelPress">
+             @onpointercancel="CancelPress" role="button" tabindex="0" aria-label="@ForgeLinkSms.Core.Utils.AccessibleLabels.ForBubble(thread)">
             @if (!string.IsNullOrEmpty(thread.PhotoUri))
             {
                 <img src="@thread.PhotoUri" alt="" draggable="false" />
@@ -27,7 +27,7 @@
             {
                 <span class="count">@thread.UnreadCount</span>
             }
-            <span class="name">@FirstName(thread)</span>
+            <span class="name" aria-hidden="true">@FirstName(thread)</span>
         </div>
     }
 </div>
@@ -37,10 +37,10 @@
     {
         var color = PondSelector.ColorFor(thread.Address);
         <div @key="thread.Id" class="mini-bubble @(thread.UnreadCount > 0 ? "unread" : "")" style="--rim:@color"
-             @onclick="() => OnOpen.InvokeAsync(thread)">
+             @onclick="() => OnOpen.InvokeAsync(thread)" role="button" tabindex="0" aria-label="@ForgeLinkSms.Core.Utils.AccessibleLabels.ForBubble(thread)">
             @if (!string.IsNullOrEmpty(thread.PhotoUri))
             {
-                <img src="@thread.PhotoUri" alt="@thread.DisplayNameOrAddress" draggable="false" />
+                <img src="@thread.PhotoUri" alt="" draggable="false" />
             }
             else
             {

@@ -14,7 +14,7 @@
                 {
                     <span>@_selectedThreadIds.Count selected</span>
                 }
-                <span @onclick="ToggleSelectAll" style="color:var(--accent-color);cursor:pointer;font-weight:600;">
+                <span @onclick="ToggleSelectAll" style="color:var(--accent-color);cursor:pointer;font-weight:600;" role="button" tabindex="0">
                     @(AllSelected() ? "Deselect all" : "Select all")
                 </span>
             </div>
@@ -42,7 +42,7 @@
         {
             <div style="padding:10px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px;">
                 <div @onclick="() => ToggleSelection(thread.Id)"
-                     style="width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.9em;background:@(_selectedThreadIds.Contains(thread.Id) ? "var(--accent-color)" : "transparent");border:2px solid var(--accent-color);color:white;cursor:pointer;">
+                     style="width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.9em;background:@(_selectedThreadIds.Contains(thread.Id) ? "var(--accent-color)" : "transparent");border:2px solid var(--accent-color);color:white;cursor:pointer;" role="button" tabindex="0">
                     @(_selectedThreadIds.Contains(thread.Id) ? "✓" : "")
                 </div>
                 <div style="flex:1;min-width:0;">

@@ -14,7 +14,7 @@
         @foreach (var (reminder, name) in ViewModel.Reminders)
         {
             <div style="padding:10px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px;">
-                <div @onclick="() => Open(reminder)" style="flex:1;min-width:0;cursor:pointer;">
+                <div @onclick="() => Open(reminder)" style="flex:1;min-width:0;cursor:pointer;" role="button" tabindex="0">
                     <strong>@name</strong>
                     <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@reminder.Preview</div>
                     <div style="color:#06b6d4;font-size:0.8em;">🔔 @FormatWhen(reminder.RemindAtUtc)</div>

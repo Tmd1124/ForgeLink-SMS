@@ -57,7 +57,7 @@
                 <input @ref="_searchInput" placeholder="Search this conversation" value="@_searchQuery" @oninput="OnSearchInput"
                        style="flex:1;min-width:0;padding:8px 10px;border-radius:8px;border:1px solid #cbd5e1;background:var(--surface-color);color:var(--text-color);font-size:1em;" />
                 <button @onclick="CloseSearch" title="Close search"
-                        style="border:none;background:transparent;color:var(--text-color);font-size:1.2em;padding:4px 6px;">✕</button>
+                        style="border:none;background:transparent;color:var(--text-color);font-size:1.2em;padding:4px 6px;" aria-label="Close search">✕</button>
             </div>
             @if (_searchQuery.Trim().Length >= 2)
             {
@@ -70,7 +70,7 @@
                     {
                         var (before, match, after) = Snippet(result.Body, _searchQuery.Trim());
                         <div @key="@($"result-{result.Id}-{result.Timestamp.Ticks}")" @onclick="() => JumpToResult(result)"
-                             style="padding:10px 12px;border-bottom:1px solid rgba(127,127,127,0.2);cursor:pointer;">
+                             style="padding:10px 12px;border-bottom:1px solid rgba(127,127,127,0.2);cursor:pointer;" role="button" tabindex="0">
                             <div style="font-size:0.75em;color:#94a3b8;">@(result.IsOutgoing ? "You" : ViewModel.IsGroup ? SenderName(result.Address) : DisplayName) · @FormatResultDate(result.Timestamp)</div>
                             <div>@before<mark style="background:#facc15;color:#111;border-radius:3px;padding:0 1px;">@match</mark>@after</div>
                         </div>
@@ -81,11 +81,11 @@
         else
         {
             <div style="display:flex;align-items:center;background:var(--card-color);border-bottom:1px solid #eee;">
-                <div @onclick="OpenContact" style="flex:1;min-width:0;padding:10px;cursor:pointer;">@DisplayName</div>
+                <div @onclick="OpenContact" style="flex:1;min-width:0;padding:10px;cursor:pointer;" role="button" tabindex="0">@DisplayName</div>
                 <button @onclick="OpenMedia" title="Photos &amp; links"
-                        style="border:none;background:transparent;font-size:1.1em;padding:8px 6px;">🖼️</button>
+                        style="border:none;background:transparent;font-size:1.1em;padding:8px 6px;" aria-label="Photos &amp; links">🖼️</button>
                 <button @onclick="OpenSearch" title="Search this conversation"
-                        style="border:none;background:transparent;font-size:1.1em;padding:8px 12px;">🔍</button>
+                        style="border:none;background:transparent;font-size:1.1em;padding:8px 12px;" aria-label="Search this conversation">🔍</button>
             </div>
         }
         @if (ViewModel.LoadFailed)
@@ -128,9 +128,10 @@
                         var isImageOnlyMessage = string.IsNullOrEmpty(message.Body) && message.Attachments.Count > 0
                             && message.Attachments.All(a => a.DataUri is not null);
                     }
+                    <span class="sr-only">@MessageLabel(message)</span>
                     @if (ViewModel.IsGroup && !message.IsOutgoing)
                     {
-                        <div style="font-size:0.75em;color:#94a3b8;margin:0 0 2px 10px;">@SenderName(message.Address)</div>
+                        <div aria-hidden="true" style="font-size:0.75em;color:#94a3b8;margin:0 0 2px 10px;">@SenderName(message.Address)</div>
                     }
                     <div style="display:flex;width:100%;align-items:center;gap:8px;flex-direction:@(message.IsOutgoing ? "row-reverse" : "row");">
                     <div @onpointerdown="() => OnMessagePointerDown(message)"
@@ -142,16 +143,16 @@
                             switch (segment.Kind)
                             {
                                 case MessageLinkKind.Url:
-                                    <span style="text-decoration:underline;cursor:pointer;" @onclick="() => OpenUrl(segment)">@segment.Text</span>
+                                    <span style="text-decoration:underline;cursor:pointer;" @onclick="() => OpenUrl(segment)" role="button" tabindex="0">@segment.Text</span>
                                     break;
                                 case MessageLinkKind.PhoneNumber:
-                                    <span style="text-decoration:underline;cursor:pointer;" @onclick="() => CallNumber(segment)">@segment.Text</span>
+                                    <span style="text-decoration:underline;cursor:pointer;" @onclick="() => CallNumber(segment)" role="button" tabindex="0">@segment.Text</span>
                                     break;
                                 case MessageLinkKind.Address:
-                                    <span style="text-decoration:underline;cursor:pointer;" @onclick="() => OpenMap(segment)">@segment.Text</span>
+                                    <span style="text-decoration:underline;cursor:pointer;" @onclick="() => OpenMap(segment)" role="button" tabindex="0">@segment.Text</span>
                                     break;
                                 case MessageLinkKind.Appointment:
-                                    <span style="text-decoration:underline;cursor:pointer;" @onclick="() => OpenCalendarEvent(segment, message.Body)">@segment.Text</span>
+                                    <span style="text-decoration:underline;cursor:pointer;" @onclick="() => OpenCalendarEvent(segment, message.Body)" role="button" tabindex="0">@segment.Text</span>
                                     break;
                                 default:
                                     @segment.Text
@@ -172,7 +173,7 @@
                                     <button @onclick="() => SaveAttachment(attachment)" @onclick:stopPropagation="true"
                                             @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
                                             title="Save"
-                                            style="position:absolute;right:8px;bottom:8px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.55);color:white;font-size:1em;display:flex;align-items:center;justify-content:center;">
+                                            style="position:absolute;right:8px;bottom:8px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.55);color:white;font-size:1em;display:flex;align-items:center;justify-content:center;" aria-label="Save">
                                         ⬇
                                     </button>
                                 </div>
@@ -190,7 +191,7 @@
                                     <button @onclick="() => SaveAttachment(attachment)" @onclick:stopPropagation="true"
                                             @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
                                             title="Save"
-                                            style="border:none;background:transparent;color:inherit;font-size:1.1em;padding:0 2px;">
+                                            style="border:none;background:transparent;color:inherit;font-size:1.1em;padding:0 2px;" aria-label="Save">
                                         ⬇
                                     </button>
                                 </div>
@@ -208,7 +209,7 @@
                                     <button @onclick="() => SaveAttachment(attachment)" @onclick:stopPropagation="true"
                                             @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
                                             title="Save"
-                                            style="border:none;background:transparent;color:inherit;font-size:1.1em;padding:0 2px;">
+                                            style="border:none;background:transparent;color:inherit;font-size:1.1em;padding:0 2px;" aria-label="Save">
                                         ⬇
                                     </button>
                                 </div>
@@ -220,14 +221,14 @@
                         @* z-index lifts these above the reaction sheet's full-screen backdrop so they stay tappable while the sheet is open. *@
                         <div style="position:relative;z-index:1;display:flex;gap:8px;flex-shrink:0;flex-direction:@(message.IsOutgoing ? "row-reverse" : "row");">
                             <button @onclick="CopyMessageText" title="Copy"
-                                    style="width:40px;height:40px;border-radius:50%;border:none;background:var(--card-color);color:var(--text-color);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+                                    style="width:40px;height:40px;border-radius:50%;border:none;background:var(--card-color);color:var(--text-color);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);" aria-label="Copy">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="9" y="9" width="13" height="13" rx="2" />
                                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                                 </svg>
                             </button>
                             <button @onclick="ReplyToMessage" title="Reply"
-                                    style="width:40px;height:40px;border-radius:50%;border:none;background:var(--card-color);color:var(--text-color);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+                                    style="width:40px;height:40px;border-radius:50%;border:none;background:var(--card-color);color:var(--text-color);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);" aria-label="Reply">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="9 14 4 9 9 4" />
                                     <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
@@ -239,12 +240,12 @@
                     @if (message.Reactions.Count > 0)
                     {
                         <div style="margin:-6px 8px 0;position:relative;z-index:1;">
-                            <span title="Reactions" style="display:inline-block;background:var(--card-color);border:1px solid rgba(127,127,127,0.35);border-radius:999px;padding:0 8px;font-size:0.85em;line-height:1.6;">
+                            <span title="Reactions" aria-hidden="true" style="display:inline-block;background:var(--card-color);border:1px solid rgba(127,127,127,0.35);border-radius:999px;padding:0 8px;font-size:0.85em;line-height:1.6;">
                                 @ReactionSummary(message)
                             </span>
                         </div>
                     }
-                    <div style="font-size:0.75em;color:#94a3b8;margin-top:2px;">
+                    <div aria-hidden="true" style="font-size:0.75em;color:#94a3b8;margin-top:2px;">
                         @message.Timestamp.LocalDateTime.ToString("h:mm tt")
                         @if (message.Attachments.Any(a => _savedAttachmentPartIds.Contains(a.PartId)))
                         {
@@ -294,14 +295,14 @@
                     <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@replyingTo.Body</div>
                 </div>
                 <button @onclick="() => ViewModel!.ReplyingTo = null" title="Cancel reply"
-                        style="border:none;background:transparent;color:#94a3b8;font-size:1.1em;padding:4px;flex-shrink:0;">✕</button>
+                        style="border:none;background:transparent;color:#94a3b8;font-size:1.1em;padding:4px;flex-shrink:0;" aria-label="Cancel reply">✕</button>
             </div>
         }
         @if (_isRecording)
         {
             <div style="display:flex;align-items:center;gap:10px;padding:8px;">
                 <button @onclick="CancelRecording" title="Discard recording"
-                        style="width:40px;height:40px;border-radius:50%;border:none;background:var(--card-color);color:var(--text-color);font-size:1.1em;flex-shrink:0;">
+                        style="width:40px;height:40px;border-radius:50%;border:none;background:var(--card-color);color:var(--text-color);font-size:1.1em;flex-shrink:0;" aria-label="Discard recording">
                     ✕
                 </button>
                 <div style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:16px;background:var(--card-color);">
@@ -310,7 +311,7 @@
                     <span style="margin-left:auto;font-variant-numeric:tabular-nums;">@VoiceNote.FormatDuration(DateTime.UtcNow - _recordingStartedUtc) / @VoiceNote.FormatDuration(VoiceNote.MaxDuration)</span>
                 </div>
                 <button @onclick="SendRecording" title="Send voice message"
-                        style="width:40px;height:40px;border-radius:50%;border:none;background:#22c55e;color:white;font-size:1.2em;flex-shrink:0;">
+                        style="width:40px;height:40px;border-radius:50%;border:none;background:#22c55e;color:white;font-size:1.2em;flex-shrink:0;" aria-label="Send voice message">
                     ➤
                 </button>
             </div>
@@ -318,7 +319,7 @@
         else
         {
         <div style="display:flex;align-items:flex-end;padding:8px;">
-            <button @onclick="() => _drawer?.Open()"
+            <button @onclick="() => _drawer?.Open()" aria-label="Attach"
                     style="width:40px;height:40px;border-radius:50%;border:none;background:var(--card-color);color:var(--text-color);font-size:1.4em;margin-right:8px;flex-shrink:0;">
                 +
             </button>
@@ -328,7 +329,7 @@
             </div>
             @if (!string.IsNullOrWhiteSpace(ViewModel.ComposeText) || _pendingAttachment is not null)
             {
-                <button @onclick="SendOrSchedule"
+                <button @onclick="SendOrSchedule" aria-label="Send"
                         style="width:40px;height:40px;border-radius:50%;border:none;background:#22c55e;color:white;font-size:1.2em;margin-left:8px;flex-shrink:0;">
                     ➤
                 </button>
@@ -336,7 +337,7 @@
             else
             {
                 <button @onclick="StartRecording" title="Record a voice message"
-                        style="width:40px;height:40px;border-radius:50%;border:none;background:var(--card-color);color:var(--text-color);font-size:1.2em;margin-left:8px;flex-shrink:0;">
+                        style="width:40px;height:40px;border-radius:50%;border:none;background:var(--card-color);color:var(--text-color);font-size:1.2em;margin-left:8px;flex-shrink:0;" aria-label="Record a voice message">
                     🎤
                 </button>
             }
@@ -350,7 +351,7 @@
 @if (_reactionTargetMessage is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;" @onclick="CloseReactionBar">
-        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
             @if (_choosingReminder)
             {
                 <div style="padding:4px 4px 10px;font-weight:600;">Remind me about this message</div>
@@ -404,7 +405,7 @@
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:25;display:flex;align-items:center;justify-content:center;" @onclick="CloseImageViewer">
         <img src="@_viewerAttachment.DataUri" alt="@_viewerAttachment.FileName" style="max-width:100%;max-height:100%;object-fit:contain;" @onclick:stopPropagation="true" />
         <button @onclick="CloseImageViewer" title="Close"
-                style="position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:white;font-size:1.3em;">
+                style="position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:white;font-size:1.3em;" aria-label="Close">
             ✕
         </button>
     </div>
@@ -420,7 +421,7 @@
 
 @if (_showSaveToast)
 {
-    <div style="position:fixed;left:16px;right:16px;bottom:24px;z-index:21;background:#1e293b;color:white;border-radius:8px;padding:12px 16px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+    <div style="position:fixed;left:16px;right:16px;bottom:24px;z-index:21;background:#1e293b role="alert";color:white;border-radius:8px;padding:12px 16px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
         @_saveToastMessage
     </div>
 }
@@ -694,6 +695,10 @@
     // "❤️👍" or "❤️2" when the same reaction came more than once (e.g. in a group).
     private static string ReactionSummary(ForgeLinkSms.Core.Models.SmsMessage message) =>
         string.Concat(message.Reactions.GroupBy(r => r).Select(g => g.Count() > 1 ? $"{g.Key}{g.Count()}" : g.Key));
+
+    private string MessageLabel(ForgeLinkSms.Core.Models.SmsMessage message) =>
+        AccessibleLabels.MessageLeadIn(message, ViewModel!.IsGroup ? SenderName(message.Address) : DisplayName,
+            _reminders.TryGetValue(ForwardedMessage.KeyFor(message), out var remindAt) ? ForgeLinkSms.Pages.Reminders.RemindersPage.FormatWhen(remindAt) : null);
 
     private static string MessageDomId(ForgeLinkSms.Core.Models.SmsMessage message) => $"msg-{message.Id}-{message.Timestamp.Ticks}";
 

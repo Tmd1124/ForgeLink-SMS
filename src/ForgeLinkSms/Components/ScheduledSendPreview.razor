@@ -5,7 +5,7 @@
         <div style="flex:1;min-width:0;">
             <div style="font-size:0.85em;">@(schedule.Repeat == ForgeLinkSms.Core.Models.ScheduleRepeat.None ? "Will send" : ForgeLinkSms.Core.Utils.ScheduleRepeatRules.Label(schedule.Repeat) + " · first") @schedule.SendAtUtc.LocalDateTime.ToString("MMM d, h:mm tt")</div>
         </div>
-        <span style="cursor:pointer;color:#94a3b8;font-size:1.1em;" @onclick="Remove">✕</span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;cursor:pointer;color:#94a3b8;font-size:1.1em;" @onclick="Remove" role="button" tabindex="0" aria-label="Don't schedule">✕</span>
     </div>
 }
 

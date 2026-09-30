@@ -6,7 +6,7 @@
     <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--card-color);border-top:1px solid #eee;">
         @if (_dataUri is not null)
         {
-            <img src="@_dataUri" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;" />
+            <img src="@_dataUri" alt="Attached photo" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;" />
         }
         else
         {
@@ -22,7 +22,7 @@
         <div style="flex:1;min-width:0;">
             <div style="font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@Attachment.FileName</div>
         </div>
-        <span style="cursor:pointer;color:#94a3b8;font-size:1.1em;" @onclick="Remove">✕</span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;cursor:pointer;color:#94a3b8;font-size:1.1em;" @onclick="Remove" role="button" tabindex="0" aria-label="Remove attachment">✕</span>
     </div>
 }
 

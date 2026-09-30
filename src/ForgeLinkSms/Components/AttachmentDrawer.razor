@@ -135,35 +135,35 @@
 @if (_isOpen)
 {
     <div class="drawer-overlay" @onclick="Close">
-        <div class="drawer-sheet" @onclick:stopPropagation="true">
+        <div class="drawer-sheet" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
             @if (_mode == DrawerMode.Grid)
             {
                 <div class="drawer-grid">
-                    <div class="drawer-item" @onclick="PickGallery">
+                    <div class="drawer-item" @onclick="PickGallery" role="button" tabindex="0">
                         <span class="icon">🖼️</span>
                         <span>Gallery</span>
                     </div>
-                    <div class="drawer-item" @onclick="PickGif">
+                    <div class="drawer-item" @onclick="PickGif" role="button" tabindex="0">
                         <span class="icon">🎬</span>
                         <span>GIFs</span>
                     </div>
-                    <div class="drawer-item" @onclick="PickFile">
+                    <div class="drawer-item" @onclick="PickFile" role="button" tabindex="0">
                         <span class="icon">📁</span>
                         <span>Files</span>
                     </div>
-                    <div class="drawer-item" @onclick="ShareLocation">
+                    <div class="drawer-item" @onclick="ShareLocation" role="button" tabindex="0">
                         <span class="icon">📍</span>
                         <span>Location</span>
                     </div>
-                    <div class="drawer-item" @onclick="OpenContactPicker">
+                    <div class="drawer-item" @onclick="OpenContactPicker" role="button" tabindex="0">
                         <span class="icon">👤</span>
                         <span>Contact</span>
                     </div>
-                    <div class="drawer-item" @onclick="OpenSchedulePicker">
+                    <div class="drawer-item" @onclick="OpenSchedulePicker" role="button" tabindex="0">
                         <span class="icon">⏰</span>
                         <span>Schedule</span>
                     </div>
-                    <div class="drawer-item" @onclick="OpenQuickReplies">
+                    <div class="drawer-item" @onclick="OpenQuickReplies" role="button" tabindex="0">
                         <span class="icon">💬</span>
                         <span>Quick replies</span>
                     </div>
@@ -171,7 +171,7 @@
             }
             else if (_mode == DrawerMode.QuickReplies)
             {
-                <div class="drawer-back" @onclick="() => _mode = DrawerMode.Grid">‹ Back</div>
+                <div class="drawer-back" @onclick="() => _mode = DrawerMode.Grid" role="button" tabindex="0">‹ Back</div>
                 @if (QuickReplies.Replies.Count == 0)
                 {
                     <p style="color:#94a3b8;margin:0;">No quick replies yet. Add one below.</p>
@@ -182,25 +182,25 @@
                         @if (_editingReplyId == reply.Id)
                         {
                             <input @bind="_editingReplyText" @bind:event="oninput" />
-                            <button @onclick="SaveEditedReply" title="Save">✓</button>
-                            <button @onclick="() => _editingReplyId = null" title="Cancel">✕</button>
+                            <button @onclick="SaveEditedReply" title="Save" aria-label="Save">✓</button>
+                            <button @onclick="() => _editingReplyId = null" title="Cancel" aria-label="Cancel">✕</button>
                         }
                         else
                         {
-                            <div class="text" @onclick="() => InsertQuickReply(reply.Text)">@reply.Text</div>
-                            <button @onclick="() => StartEditingReply(reply)" title="Edit">✏️</button>
-                            <button @onclick="() => QuickReplies.DeleteCommand.ExecuteAsync(reply.Id)" title="Delete">🗑</button>
+                            <div class="text" @onclick="() => InsertQuickReply(reply.Text)" role="button" tabindex="0">@reply.Text</div>
+                            <button @onclick="() => StartEditingReply(reply)" title="Edit" aria-label="Edit">✏️</button>
+                            <button @onclick="() => QuickReplies.DeleteCommand.ExecuteAsync(reply.Id)" title="Delete" aria-label="Delete">🗑</button>
                         }
                     </div>
                 }
                 <div class="quick-reply-add">
                     <input placeholder="Add a quick reply" @bind="_newReplyText" @bind:event="oninput" />
-                    <button @onclick="AddQuickReply" disabled="@string.IsNullOrWhiteSpace(_newReplyText)" title="Add">➕</button>
+                    <button @onclick="AddQuickReply" disabled="@string.IsNullOrWhiteSpace(_newReplyText)" title="Add" aria-label="Add">➕</button>
                 </div>
             }
             else if (_mode == DrawerMode.ContactList)
             {
-                <div class="drawer-back" @onclick="() => _mode = DrawerMode.Grid">‹ Back</div>
+                <div class="drawer-back" @onclick="() => _mode = DrawerMode.Grid" role="button" tabindex="0">‹ Back</div>
                 @if (_contacts is { Count: 0 })
                 {
                     <p style="text-align:center;color:#94a3b8;">No contacts found.</p>
@@ -209,10 +209,10 @@
                 {
                     @foreach (var contact in _contacts ?? Enumerable.Empty<ContactInfo>())
                     {
-                        <div class="drawer-contact-row" @onclick="() => ShareContact(contact)">
+                        <div class="drawer-contact-row" @onclick="() => ShareContact(contact)" role="button" tabindex="0">
                             @if (!string.IsNullOrEmpty(contact.PhotoUri))
                             {
-                                <img src="@contact.PhotoUri" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
+                                <img src="@contact.PhotoUri" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
                             }
                             else
                             {
@@ -228,7 +228,7 @@
             }
             else
             {
-                <div class="drawer-back" @onclick="() => _mode = DrawerMode.Grid">‹ Back</div>
+                <div class="drawer-back" @onclick="() => _mode = DrawerMode.Grid" role="button" tabindex="0">‹ Back</div>
                 <p style="margin:0 0 12px;">When should this be sent?</p>
                 <input type="datetime-local" @bind="_scheduleInputValue" min="@_minScheduleValue.ToString("yyyy-MM-ddTHH:mm")"
                        style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1;font-size:1em;box-sizing:border-box;" />
@@ -251,7 +251,7 @@
 
 @if (_toastMessage is not null)
 {
-    <div class="drawer-toast">@_toastMessage</div>
+    <div class="drawer-toast" role="alert">@_toastMessage</div>
 }
 
 @code {

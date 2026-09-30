@@ -18,7 +18,7 @@
             @foreach (var color in ForgeLinkSms.Core.ViewModels.FiltersViewModel.PresetColors)
             {
                 <div @onclick="() => ViewModel.NewFilterColorHex = color"
-                     style="width:28px;height:28px;border-radius:50%;background:@color;cursor:pointer;border:3px solid @(ViewModel.NewFilterColorHex == color ? "#1e293b" : "transparent");"></div>
+                     style="width:28px;height:28px;border-radius:50%;background:@color;cursor:pointer;border:3px solid @(ViewModel.NewFilterColorHex == color ? "#1e293b" : "transparent");" role="button" tabindex="0"></div>
             }
         </div>
         <button @onclick="() => ViewModel.CreateFilterCommand.ExecuteAsync(null)"
@@ -39,7 +39,7 @@
             <div style="padding:10px 0;border-bottom:1px solid #eee;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <div @onclick="() => ToggleColorPicker(filter.Id)"
-                         style="width:24px;height:24px;border-radius:50%;background:@filter.ColorHex;cursor:pointer;flex-shrink:0;"></div>
+                         style="width:24px;height:24px;border-radius:50%;background:@filter.ColorHex;cursor:pointer;flex-shrink:0;" role="button" tabindex="0"></div>
 
                     @if (_editingFilterId == filter.Id)
                     {
@@ -49,7 +49,7 @@
                     }
                     else
                     {
-                        <span @onclick="() => StartRename(filter)" style="flex:1;cursor:pointer;">@filter.Name</span>
+                        <span @onclick="() => StartRename(filter)" style="flex:1;cursor:pointer;" role="button" tabindex="0">@filter.Name</span>
                     }
 
                     <button @onclick="() => ViewModel.DeleteFilterCommand.ExecuteAsync(filter.Id)"
@@ -62,7 +62,7 @@
                         @foreach (var color in ForgeLinkSms.Core.ViewModels.FiltersViewModel.PresetColors)
                         {
                             <div @onclick="() => SetColor(filter.Id, color)"
-                                 style="width:24px;height:24px;border-radius:50%;background:@color;cursor:pointer;border:3px solid @(filter.ColorHex == color ? "#1e293b" : "transparent");"></div>
+                                 style="width:24px;height:24px;border-radius:50%;background:@color;cursor:pointer;border:3px solid @(filter.ColorHex == color ? "#1e293b" : "transparent");" role="button" tabindex="0"></div>
                         }
                     </div>
                 }

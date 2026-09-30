@@ -21,16 +21,16 @@
     @if (_selectedThreadIds.Count > 0)
     {
         <div style="position:sticky;top:0;z-index:10;background:var(--surface-color);display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:6px 4px;overflow-x:auto;">
-            <button @onclick="ClearSelection" title="Clear selection" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;color:var(--text-color);font-size:1.4em;font-weight:bold;line-height:1;padding:0;">✕</button>
+            <button @onclick="ClearSelection" title="Clear selection" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;color:var(--text-color);font-size:1.4em;font-weight:bold;line-height:1;padding:0;" aria-label="Clear selection">✕</button>
             <strong style="flex:1;min-width:0;">@_selectedThreadIds.Count selected</strong>
-            <button @onclick="ToggleFavoriteSelectedThreads" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;font-size:1.2em;line-height:1;padding:0;">@(AllSelectedAreFavorited() ? "💔" : "❤️")</button>
-            <button @onclick="OpenFilterAssignPicker" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;color:var(--text-color);display:flex;align-items:center;justify-content:center;padding:0;">@FunnelIcon</button>
-            <button @onclick="ToggleSelectedThreadsReadState" style="width:40px;height:40px;flex-shrink:0;border:none;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;padding:0;">@(AllSelectedAreRead() ? EyeSlashIcon : EyeOpenIcon)</button>
-            <button @onclick="ArchiveSelectedThreads" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;font-size:1.2em;line-height:1;padding:0;">📦</button>
-            <button @onclick="TrashSelectedThreads" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;font-size:1.2em;line-height:1;padding:0;">🗑</button>
+            <button @onclick="ToggleFavoriteSelectedThreads" aria-label="@(AllSelectedAreFavorited() ? "Remove from favorites" : "Add to favorites")" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;font-size:1.2em;line-height:1;padding:0;">@(AllSelectedAreFavorited() ? "💔" : "❤️")</button>
+            <button @onclick="OpenFilterAssignPicker" aria-label="Add to a filter" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;color:var(--text-color);display:flex;align-items:center;justify-content:center;padding:0;">@FunnelIcon</button>
+            <button @onclick="ToggleSelectedThreadsReadState" aria-label="Mark as read or unread" style="width:40px;height:40px;flex-shrink:0;border:none;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;padding:0;">@(AllSelectedAreRead() ? EyeSlashIcon : EyeOpenIcon)</button>
+            <button @onclick="ArchiveSelectedThreads" aria-label="Archive" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;font-size:1.2em;line-height:1;padding:0;">📦</button>
+            <button @onclick="TrashSelectedThreads" aria-label="Delete" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;font-size:1.2em;line-height:1;padding:0;">🗑</button>
             @if (_selectedThreadIds.Count == 1)
             {
-                <button @onclick="OpenOverflowForSingleSelection" title="More" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;color:var(--text-color);font-size:1.6em;font-weight:bold;line-height:1;padding:0;">⋮</button>
+                <button @onclick="OpenOverflowForSingleSelection" title="More" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;color:var(--text-color);font-size:1.6em;font-weight:bold;line-height:1;padding:0;" aria-label="More">⋮</button>
             }
         </div>
     }
@@ -38,27 +38,27 @@
     {
         <div id="conversations-header" style="position:sticky;top:0;z-index:10;background:var(--surface-color);display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:6px 0;">
             <div style="display:flex;align-items:center;gap:16px;">
-                <button @onclick="ToggleUnreadFilter"
+                <button @onclick="ToggleUnreadFilter" aria-label="@(ViewModel.ShowUnreadOnly ? "Show all chats" : "Show unread only")"
                         style="width:40px;height:40px;border-radius:50%;border:none;padding:0;display:flex;align-items:center;justify-content:center;background:@(ViewModel.ShowUnreadOnly ? "var(--accent-color)" : "#e2e8f0");color:@(ViewModel.ShowUnreadOnly ? "white" : "#1e293b");">
                     @(ViewModel.ShowUnreadOnly ? EyeSlashIcon : EyeOpenIcon)
                 </button>
-                <button @onclick="OpenFilterBrowsePicker"
+                <button @onclick="OpenFilterBrowsePicker" aria-label="Filters"
                         style="width:40px;height:40px;border-radius:50%;border:none;padding:0;display:flex;align-items:center;justify-content:center;background:@(ViewModel.ActiveFilterIds.Count > 0 ? "var(--accent-color)" : "#e2e8f0");color:@(ViewModel.ActiveFilterIds.Count > 0 ? "white" : "#1e293b");">
                     @FunnelIcon
                 </button>
-                <button @onclick="OpenSearch"
+                <button @onclick="OpenSearch" aria-label="Search"
                         style="width:40px;height:40px;border-radius:50%;border:none;background:#e2e8f0;font-size:1.1em;padding:0;">
                     🔍
                 </button>
             </div>
             @if (!string.IsNullOrEmpty(_photoDataUri))
             {
-                <img @onclick="@(() => Nav.NavigateTo("/menu"))" src="@_photoDataUri"
+                <img @onclick="@(() => Nav.NavigateTo("/menu"))" src="@_photoDataUri" alt="Menu" role="button" tabindex="0"
                      style="width:40px;height:40px;border-radius:50%;object-fit:cover;" />
             }
             else
             {
-                <button @onclick="@(() => Nav.NavigateTo("/menu"))"
+                <button @onclick="@(() => Nav.NavigateTo("/menu"))" aria-label="Menu"
                         style="width:40px;height:40px;border-radius:50%;border:none;background:#e2e8f0;font-size:1.1em;padding:0;">
                     ⚙
                 </button>
@@ -78,7 +78,7 @@
                 @(_copiedCode == activeCode ? "Copied" : "Copy")
             </button>
             <button @onclick="() => DismissCode(activeCode)" title="Dismiss"
-                    style="border:none;background:transparent;color:#94a3b8;font-size:1.1em;padding:4px;flex-shrink:0;">✕</button>
+                    style="border:none;background:transparent;color:#94a3b8;font-size:1.1em;padding:4px;flex-shrink:0;" aria-label="Dismiss">✕</button>
         </div>
     }
 
@@ -97,7 +97,7 @@
             {
                 <div style="display:flex;align-items:center;gap:8px;background:var(--card-color);padding:12px;margin-bottom:6px;border-radius:8px;">
                     <input @ref="_searchInput" placeholder="Search contacts or numbers" @bind="ViewModel.SearchText" @bind:event="oninput" @bind:after="SearchMessagesSoon" style="flex:1;min-width:0;" />
-                    <button @onclick="CloseSearch" style="border:none;background:transparent;font-size:1.2em;">✕</button>
+                    <button @onclick="CloseSearch" aria-label="Close search" style="border:none;background:transparent;font-size:1.2em;">✕</button>
                 </div>
                 @if (ViewModel.IsAddingToFilter)
                 {
@@ -187,7 +187,7 @@
                 var isExpanded = _expandedUpdateGroups.Contains(g.Category);
                 var latest = g.Threads[0];
                 <div @key="@($"group-{g.Category}")" @onclick="() => ToggleUpdateGroup(g.Category)"
-                     style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #eee;cursor:pointer;background:@(g.Threads.Any(t => t.UnreadCount > 0) ? "rgba(234,179,8,0.15)" : "transparent");">
+                     style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #eee;cursor:pointer;background:@(g.Threads.Any(t => t.UnreadCount > 0) ? "rgba(234,179,8,0.15)" : "transparent");" role="button" tabindex="0">
                     <div style="width:40px;height:40px;border-radius:10px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:1.3em;flex-shrink:0;">@CategoryIcon(g.Category)</div>
                     <div style="flex:1;min-width:0;">
                         <strong>@CategoryName(g.Category)</strong>
@@ -199,6 +199,7 @@
                 continue;
             }
             <div @key="thread!.Id" id="@RowId(thread.Id)" @onpointerdown="e => OnPointerDown(thread.Id, e)"
+                 role="button" tabindex="0" aria-label="@ForgeLinkSms.Core.Utils.AccessibleLabels.ForThread(thread, DateTime.Today)"
                  @onpointerup="e => OnPointerUp(thread.Id, thread.Address, e)"
                  @onpointermove="OnPointerMove"
                  @onpointerleave="CancelLongPress"
@@ -211,7 +212,7 @@
                 }
                 else if (!string.IsNullOrEmpty(thread.PhotoUri))
                 {
-                    <img src="@thread.PhotoUri" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
+                    <img src="@thread.PhotoUri" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
                 }
                 else if (!string.IsNullOrWhiteSpace(thread.DisplayName))
                 {
@@ -293,7 +294,7 @@
         {
             var (before, match, after) = Snippet(result.Body, ViewModel.SearchText.Trim());
             <div @key="@($"msg-result-{result.Id}-{result.Timestamp.Ticks}")" @onclick="() => OpenMessageResult(result)"
-                 style="padding:10px;border-bottom:1px solid #eee;cursor:pointer;">
+                 style="padding:10px;border-bottom:1px solid #eee;cursor:pointer;" role="button" tabindex="0">
                 <div style="display:flex;justify-content:space-between;gap:8px;">
                     <strong style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@ViewModel.ConversationNameFor(result)</strong>
                     <span style="color:#94a3b8;font-size:0.8em;flex-shrink:0;">@FormatResultDate(result.Timestamp)</span>
@@ -308,7 +309,7 @@
         }
     }
 
-    <button @onclick="@(() => Nav.NavigateTo("/compose"))"
+    <button @onclick="@(() => Nav.NavigateTo("/compose"))" aria-label="New message"
             style="position:fixed;right:24px;bottom:24px;width:56px;height:56px;border-radius:50%;background:var(--accent-color);color:white;font-size:1.5em;border:none;">
         +
     </button>
@@ -316,13 +317,13 @@
 
 @if (_infoToast is not null)
 {
-    <div style="position:fixed;left:16px;right:88px;bottom:28px;z-index:21;background:#1e293b;color:white;border-radius:8px;padding:12px 16px;box-shadow:0 4px 12px rgba(0,0,0,0.3);pointer-events:none;">@_infoToast</div>
+    <div style="position:fixed;left:16px;right:88px;bottom:28px;z-index:21;background:#1e293b role="alert";color:white;border-radius:8px;padding:12px 16px;box-shadow:0 4px 12px rgba(0,0,0,0.3);pointer-events:none;">@_infoToast</div>
 }
 
 @if (_showUndoToast)
 {
     <div style="position:fixed;inset:0;z-index:20;" @onclick="DismissUndoToast"></div>
-    <div style="position:fixed;left:16px;right:16px;bottom:24px;z-index:21;background:#1e293b;color:white;border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 12px rgba(0,0,0,0.3);" @onclick:stopPropagation="true">
+    <div style="position:fixed;left:16px;right:16px;bottom:24px;z-index:21;background:#1e293b role="alert";color:white;border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 12px rgba(0,0,0,0.3);" @onclick:stopPropagation="true">
         <span>@_undoToastMessage</span>
         <button @onclick="UndoLastSwipeAction" style="background:transparent;border:none;color:#38bdf8;font-weight:bold;padding:0 0 0 16px;">Undo</button>
     </div>
@@ -331,21 +332,21 @@
 @if (_actionSheetThreadId is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;" @onclick="CloseActionSheet">
-        <div style="background:var(--card-color);width:100%;padding:12px;" @onclick:stopPropagation="true">
-            <div @onclick="FavoriteSelectedThread" style="padding:12px;">@(_actionSheetIsFavorite ? "💔 Unfavorite" : "❤️ Favorite")</div>
-            <div @onclick="MarkReadSelectedThread" style="padding:12px;display:flex;align-items:center;gap:8px;">@(_actionSheetIsUnread ? EyeOpenIcon : EyeSlashIcon) <span>@(_actionSheetIsUnread ? "Mark as Read" : "Mark as Unread")</span></div>
-            <div @onclick="OpenSnoozeSheet" style="padding:12px;">💤 Snooze</div>
+        <div style="background:var(--card-color);width:100%;padding:12px;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+            <div @onclick="FavoriteSelectedThread" style="padding:12px;" role="button" tabindex="0">@(_actionSheetIsFavorite ? "💔 Unfavorite" : "❤️ Favorite")</div>
+            <div @onclick="MarkReadSelectedThread" style="padding:12px;display:flex;align-items:center;gap:8px;" role="button" tabindex="0">@(_actionSheetIsUnread ? EyeOpenIcon : EyeSlashIcon) <span>@(_actionSheetIsUnread ? "Mark as Read" : "Mark as Unread")</span></div>
+            <div @onclick="OpenSnoozeSheet" style="padding:12px;" role="button" tabindex="0">💤 Snooze</div>
             @if (_actionSheetIsMuted)
             {
-                <div @onclick="UnmuteSelectedThread" style="padding:12px;">🔔 Unmute</div>
+                <div @onclick="UnmuteSelectedThread" style="padding:12px;" role="button" tabindex="0">🔔 Unmute</div>
             }
             else
             {
-                <div @onclick="OpenMuteSheet" style="padding:12px;">🔕 Mute</div>
+                <div @onclick="OpenMuteSheet" style="padding:12px;" role="button" tabindex="0">🔕 Mute</div>
             }
-            <div @onclick="TrashSelectedThread" style="padding:12px;">🗑 Trash</div>
-            <div @onclick="BlockSelectedThread" style="padding:12px;">🚫 Block</div>
-            <div @onclick="OpenReportSheet" style="padding:12px;color:#b91c1c;">🚩 Report spam</div>
+            <div @onclick="TrashSelectedThread" style="padding:12px;" role="button" tabindex="0">🗑 Trash</div>
+            <div @onclick="BlockSelectedThread" style="padding:12px;" role="button" tabindex="0">🚫 Block</div>
+            <div @onclick="OpenReportSheet" style="padding:12px;color:#b91c1c;" role="button" tabindex="0">🚩 Report spam</div>
         </div>
     </div>
 }
@@ -353,7 +354,7 @@
 @if (_reportThread is { } reportThread)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="() => _reportThread = null">
-        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
             <div style="font-weight:600;font-size:1.1em;">Report @reportThread.DisplayNameOrAddress as spam?</div>
             <div style="color:#94a3b8;margin:8px 0 16px;">ForgeLink forwards the message to 7726 (SPAM), the free spam-reporting number used by all major US carriers, then blocks the sender and moves the chat to Trash.</div>
             <div style="display:flex;gap:10px;justify-content:flex-end;">
@@ -367,11 +368,11 @@
 @if (_muteThreadId is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="() => _muteThreadId = null">
-        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
             <div style="padding:4px 12px 8px;font-weight:600;">Mute notifications for…</div>
             @foreach (var preset in ForgeLinkSms.Core.Utils.MutePresets.For(DateTimeOffset.UtcNow))
             {
-                <div @onclick="() => MuteFor(preset)" style="padding:12px;cursor:pointer;">@preset.Label</div>
+                <div @onclick="() => MuteFor(preset)" style="padding:12px;cursor:pointer;" role="button" tabindex="0">@preset.Label</div>
             }
         </div>
     </div>
@@ -380,11 +381,11 @@
 @if (_snoozeThreadId is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="CloseSnoozeSheet">
-        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
             <div style="padding:4px 12px 8px;font-weight:600;">Snooze until…</div>
             @foreach (var preset in ForgeLinkSms.Core.Utils.SnoozePresets.For(DateTime.Now))
             {
-                <div @onclick="() => SnoozeUntil(preset.Until)" style="padding:12px;display:flex;justify-content:space-between;cursor:pointer;">
+                <div @onclick="() => SnoozeUntil(preset.Until)" style="padding:12px;display:flex;justify-content:space-between;cursor:pointer;" role="button" tabindex="0">
                     <span>@preset.Label</span>
                     <span style="color:#94a3b8;">@FormatSnoozeTime(preset.Until)</span>
                 </div>

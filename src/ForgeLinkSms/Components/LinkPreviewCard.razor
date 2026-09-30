@@ -3,7 +3,7 @@
 @if (_preview is not null)
 {
     <div @onclick="Open" @onclick:stopPropagation="true" @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
-         style="margin-top:8px;border-radius:10px;overflow:hidden;background:rgba(0,0,0,0.12);cursor:pointer;">
+         style="margin-top:8px;border-radius:10px;overflow:hidden;background:rgba(0,0,0,0.12);cursor:pointer;" role="button" tabindex="0">
         @if (_preview.ImageUrl is not null)
         {
             <img src="@_preview.ImageUrl" alt="" referrerpolicy="no-referrer" loading="lazy"

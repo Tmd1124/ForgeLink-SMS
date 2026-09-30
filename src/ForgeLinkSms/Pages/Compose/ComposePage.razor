@@ -91,14 +91,14 @@
             <span class="recipient-chip">
                 @if (!string.IsNullOrEmpty(contact?.PhotoUri))
                 {
-                    <img src="@contact.PhotoUri" class="chip-avatar" />
+                    <img src="@contact.PhotoUri" class="chip-avatar" alt="" />
                 }
                 else
                 {
                     <span class="chip-avatar chip-avatar-fallback">@(contact?.Initials ?? "#")</span>
                 }
                 @(contact?.DisplayName ?? PhoneNumberFormatter.ToDisplayFormat(recipient))
-                <span class="chip-remove" @onclick="() => ViewModel.RemoveRecipientCommand.Execute(recipient)">✕</span>
+                <span class="chip-remove" @onclick="() => ViewModel.RemoveRecipientCommand.Execute(recipient)" role="button" tabindex="0" aria-label="Remove recipient">✕</span>
             </span>
         }
         <input placeholder="@(ViewModel.Recipients.Count == 0 ? "Name or phone number" : "Add another")"
@@ -128,7 +128,7 @@
     @if (ViewModel.IsMultiSelecting)
     {
         <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card-color);border-bottom:1px solid #eee;">
-            <span class="chip-remove" style="font-size:1.2em;" @onclick="() => ViewModel.CancelMultiSelectCommand.Execute(null)">✕</span>
+            <span class="chip-remove" style="font-size:1.2em;" @onclick="() => ViewModel.CancelMultiSelectCommand.Execute(null)" role="button" tabindex="0" aria-label="Cancel">✕</span>
             <strong style="flex:1;">@ViewModel.SelectedCount selected</strong>
             <button style="border:none;background:var(--accent-color);color:white;border-radius:16px;padding:6px 14px;font-size:0.9em;"
                     @onclick="() => ViewModel.ConfirmMultiSelectCommand.Execute(null)">
@@ -160,7 +160,7 @@
                         }
                         else if (!string.IsNullOrEmpty(contact.PhotoUri))
                         {
-                            <img src="@contact.PhotoUri" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
+                            <img src="@contact.PhotoUri" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
                         }
                         else
                         {
@@ -183,7 +183,7 @@
     <PendingAttachmentPreview Attachment="_pendingAttachment" OnRemove="() => _pendingAttachment = null" />
     <ScheduledSendPreview Schedule="_scheduledSendTime" OnRemove="() => _scheduledSendTime = null" />
     <div style="display:flex;align-items:flex-end;padding:8px;border-top:1px solid #eee;">
-        <button @onclick="() => _drawer?.Open()"
+        <button @onclick="() => _drawer?.Open()" aria-label="Attach"
                 style="width:40px;height:40px;border-radius:50%;border:none;background:var(--card-color);color:var(--text-color);font-size:1.4em;margin-right:8px;flex-shrink:0;">
             +
         </button>
@@ -193,7 +193,7 @@
         </div>
         @if (ViewModel.Recipients.Count > 0 && (!string.IsNullOrWhiteSpace(ViewModel.MessageBody) || _pendingAttachment is not null))
         {
-            <button @onclick="SendOrSchedule"
+            <button @onclick="SendOrSchedule" aria-label="Send"
                     style="width:40px;height:40px;border-radius:50%;border:none;background:#22c55e;color:white;font-size:1.2em;margin-left:8px;flex-shrink:0;">
                 ➤
             </button>

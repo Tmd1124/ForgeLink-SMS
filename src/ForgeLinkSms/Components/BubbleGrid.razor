@@ -13,7 +13,7 @@
                  @onpointerdown="() => StartPress(thread)"
                  @onpointerup="() => EndPress(thread)"
                  @onpointerleave="CancelPress"
-                 @onpointercancel="CancelPress">
+                 @onpointercancel="CancelPress" role="button" tabindex="0" aria-label="@ForgeLinkSms.Core.Utils.AccessibleLabels.ForBubble(thread)">
                 @if (!string.IsNullOrEmpty(thread.PhotoUri))
                 {
                     <img src="@thread.PhotoUri" alt="" draggable="false" loading="lazy" />
@@ -27,7 +27,7 @@
                     <span class="count">@thread.UnreadCount</span>
                 }
             </div>
-            <span class="grid-name">@FirstName(thread)</span>
+            <span class="grid-name" aria-hidden="true">@FirstName(thread)</span>
         </div>
     }
 </div>

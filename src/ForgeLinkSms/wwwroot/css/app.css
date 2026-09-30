@@ -169,3 +169,13 @@ body {
 .filter-tabs::-webkit-scrollbar {
     display: none;
 }
+
+/* Read by TalkBack, not shown. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}

@@ -7,10 +7,10 @@
 <div style="padding:12px;">
     @{ var profile = ProfileService.GetProfile(); }
     <div @onclick="@(() => Nav.NavigateTo("/profile"))"
-         style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--card-color);border-radius:12px;margin-bottom:12px;">
+         style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--card-color);border-radius:12px;margin-bottom:12px;" role="button" tabindex="0">
         @if (!string.IsNullOrEmpty(_photoDataUri))
         {
-            <img src="@_photoDataUri" style="width:56px;height:56px;border-radius:50%;object-fit:cover;" />
+            <img src="@_photoDataUri" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;" />
         }
         else
         {
@@ -24,44 +24,44 @@
         <p style="color:#06b6d4;">@ViewModel.StatusMessage</p>
     }
 
-    <div @onclick="@(() => Nav.NavigateTo("/theme"))" style="padding:12px 0;border-bottom:1px solid #eee;">
-        🎨 Theme
+    <div @onclick="@(() => Nav.NavigateTo("/theme"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">🎨</span> Theme
     </div>
-    <div @onclick="@(() => Nav.NavigateTo("/profile"))" style="padding:12px 0;border-bottom:1px solid #eee;">
-        👤 Your Profile
+    <div @onclick="@(() => Nav.NavigateTo("/profile"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">👤</span> Your Profile
     </div>
-    <div @onclick="@(() => Nav.NavigateTo("/trash"))" style="padding:12px 0;border-bottom:1px solid #eee;">
-        🗑 Trash
+    <div @onclick="@(() => Nav.NavigateTo("/trash"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">🗑</span> Trash
     </div>
-    <div @onclick="@(() => Nav.NavigateTo("/archived"))" style="padding:12px 0;border-bottom:1px solid #eee;">
-        📦 Archived
+    <div @onclick="@(() => Nav.NavigateTo("/archived"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">📦</span> Archived
     </div>
-    <div @onclick="@(() => Nav.NavigateTo("/snoozed"))" style="padding:12px 0;border-bottom:1px solid #eee;">
-        💤 Snoozed
+    <div @onclick="@(() => Nav.NavigateTo("/snoozed"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">💤</span> Snoozed
     </div>
-    <div @onclick="@(() => Nav.NavigateTo("/blocked"))" style="padding:12px 0;border-bottom:1px solid #eee;">
-        🚫 Blocked
+    <div @onclick="@(() => Nav.NavigateTo("/blocked"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">🚫</span> Blocked
     </div>
-    <div @onclick="@(() => Nav.NavigateTo("/filters"))" style="padding:12px 0;border-bottom:1px solid #eee;">
-        🏷️ Filters
+    <div @onclick="@(() => Nav.NavigateTo("/filters"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">🏷️</span> Filters
     </div>
-    <div @onclick="@(() => Nav.NavigateTo("/scheduled"))" style="padding:12px 0;border-bottom:1px solid #eee;">
-        ⏰ Scheduled
+    <div @onclick="@(() => Nav.NavigateTo("/scheduled"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">⏰</span> Scheduled
     </div>
-    <div @onclick="@(() => Nav.NavigateTo("/reminders"))" style="padding:12px 0;border-bottom:1px solid #eee;">
-        🔔 Reminders
+    <div @onclick="@(() => Nav.NavigateTo("/reminders"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">🔔</span> Reminders
     </div>
-    <div @onclick="() => ViewModel.MarkAllAsReadCommand.ExecuteAsync(null)" style="padding:12px 0;border-bottom:1px solid #eee;">
-        ✓ Mark as Read
+    <div @onclick="() => ViewModel.MarkAllAsReadCommand.ExecuteAsync(null)" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">✓</span> Mark as Read
     </div>
-    <div @onclick="() => ViewModel.UndoCommand.ExecuteAsync(null)" style="padding:12px 0;border-bottom:1px solid #eee;">
-        ↩ Undo
+    <div @onclick="() => ViewModel.UndoCommand.ExecuteAsync(null)" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">↩</span> Undo
     </div>
-    <div @onclick="@(() => Nav.NavigateTo("/settings"))" style="padding:12px 0;border-bottom:1px solid #eee;">
-        ⚙ Settings
+    <div @onclick="@(() => Nav.NavigateTo("/settings"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">⚙</span> Settings
     </div>
-    <div @onclick="ReviewPrompt.OpenStoreListing" style="padding:12px 0;border-bottom:1px solid #eee;">
-        ⭐ Rate ForgeLink on Google Play
+    <div @onclick="ReviewPrompt.OpenStoreListing" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
+        <span aria-hidden="true">⭐</span> Rate ForgeLink on Google Play
     </div>
 </div>
 
