@@ -400,18 +400,20 @@ public partial class ThreadDetailViewModel : ObservableObject
         }
 
         FlushPendingSend();
-        if (_drafts is not null)
-        {
-            await _drafts.SaveAsync(_threadId, string.Empty);
-        }
         var replyingTo = ReplyingTo;
         var outgoingText = WithReplyQuote(text, replyingTo);
         ComposeText = string.Empty;
         ReplyingTo = null;
 
+        // The page only re-renders when this handler first yields, so the undo state must be
+        // set before any await — otherwise the Undo bar never shows.
         var pending = new PendingSend(attachment);
         _pendingSend = pending;
         IsSendPending = true;
+        if (_drafts is not null)
+        {
+            await _drafts.SaveAsync(_threadId, string.Empty);
+        }
         try
         {
             await Task.Delay(_undoSendWindow, pending.Cancellation.Token);

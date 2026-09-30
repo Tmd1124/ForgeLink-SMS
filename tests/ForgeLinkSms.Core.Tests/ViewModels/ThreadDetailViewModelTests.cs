@@ -360,6 +360,31 @@ public class ThreadDetailViewModelTests
         Assert.False(viewModel.IsSendPending);
     }
 
+    // The page only re-renders when the send handler first yields; if the draft save yields
+    // before the undo state is set, the Undo bar never appears.
+    [Fact]
+    public async Task SendCommand_shows_the_undo_state_before_waiting_on_the_draft_store()
+    {
+        var sms = new Mock<ISmsService>();
+        var draftSaved = new TaskCompletionSource();
+        var drafts = new Mock<IDraftRepository>();
+        drafts.Setup(d => d.SaveAsync(It.IsAny<long>(), It.IsAny<string>())).Returns(draftSaved.Task);
+        var viewModel = new ThreadDetailViewModel(sms.Object, new Mock<IMessageSchedulerService>().Object, threadId: 1, address: "5550148890", undoSendWindow: TimeSpan.FromMinutes(1), drafts: drafts.Object)
+        {
+            ComposeText = "See you then"
+        };
+
+        var sending = viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsSendPending);
+        Assert.Equal(string.Empty, viewModel.ComposeText);
+
+        draftSaved.SetResult();
+        viewModel.FlushPendingSend();
+        await sending;
+        sms.Verify(s => s.SendAsync("5550148890", "See you then"), Times.Once);
+    }
+
     [Fact]
     public async Task UndoSend_cancels_the_send_and_restores_the_text()
     {
