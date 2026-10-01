@@ -2,6 +2,8 @@
 @implements IDisposable
 @inject ForgeLinkSms.Core.ViewModels.ScheduledViewModel ViewModel
 @inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
+@using ForgeLinkSms.Components
+@using ForgeLinkSms.Core.Utils
 
 <div style="padding:12px;padding-bottom:40px;">
     <h3>Scheduled</h3>
@@ -20,13 +22,20 @@
             @foreach (var message in ViewModel.ScheduledMessages)
             {
                 var repeats = message.Repeat != ForgeLinkSms.Core.Models.ScheduleRepeat.None;
+                @if (_pendingDelete.IsPending(message.Id))
+                {
+                    <div style="padding:8px;">
+                        <UndoCard Label="@(repeats ? "Repeat stopped" : "Scheduled text cancelled")" OnUndo="_pendingDelete.Undo" />
+                    </div>
+                    continue;
+                }
                 <div style="padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;@(message == ViewModel.ScheduledMessages[^1] ? "" : "border-bottom:1px solid rgba(127,127,127,0.2);")">
                     <div @onclick="() => StartEdit(message)" role="button" tabindex="0" style="min-width:0;flex:1;cursor:pointer;">
                         <strong>@(message.IsGroup ? "👥 " + string.Join(", ", message.Recipients.Select(ViewModel.GetDisplayName)) : ViewModel.GetDisplayName(message.Address))</strong>
                         <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@message.Body</div>
                         <div style="color:var(--accent-color);font-size:0.8em;margin-top:2px;">@(repeats ? "🔁 " + ForgeLinkSms.Core.Utils.ScheduleRepeatRules.Label(message.Repeat) + " · next" : "⏰ Sends") @message.SendAtUtc.LocalDateTime.ToString("ddd MMM d, h:mm tt")</div>
                     </div>
-                    <button @onclick="() => ViewModel.CancelCommand.ExecuteAsync(message.Id)"
+                    <button @onclick="() => _pendingDelete.StartAsync(message.Id, string.Empty, () => ViewModel.CancelCommand.ExecuteAsync(message.Id))"
                             style="flex-shrink:0;padding:8px 12px;border:none;border-radius:10px;background:var(--surface-color);color:#ef4444;font-size:0.9em;font-weight:600;">@(repeats ? "Stop repeating" : "Cancel")</button>
                 </div>
             }
@@ -75,6 +84,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        SetUpPendingDelete();
         await ViewModel.LoadCommand.ExecuteAsync(null);
         HistoryTracker.LocalBackHandler = CloseEditForBack;
     }
@@ -126,8 +136,17 @@
         return true;
     }
 
+    private DeferredAction<long> _pendingDelete = null!;
+
+    private void SetUpPendingDelete()
+    {
+        _pendingDelete = new DeferredAction<long>(TimeSpan.FromSeconds(3), dispatch: run => InvokeAsync(run));
+        _pendingDelete.Changed += () => _ = InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
+        _ = _pendingDelete.CommitAsync();
         if (HistoryTracker.LocalBackHandler == CloseEditForBack)
         {
             HistoryTracker.LocalBackHandler = null;

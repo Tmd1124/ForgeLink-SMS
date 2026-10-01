@@ -184,6 +184,11 @@
                 }
                 @foreach (var reply in QuickReplies.Replies)
                 {
+                    @if (_pendingDelete.IsPending(reply.Id))
+                    {
+                        <UndoCard Label="Quick reply deleted" OnUndo="_pendingDelete.Undo" />
+                        continue;
+                    }
                     <div class="quick-reply-row">
                         @if (_editingReplyId == reply.Id)
                         {
@@ -195,7 +200,7 @@
                         {
                             <div class="text" @onclick="() => InsertQuickReply(reply.Text)" role="button" tabindex="0">@reply.Text</div>
                             <button @onclick="() => StartEditingReply(reply)" title="Edit" aria-label="Edit">✏️</button>
-                            <button @onclick="() => QuickReplies.DeleteCommand.ExecuteAsync(reply.Id)" title="Delete" aria-label="Delete">🗑</button>
+                            <button @onclick="() => _pendingDelete.StartAsync(reply.Id, string.Empty, () => QuickReplies.DeleteCommand.ExecuteAsync(reply.Id))" title="Delete" aria-label="Delete">🗑</button>
                         }
                     </div>
                 }
@@ -325,8 +330,26 @@
         StateHasChanged();
     }
 
+    private DeferredAction<long>? _pendingDeleteField;
+
+    // Built on first use so it can hand finished deletes back through InvokeAsync.
+    private DeferredAction<long> _pendingDelete
+    {
+        get
+        {
+            if (_pendingDeleteField is null)
+            {
+                _pendingDeleteField = new DeferredAction<long>(TimeSpan.FromSeconds(3), dispatch: run => InvokeAsync(run));
+                _pendingDeleteField.Changed += () => _ = InvokeAsync(StateHasChanged);
+            }
+            return _pendingDeleteField;
+        }
+    }
+
     public void Close()
     {
+        // Closing the menu finishes a quick-reply delete that's still waiting.
+        _ = _pendingDelete.CommitAsync();
         _isOpen = false;
         StateHasChanged();
     }

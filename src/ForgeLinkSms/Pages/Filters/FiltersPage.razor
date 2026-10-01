@@ -1,5 +1,8 @@
 @page "/filters"
+@implements IDisposable
 @inject ForgeLinkSms.Core.ViewModels.FiltersViewModel ViewModel
+@using ForgeLinkSms.Components
+@using ForgeLinkSms.Core.Utils
 
 <div style="padding:12px;padding-bottom:40px;">
     <h3>Filters</h3>
@@ -42,34 +45,41 @@
             @foreach (var filter in ViewModel.Filters)
             {
                 <div style="padding:10px 12px;@(filter == ViewModel.Filters[^1] ? "" : RowDivider)">
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <div @onclick="() => ToggleColorPicker(filter.Id)" aria-label="@($"Change color of {filter.Name}")"
-                             style="width:24px;height:24px;border-radius:50%;background:@filter.ColorHex;cursor:pointer;flex-shrink:0;" role="button" tabindex="0"></div>
-
-                        @if (_editingFilterId == filter.Id)
-                        {
-                            <input @bind="_editingName" @bind:event="oninput" @onkeyup="@(e => OnRenameKeyUp(e, filter.Id))" aria-label="Filter name"
-                                   style="flex:1;min-width:0;padding:6px;border-radius:6px;border:1px solid rgba(127,127,127,0.35);background:var(--surface-color);color:var(--text-color);font-size:1em;" />
-                            <button @onclick="() => ConfirmRename(filter.Id)" aria-label="Save name" style="border:none;background:transparent;color:var(--text-color);font-size:1.2em;">✓</button>
-                        }
-                        else
-                        {
-                            <span @onclick="() => StartRename(filter)" style="flex:1;cursor:pointer;" role="button" tabindex="0">@filter.Name</span>
-                        }
-
-                        <button @onclick="() => ViewModel.DeleteFilterCommand.ExecuteAsync(filter.Id)" aria-label="@($"Delete {filter.Name}")"
-                                style="border:none;background:transparent;font-size:1.1em;">🗑</button>
-                    </div>
-
-                    @if (_colorPickerFilterId == filter.Id)
+                    @if (_pendingDelete.IsPending(filter.Id))
                     {
-                        <div role="radiogroup" aria-label="Color" style="display:flex;gap:10px;flex-wrap:wrap;padding:10px 0 2px 36px;">
-                            @foreach (var color in ForgeLinkSms.Core.ViewModels.FiltersViewModel.PresetColors)
+                        <UndoCard Label="@($"{filter.Name} deleted")" OnUndo="_pendingDelete.Undo" />
+                    }
+                    else
+                    {
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div @onclick="() => ToggleColorPicker(filter.Id)" aria-label="@($"Change color of {filter.Name}")"
+                                 style="width:24px;height:24px;border-radius:50%;background:@filter.ColorHex;cursor:pointer;flex-shrink:0;" role="button" tabindex="0"></div>
+
+                            @if (_editingFilterId == filter.Id)
                             {
-                                <div @onclick="() => SetColor(filter.Id, color)" role="radio" aria-checked="@(filter.ColorHex == color ? "true" : "false")" tabindex="0"
-                                     style="@Swatch(color, filter.ColorHex == color, 26)"></div>
+                                <input @bind="_editingName" @bind:event="oninput" @onkeyup="@(e => OnRenameKeyUp(e, filter.Id))" aria-label="Filter name"
+                                       style="flex:1;min-width:0;padding:6px;border-radius:6px;border:1px solid rgba(127,127,127,0.35);background:var(--surface-color);color:var(--text-color);font-size:1em;" />
+                                <button @onclick="() => ConfirmRename(filter.Id)" aria-label="Save name" style="border:none;background:transparent;color:var(--text-color);font-size:1.2em;">✓</button>
                             }
+                            else
+                            {
+                                <span @onclick="() => StartRename(filter)" style="flex:1;cursor:pointer;" role="button" tabindex="0">@filter.Name</span>
+                            }
+
+                            <button @onclick="() => _pendingDelete.StartAsync(filter.Id, filter.Name, () => ViewModel.DeleteFilterCommand.ExecuteAsync(filter.Id))" aria-label="@($"Delete {filter.Name}")"
+                                    style="border:none;background:transparent;font-size:1.1em;">🗑</button>
                         </div>
+
+                        @if (_colorPickerFilterId == filter.Id)
+                        {
+                            <div role="radiogroup" aria-label="Color" style="display:flex;gap:10px;flex-wrap:wrap;padding:10px 0 2px 36px;">
+                                @foreach (var color in ForgeLinkSms.Core.ViewModels.FiltersViewModel.PresetColors)
+                                {
+                                    <div @onclick="() => SetColor(filter.Id, color)" role="radio" aria-checked="@(filter.ColorHex == color ? "true" : "false")" tabindex="0"
+                                         style="@Swatch(color, filter.ColorHex == color, 26)"></div>
+                                }
+                            </div>
+                        }
                     }
                 </div>
             }
@@ -99,8 +109,20 @@
 
     protected override async Task OnInitializedAsync()
     {
+        SetUpPendingDelete();
         await ViewModel.LoadCommand.ExecuteAsync(null);
     }
+
+    private DeferredAction<long> _pendingDelete = null!;
+
+    private void SetUpPendingDelete()
+    {
+        _pendingDelete = new DeferredAction<long>(TimeSpan.FromSeconds(3), dispatch: run => InvokeAsync(run));
+        _pendingDelete.Changed += () => _ = InvokeAsync(StateHasChanged);
+    }
+
+    // Leaving the screen finishes a delete that's still waiting.
+    public void Dispose() => _ = _pendingDelete.CommitAsync();
 
     private void StartRename(ForgeLinkSms.Core.Models.Filter filter)
     {

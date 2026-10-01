@@ -1,0 +1,13 @@
+@* Stands in for something just deleted while its Undo is offered (see DeferredAction). *@
+<div class="swipe-pending" role="status" style="--swipe-color:@Color;">
+    <span style="flex:1;min-width:0;">@Glyph @Label</span>
+    <button @onclick="OnUndo" @onclick:stopPropagation="true">Undo</button>
+    <span class="swipe-pending-timer" aria-hidden="true"></span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Glyph { get; set; } = "🗑";
+    [Parameter] public string Color { get; set; } = "#dc2626";
+    [Parameter] public EventCallback OnUndo { get; set; }
+}

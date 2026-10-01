@@ -1,4 +1,7 @@
 @page "/reminders"
+@implements IDisposable
+@using ForgeLinkSms.Components
+@using ForgeLinkSms.Core.Utils
 @inject ForgeLinkSms.Core.ViewModels.RemindersViewModel ViewModel
 @inject NavigationManager Nav
 
@@ -13,13 +16,20 @@
     {
         @foreach (var (reminder, name) in ViewModel.Reminders)
         {
+            @if (_pendingDelete.IsPending(reminder.Id))
+            {
+                <div style="padding:6px 0;">
+                    <UndoCard Label="Reminder removed" Glyph="🔕" Color="#64748b" OnUndo="_pendingDelete.Undo" />
+                </div>
+                continue;
+            }
             <div style="padding:10px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px;">
                 <div @onclick="() => Open(reminder)" style="flex:1;min-width:0;cursor:pointer;" role="button" tabindex="0">
                     <strong>@name</strong>
                     <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@reminder.Preview</div>
                     <div style="color:#06b6d4;font-size:0.8em;">🔔 @FormatWhen(reminder.RemindAtUtc)</div>
                 </div>
-                <button @onclick="() => ViewModel.CancelCommand.ExecuteAsync(reminder.Id)" style="flex-shrink:0;">Cancel</button>
+                <button @onclick="() => _pendingDelete.StartAsync(reminder.Id, string.Empty, () => ViewModel.CancelCommand.ExecuteAsync(reminder.Id))" style="flex-shrink:0;">Cancel</button>
             </div>
         }
     }
@@ -28,8 +38,19 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
+        SetUpPendingDelete();
         await ViewModel.LoadCommand.ExecuteAsync(null);
     }
+
+    private DeferredAction<long> _pendingDelete = null!;
+
+    private void SetUpPendingDelete()
+    {
+        _pendingDelete = new DeferredAction<long>(TimeSpan.FromSeconds(3), dispatch: run => InvokeAsync(run));
+        _pendingDelete.Changed += () => _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => _ = _pendingDelete.CommitAsync();
 
     private void Open(ForgeLinkSms.Core.Models.MessageReminder reminder) =>
         Nav.NavigateTo($"/conversations/thread?id={reminder.ThreadId}&address={Uri.EscapeDataString(reminder.Address)}&jumpId={reminder.MessageId}&jumpTicks={reminder.MessageTimestamp.UtcTicks}");
