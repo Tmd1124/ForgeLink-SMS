@@ -36,16 +36,28 @@ TEXT THE WAY YOU WANT
 • Voice messages, photos, videos, contacts and your location
 • Reactions, reply-with-quote, and link previews
 • Quick replies for the things you say all the time
-• Schedule a text — even to a group — to send later
+• Schedule a text — even to a group — to send later, once or on repeat
+• Remind me about a message at a time you choose
 • Drafts are saved automatically in every conversation
 
 STAY IN CONTROL
 • Reply or mark as read right from the notification
 • Mute conversations for an hour, a day, or until you turn them back on
 • Snooze a conversation and have it come back when you're ready
+• Pin up to five chats to the top
 • Archive, trash, block, and custom filters
+• Choose which groups can notify you and make a sound, with quiet hours
 • Search every conversation, or search inside one
 • Photos & links view for each conversation
+
+BACK UP AND MOVE IN OR OUT
+• Back up every text, photo and setting to a file or folder you choose — by hand or weekly, with an optional password
+• Export to and import from SMS Backup & Restore files to switch apps either way
+
+MADE FOR YOUR PHONE
+• Home screen widget with your favorite people and unread messages
+• Side-by-side chats on foldables and tablets
+• Adjustable text size and full TalkBack screen reader support
 
 PRIVATE BY DESIGN
 Your messages and contacts stay on your phone. ForgeLink SMS has no ads, no tracking, and no accounts. Nothing is uploaded to us.
