@@ -191,7 +191,7 @@
     {
         @if (ViewModel.Lane == ConversationLane.Screener)
         {
-            <div style="color:#94a3b8;font-size:0.85em;margin:0 4px 8px;">Texts from numbers that aren't in your contacts and that you've never replied to — often spam, wrong numbers or someone new. They arrive without a notification (except verification codes). Tap Allow to move a sender to Chats, Block to stop them, or Report to send the spam to your carrier (7726) and block it.</div>
+            <div style="color:#94a3b8;font-size:0.85em;margin:0 4px 8px;">Texts from numbers that aren't in your contacts and that you've never replied to — often spam, wrong numbers or someone new. They arrive without a notification (except verification codes). Tap ✔ to move a sender to Chats, 🚫 to block them, 🚩 to report the spam to your carrier (7726) and block it, or 🗑 to delete it.</div>
         }
         else if (ViewModel.Lane == ConversationLane.Updates)
         {
@@ -327,16 +327,19 @@
                 </div>
                 @if (_selectedThreadIds.Count == 0 && ViewModel.Lane != ConversationLane.Conversations && string.IsNullOrWhiteSpace(ViewModel.SearchText))
                 {
-                    <div style="display:flex;gap:6px;flex-basis:100%;justify-content:flex-end;">
+                    <div style="display:flex;gap:10px;flex-basis:100%;justify-content:flex-end;">
                         <button @onclick="() => AllowSender(thread.Address)" @onclick:stopPropagation="true"
                                 @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
-                                style="border:none;border-radius:8px;padding:6px 10px;background:var(--accent-color);color:white;font-weight:600;">Allow</button>
+                                aria-label="Allow" title="Allow" style="@LaneActionStyle("var(--accent-color)");color:white;font-weight:700;">✔</button>
                         <button @onclick="() => BlockSender(thread.Address)" @onclick:stopPropagation="true"
                                 @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
-                                style="border:none;border-radius:8px;padding:6px 10px;background:#e2e8f0;color:#b91c1c;font-weight:600;">Block</button>
+                                aria-label="Block" title="Block" style="@LaneActionStyle("var(--surface-color)")">🚫</button>
                         <button @onclick="() => _reportThread = thread" @onclick:stopPropagation="true"
                                 @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
-                                style="border:none;border-radius:8px;padding:6px 10px;background:#fee2e2;color:#b91c1c;font-weight:600;">Report</button>
+                                aria-label="Report" title="Report" style="@LaneActionStyle("var(--surface-color)")">🚩</button>
+                        <button @onclick="() => DeleteLaneThread(thread.Id)" @onclick:stopPropagation="true"
+                                @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
+                                aria-label="Delete" title="Delete" style="@LaneActionStyle("var(--surface-color)")">🗑</button>
                     </div>
                 }
                 else if (_selectedThreadIds.Count == 0 && !thread.IsGroup && PhoneNumberFormatter.IsValidPhoneNumber(thread.Address))
@@ -1256,6 +1259,15 @@
             _reporting = false;
             _reportThread = null;
         }
+    }
+
+    private static string LaneActionStyle(string background) =>
+        $"width:40px;height:40px;border:none;border-radius:50%;padding:0;font-size:1.15em;line-height:1;display:flex;align-items:center;justify-content:center;background:{background}";
+
+    private async Task DeleteLaneThread(long threadId)
+    {
+        await ViewModel.TrashThreadCommand.ExecuteAsync(threadId);
+        ShowUndoToast("Deleted");
     }
 
     private async Task BlockSender(string address)
