@@ -226,6 +226,27 @@ internal sealed class AndroidRestoreTarget(Context context, IServiceProvider ser
             await services.GetRequiredService<IDraftRepository>().SaveAsync(ThreadFor(draft.Conversation), draft.Text);
         }
 
+        foreach (var group in plan.GroupNamesToApply)
+        {
+            await services.GetRequiredService<IGroupNameRepository>().SetNameAsync(ThreadFor(group.Conversation), group.Name);
+        }
+
+        if (plan.ProfileToApply is { } profile)
+        {
+            var profiles = services.GetRequiredService<IProfileService>();
+            profiles.SaveProfile(new UserProfile
+            {
+                DisplayName = profile.DisplayName,
+                PhotoPath = profiles.GetProfile().PhotoPath,
+                PhoneNumber = profile.PhoneNumber,
+                Email = profile.Email,
+                Street = profile.Street,
+                City = profile.City,
+                State = profile.State,
+                PostalCode = profile.PostalCode
+            });
+        }
+
         if (plan.Settings is { } settings)
         {
             services.GetRequiredService<IDisplayStyleService>().SaveDisplaySettings(settings.Display);

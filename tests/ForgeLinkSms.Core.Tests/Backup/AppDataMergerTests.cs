@@ -137,4 +137,27 @@ public class AppDataMergerTests
         Assert.Empty(plan.MembersToAdd);
         Assert.Empty(plan.QuickRepliesToAdd);
     }
+
+    [Fact]
+    public void Group_names_are_restored_for_restored_groups_without_a_name_of_their_own()
+    {
+        var plan = Plan(
+            new AppData { GroupNames = new[] { new BackupGroupName("a", "Kept") } },
+            new AppData { GroupNames = new[] { new BackupGroupName("a", "Old"), new BackupGroupName("b", "Family"), new BackupGroupName("zzz", "Gone") } });
+
+        Assert.Equal(new[] { new BackupGroupName("b", "Family") }, plan.GroupNamesToApply);
+    }
+
+    [Fact]
+    public void The_profile_fills_only_empty_fields_and_only_when_settings_are_restored()
+    {
+        var backup = new AppData { Profile = new BackupProfile("Travis", "7708654177", "t@example.com", "12 Oak St", "Ball Ground", "GA", "30107") };
+        var current = new AppData { Profile = new BackupProfile("Trav", "", "", "", "", "", "") };
+
+        Assert.Null(Plan(current, backup, settings: false).ProfileToApply);
+        var profile = Plan(current, backup, settings: true).ProfileToApply!;
+        Assert.Equal("Trav", profile.DisplayName);
+        Assert.Equal("7708654177", profile.PhoneNumber);
+        Assert.Equal("30107", profile.PostalCode);
+    }
 }

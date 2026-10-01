@@ -64,4 +64,32 @@ public class BackupModelsTests
         Assert.Throws<BackupDamagedException>(() => BackupJson.Deserialize<AppData>("{not json"));
         Assert.Throws<BackupDamagedException>(() => BackupJson.Deserialize<AppData>("null"));
     }
+
+    [Fact]
+    public void Group_names_profile_and_swipe_settings_survive_a_backup()
+    {
+        var data = new AppData
+        {
+            GroupNames = new[] { new BackupGroupName("4045550199,7705550101", "Softball Parents") },
+            Profile = new BackupProfile("Travis", "7708654177", "t@example.com", "12 Oak St", "Ball Ground", "GA", "30107"),
+            Settings = new BackupSettings(new DisplaySettings { SwipeRight = SwipeAction.Archive, SwipeLeft = SwipeAction.Nothing },
+                new NotificationSettings(), "System", "#16a34a")
+        };
+
+        var back = BackupJson.Deserialize<AppData>(BackupJson.Serialize(data));
+
+        Assert.Equal("Softball Parents", back.GroupNames.Single().Name);
+        Assert.Equal("Ball Ground", back.Profile!.City);
+        Assert.Equal(SwipeAction.Archive, back.Settings!.Display.SwipeRight);
+        Assert.Equal(SwipeAction.Nothing, back.Settings.Display.SwipeLeft);
+    }
+
+    [Fact]
+    public void Older_backups_without_group_names_or_a_profile_still_read()
+    {
+        var back = BackupJson.Deserialize<AppData>("""{"Favorites":["4045550199"]}""");
+
+        Assert.Empty(back.GroupNames);
+        Assert.Null(back.Profile);
+    }
 }

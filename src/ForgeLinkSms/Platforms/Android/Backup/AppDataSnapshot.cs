@@ -29,6 +29,8 @@ internal static class AppDataSnapshot
         var muted = await services.GetRequiredService<IMuteRepository>().GetAllAsync();
         var drafts = await services.GetRequiredService<IDraftRepository>().GetAllAsync();
         var theme = services.GetRequiredService<IThemeService>();
+        var groupNames = await services.GetRequiredService<IGroupNameRepository>().GetAllAsync();
+        var profile = services.GetRequiredService<IProfileService>().GetProfile();
 
         var data = new AppData
         {
@@ -51,7 +53,9 @@ internal static class AppDataSnapshot
                 services.GetRequiredService<IDisplayStyleService>().GetDisplaySettings(),
                 services.GetRequiredService<INotificationSettingsStore>().Get(),
                 theme.GetThemeMode().ToString(),
-                theme.GetAccentColor())
+                theme.GetAccentColor()),
+            GroupNames = groupNames.Where(g => Key(g.Key) is not null).Select(g => new BackupGroupName(Key(g.Key)!, g.Value)).ToList(),
+            Profile = new BackupProfile(profile.DisplayName, profile.PhoneNumber, profile.Email, profile.Street, profile.City, profile.State, profile.PostalCode)
         };
         return (data, participants, threadOf);
     }

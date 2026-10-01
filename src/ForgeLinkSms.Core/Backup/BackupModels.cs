@@ -31,6 +31,11 @@ public sealed record BackupTimed(string Conversation, DateTimeOffset? UntilUtc);
 
 public sealed record BackupDraft(string Conversation, string Text);
 
+public sealed record BackupGroupName(string Conversation, string Name);
+
+// The profile's text details; the photo is a file on the phone and isn't backed up.
+public sealed record BackupProfile(string DisplayName, string PhoneNumber, string Email, string Street, string City, string State, string PostalCode);
+
 public sealed record BackupSettings(DisplaySettings Display, NotificationSettings Notifications, string ThemeMode, string AccentColor);
 
 public sealed record AppData
@@ -48,6 +53,8 @@ public sealed record AppData
     public IReadOnlyList<string> Allowed { get; init; } = [];
     public IReadOnlyList<BackupDraft> Drafts { get; init; } = [];
     public BackupSettings? Settings { get; init; }
+    public IReadOnlyList<BackupGroupName> GroupNames { get; init; } = [];
+    public BackupProfile? Profile { get; init; }
 }
 
 // Android thread ids differ on another phone, so a conversation is identified by who's in it.

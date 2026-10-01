@@ -22,6 +22,8 @@ public sealed record MergePlan
     public IReadOnlyList<string> AllowedToAdd { get; init; } = [];
     public IReadOnlyList<BackupDraft> DraftsToAdd { get; init; } = [];
     public BackupSettings? Settings { get; init; }
+    public IReadOnlyList<BackupGroupName> GroupNamesToApply { get; init; } = [];
+    public BackupProfile? ProfileToApply { get; init; }
 }
 
 // Restore only adds: nothing already on the phone is removed or overwritten.
@@ -49,6 +51,7 @@ public static class AppDataMerger
         var snoozed = current.Snoozed.Select(s => s.Conversation).ToHashSet();
         var muted = current.Muted.Select(m => m.Conversation).ToHashSet();
         var drafts = current.Drafts.Select(d => d.Conversation).ToHashSet();
+        var named = current.GroupNames.Select(g => g.Conversation).ToHashSet();
 
         return new MergePlan
         {
@@ -69,7 +72,12 @@ public static class AppDataMerger
             BlockedToAdd = Missing(backup.Blocked, current.Blocked),
             AllowedToAdd = Missing(backup.Allowed, current.Allowed),
             DraftsToAdd = backup.Drafts.Where(d => Restored(d.Conversation) && !drafts.Contains(d.Conversation)).ToList(),
-            Settings = includeSettings ? backup.Settings : null
+            Settings = includeSettings ? backup.Settings : null,
+            GroupNamesToApply = backup.GroupNames
+                .Where(g => Restored(g.Conversation) && !named.Contains(g.Conversation) && !string.IsNullOrWhiteSpace(g.Name))
+                .DistinctBy(g => g.Conversation)
+                .ToList(),
+            ProfileToApply = includeSettings && backup.Profile is { } saved ? FillEmpty(current.Profile, saved) : null
         };
     }
 
@@ -77,6 +85,15 @@ public static class AppDataMerger
     private static bool SameScheduled(BackupScheduled a, BackupScheduled b) =>
         a.Conversation == b.Conversation && a.Body == b.Body && a.Repeat == b.Repeat
         && (a.Repeat != ScheduleRepeat.None || a.SendAtUtc == b.SendAtUtc);
+
+    // Details already on this phone win; the backup only fills what's blank.
+    private static BackupProfile FillEmpty(BackupProfile? current, BackupProfile saved)
+    {
+        static string Pick(string? have, string backup) => string.IsNullOrWhiteSpace(have) ? backup : have;
+        return new BackupProfile(
+            Pick(current?.DisplayName, saved.DisplayName), Pick(current?.PhoneNumber, saved.PhoneNumber), Pick(current?.Email, saved.Email),
+            Pick(current?.Street, saved.Street), Pick(current?.City, saved.City), Pick(current?.State, saved.State), Pick(current?.PostalCode, saved.PostalCode));
+    }
 
     private static List<string> Missing(IEnumerable<string> wanted, IEnumerable<string> have)
     {
