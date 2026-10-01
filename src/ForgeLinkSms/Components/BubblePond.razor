@@ -32,23 +32,7 @@
     }
 </div>
 
-<div id="bubble-pond-mini" class="bubble-pond-mini">
-    @foreach (var thread in Threads)
-    {
-        var color = PondSelector.ColorFor(thread.Address);
-        <div @key="thread.Id" class="mini-bubble @(thread.UnreadCount > 0 ? "unread" : "")" style="--rim:@color"
-             @onclick="() => OnOpen.InvokeAsync(thread)" role="button" tabindex="0" aria-label="@ForgeLinkSms.Core.Utils.AccessibleLabels.ForBubble(thread)">
-            @if (!string.IsNullOrEmpty(thread.PhotoUri))
-            {
-                <img src="@thread.PhotoUri" alt="" draggable="false" />
-            }
-            else
-            {
-                <span class="initials" style="background:@color">@thread.Initials</span>
-            }
-        </div>
-    }
-</div>
+<BubbleMiniRow Threads="Threads" OnOpen="OnOpen" />
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<SmsThread> Threads { get; set; } = Array.Empty<SmsThread>();

@@ -1,7 +1,8 @@
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Core.Utils
 
-<div class="bubble-grid">
+@* The id lets the scrolled bubble row (BubbleMiniRow) appear once the grid scrolls away, as for the pond. *@
+<div id="bubble-pond" class="bubble-grid">
     @for (var i = 0; i < Threads.Count; i++)
     {
         var thread = Threads[i];
@@ -31,6 +32,9 @@
         </div>
     }
 </div>
+
+
+<BubbleMiniRow Threads="Threads" OnOpen="OnOpen" />
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<SmsThread> Threads { get; set; } = Array.Empty<SmsThread>();

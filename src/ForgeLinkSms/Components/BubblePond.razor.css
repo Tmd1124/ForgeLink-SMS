@@ -22,9 +22,7 @@
 }
 
 .pond-bubble img,
-.pond-bubble .initials,
-.mini-bubble img,
-.mini-bubble .initials {
+.pond-bubble .initials {
     width: 100%;
     height: 100%;
     border-radius: 50%;
@@ -70,51 +68,9 @@
     color: var(--text-color);
 }
 
-.bubble-pond-mini {
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 52px;
-    z-index: 9;
-    display: flex;
-    gap: 8px;
-    padding: 6px 12px;
-    overflow-x: auto;
-    background: var(--surface-color);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    opacity: 0;
-    transform: translateY(-10px);
-    pointer-events: none;
-    transition: opacity 0.25s, transform 0.25s;
-}
 
-.bubble-pond-mini.show {
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-}
 
-.mini-bubble {
-    position: relative;
-    flex-shrink: 0;
-    width: 36px;
-    height: 36px;
-    box-sizing: border-box;
-    border-radius: 50%;
-    border: 2px solid var(--rim);
-    cursor: pointer;
-}
 
-.mini-bubble.unread::after {
-    content: "";
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #facc15;
-}
 
 @keyframes pond-bob {
     0%, 100% { transform: translateY(0); }
@@ -130,9 +86,5 @@
     .pond-bubble,
     .pond-bubble.unread {
         animation: none;
-    }
-
-    .bubble-pond-mini {
-        transition: none;
     }
 }
