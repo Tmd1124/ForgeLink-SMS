@@ -1,5 +1,7 @@
 @inject ForgeLinkSms.Core.Services.IContactService ContactService
 @inject ForgeLinkSms.Core.Services.ILocationService LocationService
+@inject ForgeLinkSms.Core.Services.IProfileService ProfileService
+@inject Microsoft.AspNetCore.Components.NavigationManager Nav
 @inject ForgeLinkSms.Core.Services.IAttachmentPickerService AttachmentPickerService
 @inject ForgeLinkSms.Core.ViewModels.QuickRepliesViewModel QuickReplies
 @using ForgeLinkSms.Core.Models
@@ -159,6 +161,10 @@
                         <span class="icon">👤</span>
                         <span>Contact</span>
                     </div>
+                    <div class="drawer-item" @onclick="OpenMyCard" role="button" tabindex="0">
+                        <span class="icon">📇</span>
+                        <span>My card</span>
+                    </div>
                     <div class="drawer-item" @onclick="OpenSchedulePicker" role="button" tabindex="0">
                         <span class="icon">⏰</span>
                         <span>Schedule</span>
@@ -197,6 +203,38 @@
                     <input placeholder="Add a quick reply" @bind="_newReplyText" @bind:event="oninput" />
                     <button @onclick="AddQuickReply" disabled="@string.IsNullOrWhiteSpace(_newReplyText)" title="Add" aria-label="Add">➕</button>
                 </div>
+            }
+            else if (_mode == DrawerMode.MyCard && _myProfile is { } me)
+            {
+                <div class="drawer-back" @onclick="() => _mode = DrawerMode.Grid" role="button" tabindex="0">‹ Back</div>
+                @if (!OwnCard.CanShare(me))
+                {
+                    <p style="margin:0 0 12px;">Add your mobile number to your profile first, so people can save your card.</p>
+                    <button @onclick="OpenProfile" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--accent-color);color:white;font-size:1em;">Open Your Profile</button>
+                }
+                else
+                {
+                    <p style="margin:0 0 8px;">This will be sent as a contact card:</p>
+                    <div style="padding:10px 12px;border-radius:10px;background:rgba(127,127,127,0.12);line-height:1.5;">
+                        <div style="font-weight:600;">@me.DisplayName</div>
+                        <div>@PhoneNumberFormatter.ToDisplayFormat(me.PhoneNumber)</div>
+                        @if (!string.IsNullOrWhiteSpace(me.Email))
+                        {
+                            <div>@me.Email</div>
+                        }
+                        @if (_includeAddress && OwnCard.HasAddress(me))
+                        {
+                            <div>@OwnCard.AddressLine(me)</div>
+                        }
+                    </div>
+                    @if (OwnCard.HasAddress(me))
+                    {
+                        <label style="display:flex;align-items:center;gap:10px;padding:10px 0;">
+                            <input type="checkbox" @bind="_includeAddress" style="width:20px;height:20px;" /> Include my address
+                        </label>
+                    }
+                    <button @onclick="ShareMyCard" style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:none;background:var(--accent-color);color:white;font-size:1em;">Add to message</button>
+                }
             }
             else if (_mode == DrawerMode.ContactList)
             {
@@ -255,7 +293,7 @@
 }
 
 @code {
-    private enum DrawerMode { Grid, ContactList, Schedule, QuickReplies }
+    private enum DrawerMode { Grid, ContactList, Schedule, QuickReplies, MyCard }
 
     private bool _isOpen;
     private DrawerMode _mode = DrawerMode.Grid;
@@ -312,16 +350,38 @@
         await OnInsertText.InvokeAsync(AttachmentTextFormatter.FormatLocationLink(location.Value.Latitude, location.Value.Longitude));
     }
 
-    private async Task ShareContact(ContactInfo contact)
+    private Task ShareContact(ContactInfo contact) =>
+        AttachCard(contact.DisplayName, AttachmentTextFormatter.FormatContactShare(contact));
+
+    private UserProfile? _myProfile;
+    private bool _includeAddress = true;
+
+    private void OpenMyCard()
+    {
+        _myProfile = ProfileService.GetProfile();
+        _includeAddress = true;
+        _mode = DrawerMode.MyCard;
+    }
+
+    private void OpenProfile()
+    {
+        Close();
+        Nav.NavigateTo("/profile");
+    }
+
+    private Task ShareMyCard() =>
+        _myProfile is { } me ? AttachCard(me.DisplayName, OwnCard.ToVCard(me, _includeAddress)) : Task.CompletedTask;
+
+    private async Task AttachCard(string name, string vCard)
     {
         Close();
 
         var attachmentsDir = Path.Combine(FileSystem.AppDataDirectory, "attachments");
         Directory.CreateDirectory(attachmentsDir);
 
-        var fileName = $"{SanitizeFileName(contact.DisplayName)}.vcf";
+        var fileName = $"{SanitizeFileName(name)}.vcf";
         var localPath = Path.Combine(attachmentsDir, fileName);
-        await File.WriteAllTextAsync(localPath, AttachmentTextFormatter.FormatContactShare(contact));
+        await File.WriteAllTextAsync(localPath, vCard);
 
         await OnAttachmentPicked.InvokeAsync(new PickedAttachment
         {

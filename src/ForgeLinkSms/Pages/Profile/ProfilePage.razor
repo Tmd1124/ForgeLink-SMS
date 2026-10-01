@@ -3,32 +3,60 @@
 @inject ForgeLinkSms.Core.ViewModels.ProfileViewModel ViewModel
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
 
-<div style="padding:12px;">
+<div style="padding:12px;padding-bottom:40px;">
     <h3>Your Profile</h3>
+    <div style="@HintStyle;margin-bottom:12px;">Kept on this phone. Shared only when you send "My card" from the attachment menu.</div>
 
-    @if (!string.IsNullOrEmpty(_photoDataUri))
-    {
-        <img src="@_photoDataUri" alt="Profile photo"
-             @onclick="PickPhoto"
-             style="width:80px;height:80px;border-radius:50%;object-fit:cover;" />
-    }
-    else
-    {
-        <button @onclick="PickPhoto"
-                style="width:80px;height:80px;border-radius:50%;background:#e2e8f0;border:none;">
-            + Photo
-        </button>
-    }
-
-    <div style="margin-top:12px;">
-        <input placeholder="Your name" @bind="ViewModel.DisplayName" />
+    <div style="display:flex;align-items:center;gap:14px;">
+        @if (!string.IsNullOrEmpty(_photoDataUri))
+        {
+            <img src="@_photoDataUri" alt="Profile photo, tap to change" @onclick="PickPhoto" role="button" tabindex="0"
+                 style="width:80px;height:80px;border-radius:50%;object-fit:cover;" />
+        }
+        else
+        {
+            <button @onclick="PickPhoto" style="width:80px;height:80px;border-radius:50%;background:#e2e8f0;border:none;color:#1e293b;">+ Photo</button>
+        }
+        <button @onclick="FillFromPhone" disabled="@_busy" style="@ButtonStyle">📇 Fill from my phone</button>
     </div>
 
-    <button @onclick="Save" style="margin-top:12px;">Save</button>
+    @if (!string.IsNullOrEmpty(ViewModel.StatusMessage))
+    {
+        <p role="status" style="color:#06b6d4;margin:10px 0 0;">@ViewModel.StatusMessage</p>
+    }
+
+    <h4 style="@HeadingStyle">About you</h4>
+    <div style="@GroupStyle">
+        <label style="@FieldStyle">Name<input @bind="ViewModel.DisplayName" autocomplete="name" style="@InputStyle" /></label>
+        <label style="@FieldStyle">Mobile number<input @bind="ViewModel.PhoneNumber" type="tel" autocomplete="tel" style="@InputStyle" /></label>
+        <label style="@FieldStyle;border-bottom:none;">Email<input @bind="ViewModel.Email" type="email" autocomplete="email" style="@InputStyle" /></label>
+    </div>
+
+    <h4 style="@HeadingStyle">Address</h4>
+    <div style="@GroupStyle">
+        <label style="@FieldStyle">Street<input @bind="ViewModel.Street" autocomplete="street-address" style="@InputStyle" /></label>
+        <label style="@FieldStyle">City<input @bind="ViewModel.City" autocomplete="address-level2" style="@InputStyle" /></label>
+        <div style="display:flex;">
+            <label style="@FieldStyle;flex:1;border-bottom:none;">State<input @bind="ViewModel.State" autocomplete="address-level1" style="@InputStyle" /></label>
+            <label style="@FieldStyle;flex:1;border-bottom:none;">ZIP<input @bind="ViewModel.PostalCode" autocomplete="postal-code" inputmode="numeric" style="@InputStyle" /></label>
+        </div>
+    </div>
+    <button @onclick="UseCurrentLocation" disabled="@_busy" style="@ButtonStyle;margin-top:8px;width:100%;">📍 Use my current location</button>
+    <div style="@HintStyle;padding:4px;">Looks up the address for where you are now. Android asks Google's location service to do this.</div>
+
+    <button @onclick="Save" style="margin-top:20px;width:100%;padding:14px;border:none;border-radius:12px;background:var(--accent-color);color:white;font:inherit;font-weight:600;">Save</button>
 </div>
 
 @code {
+    private const string HintStyle = "color:#94a3b8;font-size:0.85em";
+    private const string HeadingStyle = "margin:20px 4px 6px;font-size:0.8em;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#94a3b8;";
+    private const string GroupStyle = "background:var(--card-color);border-radius:12px;overflow:hidden";
+    private const string FieldStyle = "display:block;padding:8px 12px;font-size:0.85em;color:#94a3b8;border-bottom:1px solid rgba(127,127,127,0.2)";
+    private const string InputStyle = "display:block;width:100%;box-sizing:border-box;margin-top:2px;padding:4px 0;border:none;background:transparent;color:var(--text-color);font-size:1.15em;outline:none;";
+    private const string ButtonStyle = "padding:12px;border:none;border-radius:12px;background:var(--card-color);color:var(--text-color);font:inherit;font-weight:600;";
+
     private string? _photoDataUri;
+    private bool _busy;
 
     protected override async Task OnInitializedAsync()
     {
@@ -39,6 +67,33 @@
     {
         await ViewModel.PickPhotoCommand.ExecuteAsync(null);
         _photoDataUri = await ImageDataUriHelper.ToDataUriAsync(ViewModel.PhotoPath);
+    }
+
+    private async Task FillFromPhone()
+    {
+        _busy = true;
+        try
+        {
+            await ViewModel.FillFromPhoneCommand.ExecuteAsync(null);
+            _photoDataUri = await ImageDataUriHelper.ToDataUriAsync(ViewModel.PhotoPath);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task UseCurrentLocation()
+    {
+        _busy = true;
+        try
+        {
+            await ViewModel.UseCurrentLocationCommand.ExecuteAsync(null);
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private void Save()

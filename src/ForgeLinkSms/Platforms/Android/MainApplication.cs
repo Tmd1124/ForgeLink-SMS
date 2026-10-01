@@ -7,6 +7,7 @@ using Android.Runtime;
 [assembly: UsesPermission(Android.Manifest.Permission.ReceiveMms)]
 [assembly: UsesPermission(Android.Manifest.Permission.ReadContacts)]
 [assembly: UsesPermission(Android.Manifest.Permission.ReadPhoneState)]
+[assembly: UsesPermission(Android.Manifest.Permission.ReadPhoneNumbers)]
 [assembly: UsesPermission(Android.Manifest.Permission.ReceiveWapPush)]
 [assembly: UsesPermission("android.permission.POST_NOTIFICATIONS")]
 [assembly: UsesPermission(Android.Manifest.Permission.AccessFineLocation)]
