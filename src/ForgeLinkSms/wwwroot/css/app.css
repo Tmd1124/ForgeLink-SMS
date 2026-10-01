@@ -179,3 +179,42 @@ body {
     clip: rect(0 0 0 0);
     white-space: nowrap;
 }
+
+/* Chat rows slide over this while swiping (swipeRows.js); hidden otherwise so it never shows through a clear row. */
+.swipe-wrap { position: relative; margin: 0 0 8px; }
+.swipe-back {
+    position: absolute; inset: 0; border-radius: 18px 18px 18px 4px; overflow: hidden;
+    display: flex; opacity: 0; transition: opacity 0.12s ease;
+}
+.swipe-wrap.swiping .swipe-back { opacity: 1; }
+.swipe-side {
+    flex: 1; display: flex; align-items: center; gap: 8px; padding: 0 20px;
+    color: white; font-weight: 700; visibility: hidden;
+}
+.swipe-side.for-right { justify-content: flex-start; }
+.swipe-side.for-left { justify-content: flex-end; }
+.swipe-wrap.to-right .swipe-side.for-right, .swipe-wrap.to-left .swipe-side.for-left { visibility: visible; flex: 1 0 100%; }
+.swipe-wrap.to-right .swipe-side.for-left, .swipe-wrap.to-left .swipe-side.for-right { display: none; }
+.swipe-side .swipe-glyph { font-size: 1.4em; transition: transform 0.15s ease; }
+.swipe-wrap.armed .swipe-side .swipe-glyph { transform: scale(1.35); }
+.swipe-wrap > [data-swipe-row] { position: relative; }
+
+/* Stands in for a swiped chat while its Undo is still offered. */
+.swipe-pending {
+    position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    border-radius: 18px 18px 18px 4px; color: var(--text-color); font-weight: 600;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--swipe-color) 35%, var(--card-color)), var(--card-color));
+    border: 1px solid color-mix(in srgb, var(--swipe-color) 60%, transparent);
+    animation: swipe-pending-in 0.2s ease, swipe-pending-out 0.25s ease 2.75s forwards;
+}
+.swipe-pending button {
+    border: none; border-radius: 999px; padding: 6px 16px; font-weight: 700; font-size: 1em;
+    background: var(--swipe-color); color: white;
+}
+.swipe-pending-timer {
+    position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--swipe-color);
+    transform-origin: left; animation: swipe-pending-timer 3s linear forwards;
+}
+@keyframes swipe-pending-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes swipe-pending-out { to { opacity: 0; transform: scaleY(0.6); } }
+@keyframes swipe-pending-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }

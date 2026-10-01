@@ -258,97 +258,115 @@
                 </div>
                 continue;
             }
-            <div @key="thread!.Id" id="@RowId(thread.Id)" @onpointerdown="e => OnPointerDown(thread.Id, e)"
-                 role="button" tabindex="0" aria-label="@ForgeLinkSms.Core.Utils.AccessibleLabels.ForThread(thread, DateTime.Today)"
-                 @onpointerup="e => OnPointerUp(thread.Id, thread.Address, e)"
-                 @onpointermove="OnPointerMove"
-                 @onpointerleave="CancelLongPress"
-                 style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;margin:0 0 8px;border-radius:18px 18px 18px 4px;touch-action:pan-y;user-select:none;-webkit-user-select:none;background:@RowBackground(thread);">
-                @if (_selectedThreadIds.Count > 0)
+            <div @key="thread!.Id" class="swipe-wrap">
+                @if (_pendingSwipeThreadId == thread.Id)
                 {
-                    <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.3em;background:@(_selectedThreadIds.Contains(thread.Id) ? "var(--accent-color)" : "transparent");border:2px solid var(--accent-color);color:white;">
-                        @(_selectedThreadIds.Contains(thread.Id) ? "✓" : "")
+                    var look = SwipeLook(_pendingSwipeAction);
+                    <div class="swipe-pending" role="status" style="--swipe-color:@look.Color;">
+                        <span style="flex:1;">@look.Glyph @(_pendingSwipeAction == SwipeAction.Trash ? "Deleted" : "Archived")</span>
+                        <button @onclick="UndoPendingSwipe" @onclick:stopPropagation="true">Undo</button>
+                        <span class="swipe-pending-timer" aria-hidden="true"></span>
                     </div>
-                }
-                else if (!string.IsNullOrEmpty(thread.PhotoUri))
-                {
-                    <img src="@thread.PhotoUri" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
-                }
-                else if (!string.IsNullOrWhiteSpace(thread.DisplayName))
-                {
-                    <div style="width:40px;height:40px;border-radius:50%;background:@PondSelector.ColorFor(thread.Address);color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;">@thread.Initials</div>
                 }
                 else
                 {
-                    <button @onclick="() => AddContact(thread.Address)" @onclick:stopPropagation="true"
-                            @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
-                            style="width:40px;height:40px;border-radius:50%;border:none;background:var(--accent-color);color:white;font-size:1.3em;flex-shrink:0;">
-                        +
-                    </button>
-                }
-                <div style="flex:1;min-width:0;">
-                    @if (ViewModel.IsAddingToFilter)
-                    {
-                        <div style="font-size:0.75em;font-weight:600;color:@(ViewModel.IsInActiveFilters(thread) ? "var(--accent-color)" : "#94a3b8");">@(ViewModel.IsInActiveFilters(thread) ? $"✓ In {ActiveFilterNames()}" : $"＋ Add to {ActiveFilterNames()}")</div>
-                    }
-                    @if (thread.IsPinned && !ViewModel.IsSearching)
-                    {
-                        <span title="Pinned">📌 </span>
-                    }
-                    <strong>@thread.DisplayNameOrAddress</strong>
-                    @if (thread.IsFavorite)
-                    {
-                        <span> ❤️</span>
-                    }
-                    @if (thread.IsMuted)
-                    {
-                        <span title="Muted"> 🔕</span>
-                    }
-                    @foreach (var filterId in thread.FilterIds)
-                    {
-                        var filter = ViewModel.Filters.FirstOrDefault(f => f.Id == filterId);
-                        if (filter is not null)
-                        {
-                            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:@filter.ColorHex;margin-left:4px;"></span>
-                        }
-                    }
-                    @if (thread.UnreadCount > 0)
-                    {
-                        <span style="color:#06b6d4;"> ● @thread.UnreadCount</span>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(thread.DraftText))
-                    {
-                        <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="color:#ef4444;font-weight:600;">Draft:</span> @thread.DraftText</div>
-                    }
-                    else
-                    {
-                        <div style="color:#94a3b8;font-size:0.85em;">@thread.PreviewText</div>
-                    }
-                </div>
-                @if (_selectedThreadIds.Count == 0 && ViewModel.Lane != ConversationLane.Conversations && string.IsNullOrWhiteSpace(ViewModel.SearchText))
-                {
-                    <div style="display:flex;gap:10px;flex-basis:100%;justify-content:flex-end;">
-                        <button @onclick="() => AllowSender(thread.Address)" @onclick:stopPropagation="true"
-                                @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
-                                aria-label="Allow" title="Allow" style="@LaneActionStyle("var(--accent-color)");color:white;font-weight:700;">✔</button>
-                        <button @onclick="() => BlockSender(thread.Address)" @onclick:stopPropagation="true"
-                                @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
-                                aria-label="Block" title="Block" style="@LaneActionStyle("var(--surface-color)")">🚫</button>
-                        <button @onclick="() => _reportThread = thread" @onclick:stopPropagation="true"
-                                @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
-                                aria-label="Report" title="Report" style="@LaneActionStyle("var(--surface-color)")">🚩</button>
-                        <button @onclick="() => DeleteLaneThread(thread.Id)" @onclick:stopPropagation="true"
-                                @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
-                                aria-label="Delete" title="Delete" style="@LaneActionStyle("var(--surface-color)")">🗑</button>
+                    <div class="swipe-back" aria-hidden="true">
+                        <div class="swipe-side for-right" style="background:@SwipeLook(ViewModel.Display.SwipeRight).Color"><span class="swipe-glyph">@SwipeLook(ViewModel.Display.SwipeRight).Glyph</span>@SwipeRules.Label(ViewModel.Display.SwipeRight)</div>
+                        <div class="swipe-side for-left" style="background:@SwipeLook(ViewModel.Display.SwipeLeft).Color">@SwipeRules.Label(ViewModel.Display.SwipeLeft)<span class="swipe-glyph">@SwipeLook(ViewModel.Display.SwipeLeft).Glyph</span></div>
                     </div>
-                }
-                else if (_selectedThreadIds.Count == 0 && !thread.IsGroup && PhoneNumberFormatter.IsValidPhoneNumber(thread.Address))
-                {
-                    <button @onclick="() => PhoneDialer.Default.Open(thread.Address)" @onclick:stopPropagation="true"
-                            @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
-                            style="width:36px;height:36px;border-radius:50%;border:none;background:transparent;font-size:1.1em;flex-shrink:0;">
-                        📞
-                    </button>
+                    <div id="@RowId(thread.Id)" data-swipe-row data-swipe-right="@(_selectedThreadIds.Count > 0 ? SwipeAction.Nothing : ViewModel.Display.SwipeRight)" data-swipe-left="@(_selectedThreadIds.Count > 0 ? SwipeAction.Nothing : ViewModel.Display.SwipeLeft)" @onpointerdown="e => OnPointerDown(thread.Id, e)"
+                         role="button" tabindex="0" aria-label="@ForgeLinkSms.Core.Utils.AccessibleLabels.ForThread(thread, DateTime.Today)"
+                         @onpointerup="e => OnPointerUp(thread.Id, thread.Address, e)"
+                         @onpointermove="OnPointerMove"
+                         @onpointerleave="CancelLongPress"
+                         style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;border-radius:18px 18px 18px 4px;touch-action:pan-y;user-select:none;-webkit-user-select:none;background:@RowBackground(thread);">
+                        @if (_selectedThreadIds.Count > 0)
+                        {
+                            <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.3em;background:@(_selectedThreadIds.Contains(thread.Id) ? "var(--accent-color)" : "transparent");border:2px solid var(--accent-color);color:white;">
+                                @(_selectedThreadIds.Contains(thread.Id) ? "✓" : "")
+                            </div>
+                        }
+                        else if (!string.IsNullOrEmpty(thread.PhotoUri))
+                        {
+                            <img src="@thread.PhotoUri" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
+                        }
+                        else if (!string.IsNullOrWhiteSpace(thread.DisplayName))
+                        {
+                            <div style="width:40px;height:40px;border-radius:50%;background:@PondSelector.ColorFor(thread.Address);color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;">@thread.Initials</div>
+                        }
+                        else
+                        {
+                            <button @onclick="() => AddContact(thread.Address)" @onclick:stopPropagation="true"
+                                    @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
+                                    style="width:40px;height:40px;border-radius:50%;border:none;background:var(--accent-color);color:white;font-size:1.3em;flex-shrink:0;">
+                                +
+                            </button>
+                        }
+                        <div style="flex:1;min-width:0;">
+                            @if (ViewModel.IsAddingToFilter)
+                            {
+                                <div style="font-size:0.75em;font-weight:600;color:@(ViewModel.IsInActiveFilters(thread) ? "var(--accent-color)" : "#94a3b8");">@(ViewModel.IsInActiveFilters(thread) ? $"✓ In {ActiveFilterNames()}" : $"＋ Add to {ActiveFilterNames()}")</div>
+                            }
+                            @if (thread.IsPinned && !ViewModel.IsSearching)
+                            {
+                                <span title="Pinned">📌 </span>
+                            }
+                            <strong>@thread.DisplayNameOrAddress</strong>
+                            @if (thread.IsFavorite)
+                            {
+                                <span> ❤️</span>
+                            }
+                            @if (thread.IsMuted)
+                            {
+                                <span title="Muted"> 🔕</span>
+                            }
+                            @foreach (var filterId in thread.FilterIds)
+                            {
+                                var filter = ViewModel.Filters.FirstOrDefault(f => f.Id == filterId);
+                                if (filter is not null)
+                                {
+                                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:@filter.ColorHex;margin-left:4px;"></span>
+                                }
+                            }
+                            @if (thread.UnreadCount > 0)
+                            {
+                                <span style="color:#06b6d4;"> ● @thread.UnreadCount</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(thread.DraftText))
+                            {
+                                <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="color:#ef4444;font-weight:600;">Draft:</span> @thread.DraftText</div>
+                            }
+                            else
+                            {
+                                <div style="color:#94a3b8;font-size:0.85em;">@thread.PreviewText</div>
+                            }
+                        </div>
+                        @if (_selectedThreadIds.Count == 0 && ViewModel.Lane != ConversationLane.Conversations && string.IsNullOrWhiteSpace(ViewModel.SearchText))
+                        {
+                            <div style="display:flex;gap:10px;flex-basis:100%;justify-content:flex-end;">
+                                <button @onclick="() => AllowSender(thread.Address)" @onclick:stopPropagation="true"
+                                        @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
+                                        aria-label="Allow" title="Allow" style="@LaneActionStyle("var(--accent-color)");color:white;font-weight:700;">✔</button>
+                                <button @onclick="() => BlockSender(thread.Address)" @onclick:stopPropagation="true"
+                                        @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
+                                        aria-label="Block" title="Block" style="@LaneActionStyle("var(--surface-color)")">🚫</button>
+                                <button @onclick="() => _reportThread = thread" @onclick:stopPropagation="true"
+                                        @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
+                                        aria-label="Report" title="Report" style="@LaneActionStyle("var(--surface-color)")">🚩</button>
+                                <button @onclick="() => DeleteLaneThread(thread.Id)" @onclick:stopPropagation="true"
+                                        @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
+                                        aria-label="Delete" title="Delete" style="@LaneActionStyle("var(--surface-color)")">🗑</button>
+                            </div>
+                        }
+                        else if (_selectedThreadIds.Count == 0 && !thread.IsGroup && PhoneNumberFormatter.IsValidPhoneNumber(thread.Address))
+                        {
+                            <button @onclick="() => PhoneDialer.Default.Open(thread.Address)" @onclick:stopPropagation="true"
+                                    @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
+                                    style="width:36px;height:36px;border-radius:50%;border:none;background:transparent;font-size:1.1em;flex-shrink:0;">
+                                📞
+                            </button>
+                        }
+                    </div>
                 }
             </div>
         }
@@ -791,6 +809,7 @@
         _ = JS.InvokeVoidAsync("forgeLinkBubblePond.dispose").AsTask().ContinueWith(_ => { }, TaskScheduler.Default);
         _undoToastCts?.Cancel();
         _codeExpiryCts.Cancel();
+        _ = CommitPendingSwipe();
         _selfRef?.Dispose();
 
         // Blazor's router can create the next page before disposing this one, so only clear the
@@ -862,10 +881,69 @@
         Nav.NavigateTo($"/conversations/thread?id={threadId}&address={Uri.EscapeDataString(address)}");
     }
 
+    private bool _rowDragged;
+
+    // A swiped chat shows an Undo card in its place for a few seconds before it really moves.
+    private const int SwipeUndoMs = 3000;
+    private long? _pendingSwipeThreadId;
+    // When the card goes the chats below move up; a tap meant for Undo mustn't open the one that slid under it.
+    private DateTime _swipeCardClosedAt = DateTime.MinValue;
+    private SwipeAction _pendingSwipeAction;
+    private CancellationTokenSource? _pendingSwipeCts;
+
+    private async Task BeginSwipeAction(long threadId, SwipeAction action)
+    {
+        await CommitPendingSwipe();
+        _pendingSwipeThreadId = threadId;
+        _pendingSwipeAction = action;
+        var cts = _pendingSwipeCts = new CancellationTokenSource();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(SwipeUndoMs, cts.Token);
+                await InvokeAsync(async () =>
+                {
+                    await CommitPendingSwipe();
+                    StateHasChanged();
+                });
+            }
+            catch (TaskCanceledException)
+            {
+            }
+        });
+    }
+
+    private async Task CommitPendingSwipe()
+    {
+        if (_pendingSwipeThreadId is not { } threadId)
+        {
+            return;
+        }
+        _pendingSwipeCts?.Cancel();
+        _pendingSwipeThreadId = null;
+        _swipeCardClosedAt = DateTime.UtcNow;
+        if (_pendingSwipeAction == SwipeAction.Trash)
+        {
+            await ViewModel.TrashThreadCommand.ExecuteAsync(threadId);
+        }
+        else
+        {
+            await ViewModel.ArchiveThreadCommand.ExecuteAsync(threadId);
+        }
+    }
+
+    private void UndoPendingSwipe()
+    {
+        _pendingSwipeCts?.Cancel();
+        _pendingSwipeThreadId = null;
+    }
+
     private void OnPointerDown(long threadId, PointerEventArgs e)
     {
         _activePointerDownThreadId = threadId;
         _pointerDownX = e.ClientX;
+        _rowDragged = false;
         _longPressTriggered = false;
         _longPressCts = new CancellationTokenSource();
         var token = _longPressCts.Token;
@@ -895,6 +973,7 @@
         if (Math.Abs(e.ClientX - _pointerDownX) > 15)
         {
             CancelLongPress();
+            _rowDragged = true;
         }
     }
 
@@ -927,18 +1006,20 @@
         var deltaX = e.ClientX - _pointerDownX;
         if (Math.Abs(deltaX) >= SwipeRules.Threshold)
         {
-            switch (SwipeRules.ActionFor(deltaX, ViewModel.Display))
+            if (SwipeRules.ActionFor(deltaX, ViewModel.Display) is var action && action != SwipeAction.Nothing)
             {
-                case SwipeAction.Trash:
-                    await ViewModel.TrashThreadCommand.ExecuteAsync(threadId);
-                    ShowUndoToast("Deleted");
-                    break;
-                case SwipeAction.Archive:
-                    await ViewModel.ArchiveThreadCommand.ExecuteAsync(threadId);
-                    ShowUndoToast("Archived");
-                    break;
+                await BeginSwipeAction(threadId, action);
             }
             // A swipe set to Nothing is still a swipe, not a tap that opens the chat.
+            return;
+        }
+        if (DateTime.UtcNow - _swipeCardClosedAt < TimeSpan.FromMilliseconds(500))
+        {
+            return;
+        }
+        if (_rowDragged)
+        {
+            // Dragged sideways and brought back short of a swipe: the row slid back, nothing opens.
             return;
         }
 
@@ -1263,6 +1344,13 @@
             _reportThread = null;
         }
     }
+
+    private static (string Glyph, string Color) SwipeLook(SwipeAction action) => action switch
+    {
+        SwipeAction.Archive => ("📦", "#16a34a"),
+        SwipeAction.Trash => ("🗑", "#dc2626"),
+        _ => ("🚫", "#64748b")
+    };
 
     private static string LaneActionStyle(string background) =>
         $"width:40px;height:40px;border:none;border-radius:50%;padding:0;font-size:1.15em;line-height:1;display:flex;align-items:center;justify-content:center;background:{background}";
