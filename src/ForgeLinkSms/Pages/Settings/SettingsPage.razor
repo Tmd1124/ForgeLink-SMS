@@ -139,75 +139,83 @@
             break;
 
         case "chat-list":
+            var hasBubbles = _settings.Layout != ConversationDisplayStyle.Cards;
+            var hasList = _settings.Layout != ConversationDisplayStyle.Bubbles;
             <h3>Chat list</h3>
             <h4 style="@HeadingStyle">Layout</h4>
-            @foreach (var (layout, icon, title, description) in Layouts)
-            {
-                <div @onclick="() => ChooseLayout(layout)" style="@OptionStyle(_settings.Layout == layout)" role="button" tabindex="0">
-                    <span style="font-size:1.6em;">@icon</span>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-weight:600;">@title</div>
-                        <div style="@HintStyle">@description</div>
+            <div style="@GroupStyle">
+                @foreach (var (layout, icon, title, description) in Layouts)
+                {
+                    <div @onclick="() => ChooseLayout(layout)" role="radio" aria-checked="@(_settings.Layout == layout ? "true" : "false")" tabindex="0"
+                         style="display:flex;align-items:center;gap:12px;padding:12px;@(layout == Layouts[^1].Layout ? "" : RowDivider)">
+                        <span aria-hidden="true" style="flex-shrink:0;width:3.4em;text-align:center;white-space:nowrap;">@icon</span>
+                        <span style="flex:1;min-width:0;">
+                            <span style="display:block;font-weight:600;">@title</span>
+                            <span style="@HintStyle;display:block;">@description</span>
+                        </span>
+                        <span style="@RadioStyle(_settings.Layout == layout)"></span>
                     </div>
-                    <span style="@RadioStyle(_settings.Layout == layout)"></span>
-                </div>
-            }
-
-            <h4 style="@HeadingStyle">Quick presets</h4>
-            <div style="display:flex;flex-direction:column;gap:6px;">
-                <button @onclick="() => Apply(DisplayRules.BubblesOnlyFavoritesAndUnreadPreset)" style="@PresetStyle">🫧 Bubbles only: favorites + unread (no list)</button>
-                <button @onclick="() => Apply(DisplayRules.FavoritesAndUnreadPreset)" style="@PresetStyle">🫧💬 Favorites + unread are bubbles</button>
-                <button @onclick="() => Apply(DisplayRules.UnreadOnlyColorPreset)" style="@PresetStyle">💬 Only unread messages are colored</button>
-                <button @onclick="() => Apply(DisplayRules.FavoritesWithFilterColorsPreset)" style="@PresetStyle">🏷️ Favorite bubbles + filter-colored list</button>
+                }
             </div>
 
-            <h4 style="@HeadingStyle">Who gets a bubble</h4>
-            @if (_settings.Layout != ConversationDisplayStyle.Cards)
+            @if (hasBubbles)
             {
-                <div style="@HintStyle">@(_settings.Layout == ConversationDisplayStyle.Bubbles ? "With no list, anyone else is only found through search and the tabs." : "Everyone else is in the list.")</div>
-                <div style="@GroupStyle;margin-top:8px;">
+                <h4 style="@HeadingStyle">Who gets a bubble</h4>
+                <div style="@GroupStyle">
                     @foreach (var (label, isChecked, set) in BubbleChoices())
                     {
-                        <label style="display:flex;align-items:center;gap:10px;padding:12px;">
+                        <label style="display:flex;align-items:center;gap:10px;padding:12px;@RowDivider">
                             <input type="checkbox" checked="@isChecked" @onchange="e => Update(s => set(s, e.Value is true))" style="width:20px;height:20px;" />
                             @label
                         </label>
                     }
                 </div>
-            }
-            else
-            {
-                <div style="@HintStyle">The Color list layout has no bubbles.</div>
+                <div style="@HintStyle;padding:6px 4px 0;">@(hasList ? "Everyone else is in the list." : "With no list, anyone else is only found through search and the tabs.")</div>
             }
 
-            <h4 style="@HeadingStyle">List colors</h4>
-            <div style="@HintStyle;margin-bottom:6px;">Color the list by</div>
-            @foreach (var (mode, title) in ColorModes)
+            @if (hasList)
             {
-                <div @onclick="() => Update(s => s.ColorBy = mode)" style="@OptionStyle(_settings.ColorBy == mode)" role="button" tabindex="0">
-                    <div style="flex:1;">@title</div>
-                    <span style="@RadioStyle(_settings.ColorBy == mode)"></span>
+                <h4 style="@HeadingStyle">List colors</h4>
+                <div style="@GroupStyle">
+                    @foreach (var (mode, title) in ColorModes)
+                    {
+                        <div @onclick="() => Update(s => s.ColorBy = mode)" role="radio" aria-checked="@(_settings.ColorBy == mode ? "true" : "false")" tabindex="0"
+                             style="display:flex;align-items:center;gap:12px;padding:12px;@RowDivider">
+                            <span style="flex:1;">@title</span>
+                            <span style="@RadioStyle(_settings.ColorBy == mode)"></span>
+                        </div>
+                    }
+                    <div style="padding:12px;">
+                        <div style="margin-bottom:8px;">Unread messages</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                            @foreach (var (color, name) in UnreadColors)
+                            {
+                                var selected = _settings.UnreadColor == color;
+                                <div @onclick="() => Update(s => s.UnreadColor = color)" style="display:flex;flex-direction:column;align-items:center;gap:4px;width:56px;cursor:pointer;" role="radio" aria-checked="@(selected ? "true" : "false")" aria-label="@name" tabindex="0">
+                                    <span style="width:40px;height:40px;border-radius:50%;box-sizing:border-box;background:@(color ?? "transparent");border:@(selected ? "3px solid var(--accent-color)" : color is null ? "2px dashed #94a3b8" : "3px solid transparent");display:flex;align-items:center;justify-content:center;color:#94a3b8;">@(color is null ? "∅" : "")</span>
+                                    <span aria-hidden="true" style="font-size:0.75em;text-align:center;">@name</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
                 </div>
             }
 
-            <div style="@HintStyle;margin-top:12px;">Unread messages</div>
-            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;">
-                @foreach (var (color, name) in UnreadColors)
-                {
-                    var selected = _settings.UnreadColor == color;
-                    <div @onclick="() => Update(s => s.UnreadColor = color)" style="display:flex;flex-direction:column;align-items:center;gap:4px;width:56px;cursor:pointer;" role="button" tabindex="0">
-                        <span style="width:40px;height:40px;border-radius:50%;box-sizing:border-box;background:@(color ?? "transparent");border:@(selected ? "3px solid var(--accent-color)" : color is null ? "2px dashed #94a3b8" : "3px solid transparent");display:flex;align-items:center;justify-content:center;color:#94a3b8;">@(color is null ? "∅" : "")</span>
-                        <span style="font-size:0.75em;text-align:center;">@name</span>
-                    </div>
-                }
-            </div>
-
-            <h4 style="@HeadingStyle">Filter tabs</h4>
+            <h4 style="@HeadingStyle">Tabs</h4>
             <div style="@GroupStyle">
-                <label style="display:flex;align-items:center;gap:10px;padding:14px 12px;">
+                <label style="display:flex;align-items:center;gap:10px;padding:12px;">
                     <input type="checkbox" checked="@_settings.ShowFilterTabs" @onchange="e => Update(s => s.ShowFilterTabs = e.Value is true)" style="width:20px;height:20px;" />
                     Show filters that have conversations as tabs under Chats, Updates and Screener
                 </label>
+            </div>
+
+            <h4 style="@HeadingStyle">Quick presets</h4>
+            <div style="@HintStyle;padding:0 4px 6px;">Sets everything above in one tap.</div>
+            <div style="@GroupStyle">
+                <button @onclick="() => Apply(DisplayRules.BubblesOnlyFavoritesAndUnreadPreset)" style="@PresetRowStyle;@RowDivider">🫧 Bubbles only: favorites + unread (no list)</button>
+                <button @onclick="() => Apply(DisplayRules.FavoritesAndUnreadPreset)" style="@PresetRowStyle;@RowDivider">🫧💬 Favorites + unread are bubbles</button>
+                <button @onclick="() => Apply(DisplayRules.UnreadOnlyColorPreset)" style="@PresetRowStyle;@RowDivider">💬 Only unread messages are colored</button>
+                <button @onclick="() => Apply(DisplayRules.FavoritesWithFilterColorsPreset)" style="@PresetRowStyle">🏷️ Favorite bubbles + filter-colored list</button>
             </div>
             break;
 
@@ -347,6 +355,7 @@
     private const string GroupStyle = "background:var(--card-color);border-radius:12px;overflow:hidden";
     private const string ChevronStyle = "color:#94a3b8;font-size:1.3em;line-height:1;";
     private const string RowDivider = "border-bottom:1px solid rgba(127,127,127,0.2);";
+    private const string PresetRowStyle = "display:block;width:100%;text-align:left;border:none;padding:14px 12px;background:transparent;color:var(--text-color);font:inherit;font-weight:600;";
 
     // Null shows the list of categories; otherwise one category's own screen.
     [Parameter] public string? Section { get; set; }
@@ -412,9 +421,6 @@
 
     private DisplaySettings _settings = new();
     private NotificationSettings _notify = new();
-
-    private static string OptionStyle(bool selected) =>
-        $"display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:14px;cursor:pointer;background:var(--card-color);border:2px solid {(selected ? "var(--accent-color)" : "transparent")};";
 
     private static string RadioStyle(bool selected) =>
         $"width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid var(--accent-color);background:{(selected ? "var(--accent-color)" : "transparent")};";
