@@ -19,6 +19,9 @@ public interface ISmsService
     /// Messages in any conversation whose text contains query (case-insensitive), newest first.
     Task<IReadOnlyList<SmsMessage>> SearchAllMessagesAsync(string query, int limit);
 
+    /// The newest picture and video messages across every conversation, newest first.
+    Task<IReadOnlyList<SmsMessage>> RecentMediaMessagesAsync(int limit);
+
     /// Every photo and video in the conversation (metadata only; images load separately).
     Task<IReadOnlyList<SharedMedia>> GetSharedMediaAsync(long threadId);
 

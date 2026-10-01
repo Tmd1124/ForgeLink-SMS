@@ -1,6 +1,7 @@
 using Moq;
 using ForgeLinkSms.Core.Data;
 using ForgeLinkSms.Core.Models;
+using ForgeLinkSms.Core.Utils;
 using ForgeLinkSms.Core.Services;
 using ForgeLinkSms.Core.ViewModels;
 
@@ -1687,6 +1688,47 @@ public class ConversationsViewModelTests
 
         Assert.Equal(new long[] { 10, 11 }, viewModel.MessageResults.Select(m => m.Id));
         Assert.Equal("Jake", viewModel.ConversationNameFor(viewModel.MessageResults[0]));
+    }
+
+    [Fact]
+    public async Task Photos_with_no_words_lists_recent_pictures_and_offers_their_chats()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(new List<SmsThread> { MakeThread(1, "555", "Mom", "hi"), MakeThread(2, "556", "Jake", "yo") });
+        var sms = new Mock<ISmsService>();
+        var photo = new SmsMessage
+        {
+            Id = 20, ThreadId = 2, Address = "556", Body = "", Timestamp = DateTimeOffset.UtcNow, IsOutgoing = false,
+            Status = SmsMessageStatus.Delivered, IsMms = true,
+            Attachments = new[] { new MessageAttachment { FileName = "p.jpg", Kind = AttachmentKind.Image, PartId = 1 } }
+        };
+        sms.Setup(s => s.RecentMediaMessagesAsync(It.IsAny<int>())).ReturnsAsync(new List<SmsMessage> { photo });
+        var viewModel = MakeViewModel(threadService, smsService: sms);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        viewModel.SearchKind = SearchKind.Photos;
+        await viewModel.SearchMessagesCommand.ExecuteAsync("");
+
+        Assert.Equal(new long[] { 20 }, viewModel.MessageResults.Select(m => m.Id));
+        Assert.Equal(new[] { (2L, "Jake") }, viewModel.ResultChats);
+        Assert.True(viewModel.HasMessageSearch);
+    }
+
+    [Fact]
+    public async Task Narrowing_to_one_chat_keeps_its_messages_but_still_offers_the_others()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(new List<SmsThread> { MakeThread(1, "555", "Mom", "hi"), MakeThread(2, "556", "Jake", "yo") });
+        var sms = new Mock<ISmsService>();
+        sms.Setup(s => s.SearchAllMessagesAsync("practice", It.IsAny<int>())).ReturnsAsync(new List<SmsMessage> { MakeMessage(10, 2, "practice at 7"), MakeMessage(11, 1, "no practice") });
+        var viewModel = MakeViewModel(threadService, smsService: sms);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        viewModel.SearchChatId = 1;
+        await viewModel.SearchMessagesCommand.ExecuteAsync("practice");
+
+        Assert.Equal(new long[] { 11 }, viewModel.MessageResults.Select(m => m.Id));
+        Assert.Equal(2, viewModel.ResultChats.Count);
     }
 
     [Fact]

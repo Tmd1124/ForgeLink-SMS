@@ -125,6 +125,21 @@ public partial class ConversationsViewModel : ObservableObject
     public string ConversationNameFor(SmsMessage message) =>
         _allThreads.FirstOrDefault(t => t.Id == message.ThreadId)?.DisplayNameOrAddress ?? PhoneNumberFormatter.ToDisplayFormat(message.Address);
 
+    [ObservableProperty]
+    private SearchKind _searchKind;
+
+    [ObservableProperty]
+    private SearchPeriod _searchPeriod;
+
+    [ObservableProperty]
+    private long? _searchChatId;
+
+    /// The chats the current results come from, for narrowing to one of them.
+    public IReadOnlyList<(long ThreadId, string Name)> ResultChats { get; private set; } = Array.Empty<(long, string)>();
+
+    /// Photos and Links work without typing anything, so they show results on their own.
+    public bool HasMessageSearch => SearchText.Trim().Length >= 2 || SearchKind != SearchKind.All;
+
     // Concurrent so each keystroke can start a search; the version check drops results from an
     // older, slower query that finishes after a newer one.
     [RelayCommand(AllowConcurrentExecutions = true)]
@@ -132,13 +147,25 @@ public partial class ConversationsViewModel : ObservableObject
     {
         var version = ++_messageSearchVersion;
         var trimmed = query.Trim();
-        if (trimmed.Length < 2)
+        IReadOnlyList<SmsMessage> results;
+        if (trimmed.Length >= 2)
         {
+            results = await _smsService.SearchAllMessagesAsync(trimmed, MaxMessageResults) ?? Array.Empty<SmsMessage>();
+        }
+        else if (SearchKind == SearchKind.Photos)
+        {
+            results = await _smsService.RecentMediaMessagesAsync(MaxMessageResults) ?? Array.Empty<SmsMessage>();
+        }
+        else if (SearchKind == SearchKind.Links)
+        {
+            results = await _smsService.SearchAllMessagesAsync("http", MaxMessageResults) ?? Array.Empty<SmsMessage>();
+        }
+        else
+        {
+            ResultChats = Array.Empty<(long, string)>();
             MessageResults.Clear();
             return;
         }
-
-        var results = await _smsService.SearchAllMessagesAsync(trimmed, MaxMessageResults) ?? Array.Empty<SmsMessage>();
         if (version != _messageSearchVersion)
         {
             return;
@@ -146,8 +173,12 @@ public partial class ConversationsViewModel : ObservableObject
 
         // Only conversations the list would show: not trashed, archived, blocked, or snoozed.
         var visibleThreadIds = _allThreads.Select(t => t.Id).ToHashSet();
+        var visible = results.Where(m => visibleThreadIds.Contains(m.ThreadId)).OrderByDescending(m => m.Timestamp).ToList();
+        ResultChats = visible.Select(m => m.ThreadId).Distinct()
+            .Select(id => (id, _allThreads.First(t => t.Id == id).DisplayNameOrAddress))
+            .ToList();
         MessageResults.Clear();
-        foreach (var message in results.Where(m => visibleThreadIds.Contains(m.ThreadId)).OrderByDescending(m => m.Timestamp))
+        foreach (var message in SearchFilters.Apply(visible, SearchKind, SearchPeriod, SearchChatId, DateTimeOffset.Now))
         {
             MessageResults.Add(message);
         }

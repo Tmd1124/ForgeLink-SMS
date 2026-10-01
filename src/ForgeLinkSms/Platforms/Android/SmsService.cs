@@ -77,6 +77,42 @@ public class SmsService : ISmsService
     public Task<IReadOnlyList<SmsMessage>> SearchAllMessagesAsync(string query, int limit) =>
         Task.Run(() => SearchCore(null, query, limit));
 
+    public Task<IReadOnlyList<SmsMessage>> RecentMediaMessagesAsync(int limit) => Task.Run<IReadOnlyList<SmsMessage>>(() =>
+    {
+        var context = AndroidApp.Context;
+        var withMedia = new HashSet<long>();
+        using (var parts = context.ContentResolver!.Query(global::Android.Net.Uri.Parse("content://mms/part")!,
+                   new[] { "mid" }, "ct LIKE 'image/%' OR ct LIKE 'video/%'", null, null))
+        {
+            while (parts is not null && parts.MoveToNext())
+            {
+                withMedia.Add(parts.GetLong(0));
+            }
+        }
+
+        return MmsReader.QueryAll(context)
+            .Where(m => withMedia.Contains(m.Id))
+            .OrderByDescending(m => m.Date)
+            .Take(limit)
+            .Select(mms =>
+            {
+                var (body, attachments) = MmsReader.GetContent(context, mms.Id, includeAttachmentData: false);
+                return new SmsMessage
+                {
+                    Id = mms.Id,
+                    ThreadId = mms.ThreadId,
+                    Address = MmsReader.GetAddress(context, mms.Id, mms.IsOutgoing),
+                    Body = body,
+                    Timestamp = mms.Date,
+                    IsOutgoing = mms.IsOutgoing,
+                    Status = mms.Status,
+                    Attachments = attachments,
+                    IsMms = true
+                };
+            })
+            .ToList();
+    });
+
     // SQLite's LIKE is already case-insensitive for ASCII; % and _ in the user's text are
     // escaped so they match literally.
     // threadId null searches every conversation.
