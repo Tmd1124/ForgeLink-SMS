@@ -10,25 +10,25 @@ public interface IRestoreTarget
     Task ApplyAsync(MergePlan plan);
 }
 
-public sealed record RestoreResult(int Added, int Skipped);
+public sealed record RestoreResult(int Added, int Skipped, int MediaTooLarge = 0);
 
 public sealed record RestorePreview(DateTimeOffset CreatedUtc, int Messages, int MediaFiles, int WouldAdd, int AlreadyPresent, int ScheduledTexts);
 
 public static class RestoreRunner
 {
     public static async Task<RestoreResult> RunAsync(
-        BackupReader reader, IRestoreTarget target, bool includeSettings, bool includeScheduled, DateTimeOffset now,
+        IRestoreSource reader, IRestoreTarget target, bool includeSettings, bool includeScheduled, DateTimeOffset now,
         IProgress<BackupProgress>? progress, CancellationToken cancellationToken)
     {
         var (added, skipped, restored) = await WalkAsync(reader, target, write: true, progress, cancellationToken);
         var plan = AppDataMerger.Plan(await target.ReadAppDataAsync(), reader.AppData, restored, includeSettings, includeScheduled, now);
         await target.ApplyAsync(plan);
-        return new RestoreResult(added, skipped);
+        return new RestoreResult(added, skipped, reader.SkippedAttachments);
     }
 
     // Same matching as a real restore, but nothing is written — so the numbers shown before
     // confirming are exactly what the restore will do.
-    public static async Task<RestorePreview> PreviewAsync(BackupReader reader, IRestoreTarget target, CancellationToken cancellationToken)
+    public static async Task<RestorePreview> PreviewAsync(IRestoreSource reader, IRestoreTarget target, CancellationToken cancellationToken)
     {
         var (wouldAdd, present, restored) = await WalkAsync(reader, target, write: false, progress: null, cancellationToken);
         // Also exercises the merge, so a data problem shows up here rather than after messages were written.
@@ -38,7 +38,7 @@ public static class RestoreRunner
     }
 
     private static async Task<(int Added, int Skipped, HashSet<string> Restored)> WalkAsync(
-        BackupReader reader, IRestoreTarget target, bool write, IProgress<BackupProgress>? progress, CancellationToken cancellationToken)
+        IRestoreSource reader, IRestoreTarget target, bool write, IProgress<BackupProgress>? progress, CancellationToken cancellationToken)
     {
         var index = new DuplicateIndex();
         foreach (var existing in await target.ReadExistingMessagesAsync())
@@ -49,7 +49,8 @@ public static class RestoreRunner
         var total = reader.Manifest.SmsCount + reader.Manifest.MmsCount;
         var restored = new HashSet<string>();
         int added = 0, skipped = 0, done = 0;
-        foreach (var message in reader.ReadMessages())
+        // Check backup never opens media, so an SMS Backup & Restore file needn't unpack it.
+        foreach (var message in reader.ReadMessages(includeMedia: write))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var conversation = ConversationKey.From(message.Addresses);

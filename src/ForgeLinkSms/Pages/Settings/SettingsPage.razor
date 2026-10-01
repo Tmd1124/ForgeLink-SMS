@@ -171,6 +171,8 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:6px;">
         <button @onclick="BackUpNow" disabled="@_backup.IsRunning" style="@PresetStyle">💾 Back up now</button>
+        <button @onclick="ExportForOtherApps" disabled="@_backup.IsRunning" style="@PresetStyle">📤 Export for other apps (SMS Backup &amp; Restore)</button>
+        <span style="@HintStyle;padding:0 4px;">Saves texts and photos as a file SMS Backup &amp; Restore and other apps can import.</span>
         <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
             <input type="checkbox" checked="@_backup.WeeklyEnabled" @onchange="ToggleWeekly" style="width:20px;height:20px;" />
             <span>Back up automatically every week (while charging)@(_backup.WeeklyFolderName is { } f ? $" to {f}" : "")<br /><span style="@HintStyle">Keeps the newest 4 backups in that folder.</span></span>
@@ -200,7 +202,7 @@
     {
         <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="() => _restoreFile = null">
             <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" aria-label="Restore from a backup" @onclick:stopPropagation="true">
-                <div style="font-weight:600;">Restore @restoreFile.FileName?</div>
+                <div style="font-weight:600;">@(restoreFile.IsSmsBackupXml ? "Import" : "Restore") @restoreFile.FileName?</div>
                 <div style="@HintStyle;margin:6px 0 10px;">Adds messages and ForgeLink data that aren't already on this phone. Nothing is deleted, and running it again is safe.</div>
                 @if (restoreFile.IsEncrypted)
                 {
@@ -216,9 +218,12 @@
                         Backup from @preview.CreatedUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt"): @preview.Messages.ToString("N0") messages, @preview.MediaFiles.ToString("N0") photos/videos.<br />
                         <strong>Restoring would add @preview.WouldAdd.ToString("N0") messages</strong> (@preview.AlreadyPresent.ToString("N0") are already on this phone).
                     </div>
-                    <label style="display:flex;align-items:center;gap:10px;padding:10px 0;">
-                        <input type="checkbox" @bind="_restoreSettings" style="width:20px;height:20px;" /> Also restore my settings
-                    </label>
+                    @if (!restoreFile.IsSmsBackupXml)
+                    {
+                        <label style="display:flex;align-items:center;gap:10px;padding:10px 0;">
+                            <input type="checkbox" @bind="_restoreSettings" style="width:20px;height:20px;" /> Also restore my settings
+                        </label>
+                    }
                     @if (preview.ScheduledTexts > 0)
                     {
                         <label style="display:flex;align-items:center;gap:10px;padding:10px 0;">
@@ -375,6 +380,12 @@
         }
         _ = InvokeAsync(StateHasChanged);
         return true;
+    }
+
+    private async Task ExportForOtherApps()
+    {
+        await Backups.ExportForOtherAppsAsync();
+        RefreshBackup();
     }
 
     private async Task BackUpNow()

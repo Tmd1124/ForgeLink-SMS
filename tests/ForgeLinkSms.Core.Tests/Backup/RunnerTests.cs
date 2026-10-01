@@ -178,6 +178,56 @@ public class RunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task An_sms_backup_and_restore_file_restores_through_the_same_runner()
+    {
+        var target = new FakeTarget();
+        target.Existing.Add(new ExistingMessage("4045550199", 1_000, false, "one", 0));
+        var output = new MemoryStream();
+        await SmsBackupXmlWriter.RunAsync(new FakeSource(new[] { Sms(1_000, "one", "4045550199"), Sms(2_000, "two", "4045550199"), GroupPhoto(3_000) }, new AppData()),
+            output, Now, null, null, CancellationToken.None);
+        using var reader = SmsBackupXmlReader.Open(() => new MemoryStream(output.ToArray()), _work);
+
+        var preview = await RestoreRunner.PreviewAsync(reader, target, CancellationToken.None);
+        var result = await RestoreRunner.RunAsync(reader, target, false, false, Now, null, CancellationToken.None);
+
+        Assert.Equal((2, 1), (preview.WouldAdd, preview.AlreadyPresent));
+        Assert.Equal(new RestoreResult(2, 1), result);
+        Assert.Equal(new byte[] { 9, 8, 7 }, target.MediaSeen.Single());
+    }
+
+    [Fact]
+    public async Task Checking_an_sms_backup_file_again_after_importing_it_finds_everything_already_there()
+    {
+        var target = new FakeTarget();
+        var output = new MemoryStream();
+        await SmsBackupXmlWriter.RunAsync(new FakeSource(new[] { Sms(1_000, "one", "4045550199"), GroupPhoto(3_000) }, new AppData()),
+            output, Now, null, null, CancellationToken.None);
+        var bytes = output.ToArray();
+        using (var first = SmsBackupXmlReader.Open(() => new MemoryStream(bytes), _work))
+        {
+            await RestoreRunner.RunAsync(first, target, false, false, Now, null, CancellationToken.None);
+        }
+
+        using var again = SmsBackupXmlReader.Open(() => new MemoryStream(bytes), _work);
+        var preview = await RestoreRunner.PreviewAsync(again, target, CancellationToken.None);
+
+        Assert.Equal((0, 2), (preview.WouldAdd, preview.AlreadyPresent));
+    }
+
+    [Fact]
+    public async Task A_restore_reports_attachments_that_were_too_large_to_import()
+    {
+        var output = new MemoryStream();
+        await SmsBackupXmlWriter.RunAsync(new FakeSource(new[] { GroupPhoto(3_000) }, new AppData()), output, Now, null, null, CancellationToken.None);
+        var bytes = output.ToArray();
+        using var reader = SmsBackupXmlReader.Open(() => new MemoryStream(bytes), _work, maxPartBytes: 1);
+
+        var result = await RestoreRunner.RunAsync(reader, new FakeTarget(), false, false, Now, null, CancellationToken.None);
+
+        Assert.Equal(new RestoreResult(1, 0, MediaTooLarge: 1), result);
+    }
+
+    [Fact]
     public async Task Backup_reports_progress_to_the_end()
     {
         var progress = new List<BackupProgress>();

@@ -12,6 +12,7 @@ public sealed class BackupService : IBackupService
 {
     private const string ManualWorkName = "forgelink-backup";
     private const string RestoreWorkName = "forgelink-restore";
+    private const string ExportWorkName = "forgelink-export";
     private static Context Context => global::Android.App.Application.Context;
 
     public BackupStatus GetStatus()
@@ -113,22 +114,27 @@ public sealed class BackupService : IBackupService
         {
             return null;
         }
-        var header = new byte[4];
+        var header = new byte[64];
+        var read = 0;
         using (var input = Context.ContentResolver!.OpenInputStream(uri))
         {
-            var read = input?.Read(header, 0, 4) ?? 0;
-            header = header[..Math.Max(read, 0)];
+            int n;
+            while (input is not null && read < header.Length && (n = input.Read(header, read, header.Length - read)) > 0)
+            {
+                read += n;
+            }
         }
-        return new RestoreFile(uri.ToString()!, BackupFiles.DisplayName(Context, uri), BackupCrypto.IsEncrypted(header));
+        var kind = BackupFileKinds.Detect(header.AsSpan(0, read));
+        return new RestoreFile(uri.ToString()!, BackupFiles.DisplayName(Context, uri),
+            kind == BackupFileKind.EncryptedFlBackup, kind == BackupFileKind.SmsBackupXml);
     }
 
     public Task<RestorePreview> PreviewRestoreAsync(RestoreFile file, string? password) => Task.Run(async () =>
     {
         var uri = AndroidUri.Parse(file.Uri)!;
         BackupFiles.EnsureDefaultSmsApp(Context);
-        BackupFiles.PrepareRestoreWorkDirectory(Context, uri);
-        using var input = Context.ContentResolver!.OpenInputStream(uri) ?? throw new BackupDamagedException();
-        using var reader = BackupReader.Open(input, string.IsNullOrEmpty(password) ? null : password, BackupFiles.RestoreWorkDirectory);
+        BackupFiles.PrepareRestoreWorkDirectory(Context, uri, needsFullCopy: !file.IsSmsBackupXml);
+        using var reader = OpenRestoreSource(Context, uri, file.IsSmsBackupXml, password);
         return await RestoreRunner.PreviewAsync(reader, new AndroidRestoreTarget(Context, MauiApplication.Current.Services), CancellationToken.None);
     });
 
@@ -139,8 +145,36 @@ public sealed class BackupService : IBackupService
         {
             await SecureStorage.SetAsync(RestoreWorker.PendingPasswordKey, password);
         }
-        var data = new Data.Builder().PutString("uri", file.Uri).PutBoolean("settings", includeSettings).PutBoolean("scheduled", includeScheduled).Build();
+        var data = new Data.Builder().PutString("uri", file.Uri).PutBoolean("settings", includeSettings).PutBoolean("scheduled", includeScheduled).PutBoolean("xml", file.IsSmsBackupXml).Build();
         Enqueue<RestoreWorker>(RestoreWorkName, data);
+    }
+
+    // An SMS Backup & Restore file is read straight from where it is (opened once to count, once to
+    // read); a .flbackup is copied first because the zip needs random access.
+    internal static IRestoreSource OpenRestoreSource(Context context, AndroidUri uri, bool isSmsBackupXml, string? password)
+    {
+        Stream Open() => context.ContentResolver!.OpenInputStream(uri) ?? throw new BackupDamagedException();
+        if (isSmsBackupXml)
+        {
+            return SmsBackupXmlReader.Open(Open, BackupFiles.RestoreWorkDirectory);
+        }
+        using var input = Open();
+        return BackupReader.Open(input, string.IsNullOrEmpty(password) ? null : password, BackupFiles.RestoreWorkDirectory);
+    }
+
+    public async Task<bool> ExportForOtherAppsAsync()
+    {
+        var intent = new Intent(Intent.ActionCreateDocument);
+        intent.AddCategory(Intent.CategoryOpenable);
+        intent.SetType("text/xml");
+        intent.PutExtra(Intent.ExtraTitle, SmsBackupXmlWriter.FileNameFor(DateTime.Now));
+        var uri = await ActivityResultBridge.StartAsync(intent);
+        if (uri is null)
+        {
+            return false;
+        }
+        Enqueue<ExportWorker>(ExportWorkName, new Data.Builder().PutString("uri", uri.ToString()).Build());
+        return true;
     }
 
     private static void Enqueue<TWorker>(string name, Data data) where TWorker : Worker
@@ -155,7 +189,7 @@ public sealed class BackupService : IBackupService
     // The future's result is a java.util.List surfaced as a plain Java object, so it's read through the Java list API.
     private static bool IsRunning()
     {
-        foreach (var name in new[] { ManualWorkName, RestoreWorkName })
+        foreach (var name in new[] { ManualWorkName, RestoreWorkName, ExportWorkName })
         {
             var infos = WorkManager.GetInstance(Context).GetWorkInfosForUniqueWork(name).Get()!.JavaCast<Java.Util.IList>()!;
             for (var i = 0; i < infos.Size(); i++)

@@ -2,7 +2,7 @@ namespace ForgeLinkSms.Core.Services;
 
 public sealed record BackupStatus(DateTimeOffset? LastRunUtc, bool? LastSucceeded, string? LastMessage, bool WeeklyEnabled, string? WeeklyFolderName, bool HasPassword, bool IsRunning);
 
-public sealed record RestoreFile(string Uri, string FileName, bool IsEncrypted);
+public sealed record RestoreFile(string Uri, string FileName, bool IsEncrypted, bool IsSmsBackupXml = false);
 
 public interface IBackupService
 {
@@ -16,6 +16,9 @@ public interface IBackupService
     Task SetPasswordAsync(string? password);
 
     Task<RestoreFile?> PickRestoreFileAsync();
+
+    /// Saves all texts and media as an SMS Backup & Restore XML file (Save-as picker, then a background job).
+    Task<bool> ExportForOtherAppsAsync();
 
     // Reads the whole backup and counts what a restore would add, writing nothing. Throws BackupException
     // (wrong password, damaged file, newer format) with a message meant for the user.

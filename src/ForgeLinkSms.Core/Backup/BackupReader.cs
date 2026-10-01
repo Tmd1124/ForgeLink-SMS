@@ -4,13 +4,14 @@ namespace ForgeLinkSms.Core.Backup;
 
 // Zip reading needs to seek, and picked files arrive as forward-only streams (and encrypted ones must
 // be decrypted first), so the archive is copied into a temp file that Dispose removes.
-public sealed class BackupReader : IDisposable
+public sealed class BackupReader : IRestoreSource
 {
     private readonly string _tempPath;
     private readonly FileStream _file;
     private readonly ZipArchive _zip;
 
     public BackupManifest Manifest { get; }
+    public int SkippedAttachments => 0;
     public AppData AppData { get; }
 
     private BackupReader(string tempPath, FileStream file, ZipArchive zip, BackupManifest manifest, AppData appData)
@@ -69,7 +70,7 @@ public sealed class BackupReader : IDisposable
         }
     }
 
-    public IEnumerable<BackupMessage> ReadMessages()
+    public IEnumerable<BackupMessage> ReadMessages(bool includeMedia = true)
     {
         using var reader = new StreamReader(Entry(_zip, "messages.jsonl").Open());
         while (reader.ReadLine() is { } line)

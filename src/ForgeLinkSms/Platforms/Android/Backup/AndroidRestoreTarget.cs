@@ -22,9 +22,21 @@ internal sealed class AndroidRestoreTarget(Context context, IServiceProvider ser
     {
         var source = new AndroidBackupSource(context, services);
         source.ReadAppDataAsync().GetAwaiter().GetResult();
-        var existing = source.ReadMessages()
-            .Select(m => new ExistingMessage(ConversationKey.From(m.Message.Addresses), m.Message.TimestampMs, m.Message.Outgoing, m.Message.Body, m.Attachments.Count));
+        var existing = source.ReadMessages().SelectMany(ExistingKeys);
         return Task.FromResult(existing);
+    }
+
+    // An SMS in a group thread is keyed by the whole group here, but SMS Backup & Restore files only
+    // carry its own address, so it is also indexed by that address to be recognised on re-import.
+    private static IEnumerable<ExistingMessage> ExistingKeys(SourceMessage source)
+    {
+        var m = source.Message;
+        var key = ConversationKey.From(m.Addresses);
+        yield return new ExistingMessage(key, m.TimestampMs, m.Outgoing, m.Body, source.Attachments.Count);
+        if (!m.IsMms && m.From is { } from && ConversationKey.From(new[] { from }) is var own && own != key)
+        {
+            yield return new ExistingMessage(own, m.TimestampMs, m.Outgoing, m.Body, source.Attachments.Count);
+        }
     }
 
     public async Task<AppData> ReadAppDataAsync() => (await AppDataSnapshot.ReadAsync(services)).Data;

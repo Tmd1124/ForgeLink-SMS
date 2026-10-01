@@ -28,14 +28,20 @@ internal static class BackupFiles
 
     public static void EnsureDefaultSmsApp(Context context)
     {
-        if (global::Android.Provider.Telephony.Sms.GetDefaultSmsPackage(context) != context.PackageName)
+        // Telephony.Sms.GetDefaultSmsPackage returns "" on some Samsung builds even for the role holder,
+        // so this asks the same role check the rest of the app uses.
+        var roles = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+            .GetRequiredService<ForgeLinkSms.Core.Services.IDefaultAppRoleService>(MauiApplication.Current.Services);
+        if (!roles.IsDefaultSmsApp())
         {
             throw new BackupException("Restoring needs ForgeLink to be your default SMS app. Set it as default, then try again.");
         }
     }
 
     // Leftovers from an interrupted restore can be as large as the backup itself.
-    public static void PrepareRestoreWorkDirectory(Context context, AndroidUri backup)
+    // needsFullCopy: a .flbackup is copied into the work directory; an SMS Backup & Restore file only
+    // ever unpacks one message's media at a time (at most one 100 MB attachment).
+    public static void PrepareRestoreWorkDirectory(Context context, AndroidUri backup, bool needsFullCopy)
     {
         var directory = RestoreWorkDirectory;
         if (Directory.Exists(directory))
@@ -45,6 +51,16 @@ internal static class BackupFiles
                 try
                 {
                     File.Delete(file);
+                }
+                catch (IOException)
+                {
+                }
+            }
+            foreach (var folder in Directory.GetDirectories(directory))
+            {
+                try
+                {
+                    Directory.Delete(folder, recursive: true);
                 }
                 catch (IOException)
                 {
@@ -60,10 +76,11 @@ internal static class BackupFiles
                 size = cursor.GetLong(0);
             }
         }
+        var needed = (needsFullCopy ? size : SmsBackupXmlReader.MaxPartBytes) + 50L * 1024 * 1024;
         var free = new global::Android.OS.StatFs(directory).AvailableBytes;
-        if (size > 0 && free < size + 50L * 1024 * 1024)
+        if (size > 0 && free < needed)
         {
-            throw new BackupException($"Not enough free space to read this backup: it needs about {size / 1048576.0 / 1024:0.0} GB free on the phone.");
+            throw new BackupException($"Not enough free space to read this backup: it needs about {needed / 1048576.0 / 1024:0.0} GB free on the phone.");
         }
     }
 
