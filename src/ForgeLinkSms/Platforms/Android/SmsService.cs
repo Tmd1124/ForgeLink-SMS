@@ -132,7 +132,7 @@ public class SmsService : ISmsService
                     Body = body,
                     Timestamp = mms.Date,
                     IsOutgoing = mms.IsOutgoing,
-                    Status = mms.IsOutgoing ? SmsMessageStatus.Sent : SmsMessageStatus.Delivered,
+                    Status = mms.Status,
                     Attachments = attachments,
                     IsMms = true
                 };
@@ -193,7 +193,7 @@ public class SmsService : ISmsService
                 Body = body,
                 Timestamp = mms.Date,
                 IsOutgoing = mms.IsOutgoing,
-                Status = mms.IsOutgoing ? SmsMessageStatus.Sent : SmsMessageStatus.Delivered,
+                Status = mms.Status,
                 Attachments = attachments,
                 IsMms = true
             };
@@ -272,6 +272,14 @@ public class SmsService : ISmsService
 
     public Task SendGroupAsync(long threadId, IReadOnlyList<string> addresses, string? body, PickedAttachment? attachment) =>
         MmsSender.SendAsync(threadId, addresses, body, attachment?.LocalPath, attachment?.FileName);
+
+    public Task ResendAsync(SmsMessage failed) => failed.IsMms
+        ? MmsSender.ResendAsync(failed)
+        : Task.Run(() =>
+        {
+            AndroidApp.Context.ContentResolver!.Delete(global::Android.Net.Uri.Parse($"content://sms/{failed.Id}")!, null, null);
+            return SendAsync(failed.Address, failed.Body);
+        });
 
     public Task SendAsync(string address, string body)
     {

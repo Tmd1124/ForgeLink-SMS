@@ -477,9 +477,8 @@ public partial class ThreadDetailViewModel : ObservableObject
             return;
         }
 
-        await _smsService.DeleteMessageAsync(message);
         Messages.Remove(message);
-        await _smsService.SendAsync(_address, message.Body);
+        await _smsService.ResendAsync(message);
         _listRefresher?.RequestRefresh();
         await Load();
     }

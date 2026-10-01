@@ -12,6 +12,12 @@ public static class SmsStatus
     public const int TypeFailed = 5;
     public const int TypeQueued = 6;
 
+    // Picture messages keep the same progress in their "msg_box" column.
+    public const int BoxInbox = 1;
+    public const int BoxSent = 2;
+    public const int BoxOutbox = 4;
+    public const int BoxFailed = 5;
+
     public const int StatusNone = -1;
     public const int StatusComplete = 0;
     public const int StatusPending = 32;
@@ -30,6 +36,15 @@ public static class SmsStatus
         _ => (true, status == StatusComplete ? SmsMessageStatus.Delivered : SmsMessageStatus.Sent)
     };
 
+    // Carriers rarely send delivery reports for picture messages, so they stop at Sent.
+    public static (bool IsOutgoing, SmsMessageStatus Status) FromMmsBox(int box, TimeSpan age) => box switch
+    {
+        BoxInbox => (false, SmsMessageStatus.Delivered),
+        BoxOutbox => (true, age >= StuckSendingAfter ? SmsMessageStatus.Failed : SmsMessageStatus.Sending),
+        BoxFailed => (true, SmsMessageStatus.Failed),
+        _ => (true, SmsMessageStatus.Sent)
+    };
+
     // GSM TP-Status: below 0x20 delivered, 0x20–0x3F still trying, 0x40 and up gave up.
     public static int FromDeliveryReport(int reportStatus) => reportStatus switch
     {
@@ -39,5 +54,5 @@ public static class SmsStatus
     };
 
     public static bool CanRetry(SmsMessage message) =>
-        message is { IsOutgoing: true, IsMms: false, Status: SmsMessageStatus.Failed };
+        message is { IsOutgoing: true, Status: SmsMessageStatus.Failed };
 }

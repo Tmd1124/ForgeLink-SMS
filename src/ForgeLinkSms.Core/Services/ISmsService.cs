@@ -26,6 +26,10 @@ public interface ISmsService
 
     Task SendAsync(string address, string body);
 
+    /// Sends a failed text again, to the same people with the same text and attachment, and removes
+    /// the failed copy.
+    Task ResendAsync(SmsMessage failed);
+
     Task SendMmsAsync(long threadId, string address, string? body, PickedAttachment attachment);
 
     /// Sends one MMS to everyone in a group conversation (text, attachment, or both). A threadId

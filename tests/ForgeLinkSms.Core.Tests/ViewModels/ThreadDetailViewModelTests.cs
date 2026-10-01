@@ -867,18 +867,20 @@ public class ThreadDetailViewModelTests
     };
 
     [Fact]
-    public async Task Retrying_a_failed_text_removes_the_failed_copy_and_sends_it_again()
+    public async Task Retrying_a_failed_text_resends_it_and_drops_the_failed_copy()
     {
         var failed = WithStatus(MakeMessage(7, "Running late", DateTimeOffset.UtcNow, isOutgoing: true), SmsMessageStatus.Failed);
         var sms = new Mock<ISmsService>();
-        sms.Setup(s => s.GetMessagesAsync(1, null, It.IsAny<int>())).ReturnsAsync(new List<SmsMessage> { failed });
+        sms.SetupSequence(s => s.GetMessagesAsync(1, null, It.IsAny<int>()))
+            .ReturnsAsync(new List<SmsMessage> { failed })
+            .ReturnsAsync(new List<SmsMessage>());
         var viewModel = new ThreadDetailViewModel(sms.Object, new Mock<IMessageSchedulerService>().Object, threadId: 1, address: "555");
         await viewModel.LoadCommand.ExecuteAsync(null);
 
         await viewModel.RetryFailedCommand.ExecuteAsync(failed);
 
-        sms.Verify(s => s.DeleteMessageAsync(failed), Times.Once);
-        sms.Verify(s => s.SendAsync("555", "Running late"), Times.Once);
+        sms.Verify(s => s.ResendAsync(failed), Times.Once);
+        Assert.DoesNotContain(failed, viewModel.Messages);
     }
 
     [Fact]
@@ -890,8 +892,7 @@ public class ThreadDetailViewModelTests
 
         await viewModel.RetryFailedCommand.ExecuteAsync(sent);
 
-        sms.Verify(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-        sms.Verify(s => s.DeleteMessageAsync(It.IsAny<SmsMessage>()), Times.Never);
+        sms.Verify(s => s.ResendAsync(It.IsAny<SmsMessage>()), Times.Never);
     }
 
     [Fact]

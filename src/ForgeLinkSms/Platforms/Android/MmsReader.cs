@@ -62,6 +62,9 @@ internal static class MmsReader
         public required DateTimeOffset Date { get; init; }
         public required bool IsOutgoing { get; init; }
         public required bool IsRead { get; init; }
+        public required int Box { get; init; }
+
+        public SmsMessageStatus Status => SmsStatus.FromMmsBox(Box, DateTimeOffset.UtcNow - Date).Status;
     }
 
     public static List<MmsSummary> QueryAll(AndroidContext context, long? threadId = null)
@@ -70,12 +73,11 @@ internal static class MmsReader
         var mmsUri = AndroidUri.Parse("content://mms")!;
         var projection = new[] { "_id", "thread_id", "date", "read", "msg_box" };
 
-        var selection = threadId is null
-            ? "(msg_box = ? OR msg_box = ?)"
-            : "(msg_box = ? OR msg_box = ?) AND thread_id = ?";
-        var args = threadId is null
-            ? new[] { MessageBoxInbox.ToString(), MessageBoxSent.ToString() }
-            : new[] { MessageBoxInbox.ToString(), MessageBoxSent.ToString(), threadId.Value.ToString() };
+        // Picture messages still sending or that failed are shown too, but only with a real date,
+        // the same guard SmsService uses against placeholder rows.
+        var boxes = $"(msg_box IN ({SmsStatus.BoxInbox},{SmsStatus.BoxSent}) OR (msg_box IN ({SmsStatus.BoxOutbox},{SmsStatus.BoxFailed}) AND date > 0))";
+        var selection = threadId is null ? boxes : $"{boxes} AND thread_id = ?";
+        var args = threadId is null ? null : new[] { threadId.Value.ToString() };
 
         using var cursor = context.ContentResolver!.Query(mmsUri, projection, selection, args, "date DESC");
         if (cursor is null)
@@ -91,6 +93,7 @@ internal static class MmsReader
 
         while (cursor.MoveToNext())
         {
+            var box = cursor.GetInt(boxIdx);
             results.Add(new MmsSummary
             {
                 Id = cursor.GetLong(idIdx),
@@ -98,11 +101,27 @@ internal static class MmsReader
                 // Unlike Sms.date (milliseconds), Mms.date is whole seconds since epoch.
                 Date = DateTimeOffset.FromUnixTimeSeconds(cursor.GetLong(dateIdx)),
                 IsRead = cursor.GetInt(readIdx) != 0,
-                IsOutgoing = cursor.GetInt(boxIdx) == MessageBoxSent
+                IsOutgoing = box != MessageBoxInbox,
+                Box = box
             });
         }
 
         return results;
+    }
+
+    public static List<string> GetRecipients(AndroidContext context, long mmsId)
+    {
+        var recipients = new List<string>();
+        using var cursor = context.ContentResolver!.Query(AndroidUri.Parse($"content://mms/{mmsId}/addr")!,
+            new[] { "address" }, "type = ?", new[] { AddressTypeTo.ToString() }, null);
+        while (cursor?.MoveToNext() == true)
+        {
+            if (cursor.GetString(0) is { Length: > 0 } address && address != "insert-address-token")
+            {
+                recipients.Add(address);
+            }
+        }
+        return recipients;
     }
 
     public static string GetAddress(AndroidContext context, long mmsId, bool isOutgoing)

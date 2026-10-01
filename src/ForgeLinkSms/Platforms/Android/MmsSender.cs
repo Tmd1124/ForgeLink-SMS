@@ -4,6 +4,11 @@ using AndroidUri = global::Android.Net.Uri;
 using AndroidSmsManager = global::Android.Telephony.SmsManager;
 using AndroidContext = global::Android.Content.Context;
 using AndroidMimeTypeMap = global::Android.Webkit.MimeTypeMap;
+using AndroidIntent = global::Android.Content.Intent;
+using AndroidPendingIntent = global::Android.App.PendingIntent;
+using AndroidPendingIntentFlags = global::Android.App.PendingIntentFlags;
+using SmsMessage = ForgeLinkSms.Core.Models.SmsMessage;
+using SmsStatus = ForgeLinkSms.Core.Utils.SmsStatus;
 
 namespace ForgeLinkSms.Platforms.Android;
 
@@ -13,6 +18,45 @@ namespace ForgeLinkSms.Platforms.Android;
 // like plain SMS sending in SmsService.SendAsync above.
 internal static class MmsSender
 {
+    public const string SentAction = "ForgeLinkSms.MMS_SENT";
+    public const string PduFileExtra = "pdu_file";
+
+    // Rebuilds the failed message from what the message store kept of it, so this works even after
+    // the app was closed, then sends it as new and drops the failed copy.
+    public static Task ResendAsync(SmsMessage failed) => Task.Run(() =>
+    {
+        var context = AndroidApp.Context;
+        var recipients = MmsReader.GetRecipients(context, failed.Id);
+        if (recipients.Count == 0)
+        {
+            return;
+        }
+
+        string? attachmentPath = null;
+        string? attachmentName = null;
+        if (failed.Attachments.FirstOrDefault() is { } attachment)
+        {
+            attachmentName = attachment.FileName;
+            attachmentPath = Path.Combine(context.CacheDir!.AbsolutePath, $"resend_{failed.Id}_{attachment.FileName}");
+            using var input = context.ContentResolver!.OpenInputStream(AndroidUri.Parse($"content://mms/part/{attachment.PartId}")!)!;
+            using var output = File.Create(attachmentPath);
+            input.CopyTo(output);
+        }
+
+        try
+        {
+            SendCore(failed.ThreadId, recipients, string.IsNullOrEmpty(failed.Body) ? null : failed.Body, attachmentPath, attachmentName);
+            context.ContentResolver!.Delete(AndroidUri.Parse($"content://mms/{failed.Id}")!, null, null);
+        }
+        finally
+        {
+            if (attachmentPath is not null)
+            {
+                File.Delete(attachmentPath);
+            }
+        }
+    });
+
     public static Task SendAsync(long threadId, IReadOnlyList<string> addresses, string? body, string? attachmentLocalPath, string? attachmentFileName) =>
         Task.Run(() => SendCore(threadId, addresses, body, attachmentLocalPath, attachmentFileName));
 
@@ -50,15 +94,37 @@ internal static class MmsSender
         var authority = context.PackageName + ".fileprovider";
         var pduUri = AndroidX.Core.Content.FileProvider.GetUriForFile(context, authority, pduFile);
 
-        AndroidSmsManager.Default!.SendMultimediaMessage(context, pduUri, null, null, null);
+        // Written to the outbox first so the send's report can move it to sent or failed.
+        var messageUri = InsertOutgoingMessage(context, threadId, addresses, body, date, attachment);
+        AndroidPendingIntent? sentPending = null;
+        if (messageUri is not null)
+        {
+            // Addressed to the receiver itself, with the message's URI as data, like SMS sends.
+            var sentIntent = new AndroidIntent(context, typeof(DeliveryStatusReceiver)).SetAction(SentAction).SetData(messageUri);
+            sentIntent.PutExtra(PduFileExtra, pduFile.AbsolutePath);
+            var requestCode = (int)(long.Parse(messageUri.LastPathSegment!) % int.MaxValue);
+            sentPending = AndroidPendingIntent.GetBroadcast(context, requestCode, sentIntent, AndroidPendingIntentFlags.Immutable | AndroidPendingIntentFlags.UpdateCurrent);
+        }
 
-        InsertSentMessage(context, threadId, addresses, body, date, attachment);
+        try
+        {
+            AndroidSmsManager.Default!.SendMultimediaMessage(context, pduUri, null, null, sentPending);
+        }
+        catch (Exception)
+        {
+            if (messageUri is not null)
+            {
+                DeliveryStatusReceiver.MarkFailed(context, messageUri);
+            }
+            pduFile.Delete();
+            throw;
+        }
     }
 
     // Mirrors MmsReader's read-side schema exactly (content://mms, .../addr, .../part with the
     // same raw column names) so a message this app just sent renders identically to one it read
     // back from a real received/sent MMS.
-    private static void InsertSentMessage(AndroidContext context, long threadId, IReadOnlyList<string> addresses, string? body,
+    private static AndroidUri? InsertOutgoingMessage(AndroidContext context, long threadId, IReadOnlyList<string> addresses, string? body,
         DateTimeOffset date, MmsPduBuilder.Attachment? attachment)
     {
         var resolver = context.ContentResolver!;
@@ -66,13 +132,13 @@ internal static class MmsSender
         var messageValues = new AndroidContentValues();
         messageValues.Put("thread_id", threadId);
         messageValues.Put("date", date.ToUnixTimeSeconds());
-        messageValues.Put("msg_box", 2); // MmsReader.MessageBoxSent
+        messageValues.Put("msg_box", SmsStatus.BoxOutbox);
         messageValues.Put("read", 1);
         messageValues.Put("m_type", 0x80); // MESSAGE_TYPE_SEND_REQ — matches the wire PDU's own type.
         var messageUri = resolver.Insert(AndroidUri.Parse("content://mms")!, messageValues);
         if (messageUri?.LastPathSegment is not { } idSegment || !long.TryParse(idSegment, out var msgId))
         {
-            return;
+            return null;
         }
 
         foreach (var address in addresses)
@@ -94,7 +160,7 @@ internal static class MmsSender
 
         if (attachment is null)
         {
-            return;
+            return messageUri;
         }
         var partValues = new AndroidContentValues();
         partValues.Put("ct", attachment.ContentType);
@@ -105,6 +171,7 @@ internal static class MmsSender
             using var output = resolver.OpenOutputStream(partUri);
             output?.Write(attachment.Data, 0, attachment.Data.Length);
         }
+        return messageUri;
     }
 
     private static string GetContentType(string localPath)
