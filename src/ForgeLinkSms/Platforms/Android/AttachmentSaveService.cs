@@ -38,6 +38,108 @@ public class AttachmentSaveService : IAttachmentSaveService
         }
     });
 
+    // The part is copied into the app's cache and shared through the app's FileProvider, since the
+    // message store's own part URIs can't be handed to another app.
+    public Task<bool> OpenInViewerAsync(MessageAttachment attachment) => Task.Run(() =>
+    {
+        try
+        {
+            var context = AndroidApp.Context;
+            var file = CopyToViewCache(context, attachment);
+            if (file is null)
+            {
+                return false;
+            }
+
+            var uri = AndroidX.Core.Content.FileProvider.GetUriForFile(context, context.PackageName + ".fileprovider", file);
+            var extension = Path.GetExtension(attachment.FileName).TrimStart('.').ToLowerInvariant();
+            var mime = AndroidMimeTypeMap.Singleton?.GetMimeTypeFromExtension(extension)
+                ?? (attachment.Kind == AttachmentKind.Video ? "video/*" : "image/*");
+            var intent = new global::Android.Content.Intent(global::Android.Content.Intent.ActionView);
+            intent.SetDataAndType(uri, mime);
+            intent.AddFlags(global::Android.Content.ActivityFlags.GrantReadUriPermission | global::Android.Content.ActivityFlags.NewTask);
+            context.StartActivity(intent);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    });
+
+    public Task<(byte[] Data, string ContentType)?> ReadAsync(MessageAttachment attachment) => Task.Run<(byte[] Data, string ContentType)?>(() =>
+    {
+        try
+        {
+            var resolver = AndroidApp.Context.ContentResolver!;
+            var partUri = AndroidUri.Parse($"content://mms/part/{attachment.PartId}")!;
+            string? contentType = null;
+            using (var cursor = resolver.Query(partUri, new[] { "ct" }, null, null, null))
+            {
+                if (cursor?.MoveToFirst() == true)
+                {
+                    contentType = cursor.GetString(0);
+                }
+            }
+            using var input = resolver.OpenInputStream(partUri);
+            if (input is null)
+            {
+                return null;
+            }
+            using var buffer = new MemoryStream();
+            input.CopyTo(buffer);
+            return (buffer.ToArray(), contentType ?? (attachment.Kind == AttachmentKind.Video ? "video/mp4" : "image/jpeg"));
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    });
+
+    public Task<bool> PlayVideoAsync(MessageAttachment attachment) => Task.Run(() =>
+    {
+        try
+        {
+            var context = AndroidApp.Context;
+            var file = CopyToViewCache(context, attachment);
+            if (file is null)
+            {
+                return false;
+            }
+            var intent = new global::Android.Content.Intent(context, typeof(VideoPlayerActivity));
+            intent.PutExtra(VideoPlayerActivity.PathExtra, file.AbsolutePath);
+            intent.PutExtra(VideoPlayerActivity.PartIdExtra, attachment.PartId);
+            intent.PutExtra(VideoPlayerActivity.FileNameExtra, attachment.FileName);
+            intent.AddFlags(global::Android.Content.ActivityFlags.NewTask);
+            context.StartActivity(intent);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    });
+
+    // Only the latest opened file is kept; opening another clears the folder.
+    private static Java.IO.File? CopyToViewCache(global::Android.Content.Context context, MessageAttachment attachment)
+    {
+        var directory = new Java.IO.File(context.CacheDir, "view");
+        directory.Mkdirs();
+        foreach (var old in directory.ListFiles() ?? Array.Empty<Java.IO.File>())
+        {
+            old.Delete();
+        }
+        var file = new Java.IO.File(directory, $"{attachment.PartId}-{attachment.FileName}");
+        using var input = context.ContentResolver!.OpenInputStream(AndroidUri.Parse($"content://mms/part/{attachment.PartId}")!);
+        if (input is null)
+        {
+            return null;
+        }
+        using var output = File.Create(file.AbsolutePath!);
+        input.CopyTo(output);
+        return file;
+    }
+
     private static bool SaveCore(MessageAttachment attachment)
     {
         var context = AndroidApp.Context;

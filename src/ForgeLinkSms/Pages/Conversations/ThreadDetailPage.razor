@@ -198,7 +198,9 @@
                             }
                             else
                             {
-                                <div style="display:flex;align-items:center;gap:6px;margin-top:@(string.IsNullOrEmpty(message.Body) ? "0" : "6px");">
+                                var opensMedia = attachment.Kind is AttachmentKind.Video or AttachmentKind.Image or AttachmentKind.Gif;
+                                <div @onclick="() => { if (opensMedia) { OpenImageViewer(attachment); } }" @onclick:stopPropagation="@opensMedia"
+                                     role="@(opensMedia ? "button" : null)" style="display:flex;align-items:center;gap:6px;cursor:@(opensMedia ? "pointer" : "default");margin-top:@(string.IsNullOrEmpty(message.Body) ? "0" : "6px");">
                                     <span>@(attachment.Kind switch
                                     {
                                         AttachmentKind.Video => "🎬",
@@ -407,10 +409,32 @@
     </div>
 }
 
-@if (_viewerAttachment is not null)
+@if (_viewerAttachment is { } viewing)
 {
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:25;display:flex;align-items:center;justify-content:center;" @onclick="CloseImageViewer">
-        <img src="@_viewerAttachment.DataUri" alt="@_viewerAttachment.FileName" style="max-width:100%;max-height:100%;object-fit:contain;" @onclick:stopPropagation="true" />
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:25;display:flex;align-items:center;justify-content:center;" @onclick="CloseImageViewer">
+        @if (_viewerFailed)
+        {
+            <div style="color:white;text-align:center;padding:24px;" @onclick:stopPropagation="true">
+                <div style="margin-bottom:14px;">This photo can't be shown here.</div>
+                <button @onclick="() => OpenInPhoneViewer(viewing)"
+                        style="border:none;border-radius:999px;padding:10px 18px;background:var(--accent-color);color:white;font-weight:600;font-size:1em;">
+                    🔍 Open in photo viewer
+                </button>
+            </div>
+        }
+        else if (_viewerSrc is null)
+        {
+            <div style="color:#cbd5e1;">Loading…</div>
+        }
+        else
+        {
+            <img src="@_viewerSrc" alt="@viewing.FileName" @onerror="() => _viewerFailed = true"
+                 style="max-width:100%;max-height:100%;object-fit:contain;" @onclick:stopPropagation="true" />
+        }
+        <button @onclick="() => SaveAttachment(viewing)" @onclick:stopPropagation="true" title="Download" aria-label="Download"
+                style="position:absolute;top:16px;left:16px;height:40px;padding:0 16px;border-radius:999px;border:none;background:rgba(255,255,255,0.15);color:white;font-size:1em;font-weight:600;">
+            ⬇ Download
+        </button>
         <button @onclick="CloseImageViewer" title="Close"
                 style="position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:white;font-size:1.3em;" aria-label="Close">
             ✕
@@ -428,7 +452,7 @@
 
 @if (_showSaveToast)
 {
-    <div style="position:fixed;left:16px;right:16px;bottom:24px;z-index:21;background:#1e293b role="alert";color:white;border-radius:8px;padding:12px 16px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+    <div style="position:fixed;left:16px;right:16px;bottom:24px;z-index:30;background:#1e293b role="alert";color:white;border-radius:8px;padding:12px 16px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
         @_saveToastMessage
     </div>
 }
@@ -1145,9 +1169,66 @@
         }
     }
 
-    private void OpenImageViewer(ForgeLinkSms.Core.Models.MessageAttachment attachment) => _viewerAttachment = attachment;
+    private string? _viewerSrc;
+    private bool _viewerFailed;
 
-    private void CloseImageViewer() => _viewerAttachment = null;
+    // Photos already inlined show at once; large ones are read in full and shown from a blob URL. Videos play natively.
+    private void OpenImageViewer(ForgeLinkSms.Core.Models.MessageAttachment attachment)
+    {
+        if (attachment.Kind == AttachmentKind.Video)
+        {
+            _ = PlayVideoAsync(attachment);
+            return;
+        }
+        _viewerAttachment = attachment;
+        _viewerFailed = false;
+        _viewerSrc = attachment.DataUri;
+        if (_viewerSrc is null)
+        {
+            _ = LoadViewerMediaAsync(attachment);
+        }
+    }
+
+    private async Task LoadViewerMediaAsync(ForgeLinkSms.Core.Models.MessageAttachment attachment)
+    {
+        var media = await Services.GetRequiredService<IAttachmentSaveService>().ReadAsync(attachment);
+        if (!ReferenceEquals(_viewerAttachment, attachment))
+        {
+            return;
+        }
+        if (media is { } loaded)
+        {
+            _viewerSrc = await JS.InvokeAsync<string>("forgeLinkMedia.open", loaded.Data, loaded.ContentType);
+        }
+        else
+        {
+            _viewerFailed = true;
+        }
+        StateHasChanged();
+    }
+
+    private async Task PlayVideoAsync(ForgeLinkSms.Core.Models.MessageAttachment attachment)
+    {
+        if (!await Services.GetRequiredService<IAttachmentSaveService>().PlayVideoAsync(attachment))
+        {
+            ShowSaveToast("Couldn't open this video");
+        }
+    }
+
+    private async Task OpenInPhoneViewer(ForgeLinkSms.Core.Models.MessageAttachment attachment)
+    {
+        if (!await Services.GetRequiredService<IAttachmentSaveService>().OpenInViewerAsync(attachment))
+        {
+            ShowSaveToast("Couldn't open this photo");
+        }
+    }
+
+    private void CloseImageViewer()
+    {
+        _viewerAttachment = null;
+        _viewerSrc = null;
+        _ = JS.InvokeVoidAsync("forgeLinkMedia.close").AsTask().ContinueWith(_ => { }, TaskScheduler.Default);
+    }
 
     private async Task SaveAttachment(ForgeLinkSms.Core.Models.MessageAttachment attachment)
     {

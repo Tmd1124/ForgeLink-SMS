@@ -12,4 +12,13 @@ public interface IAttachmentSaveService
 
     /// Copies a received attachment into the app's own storage so it can be sent again (forwarding).
     Task<PickedAttachment?> CopyForSendingAsync(MessageAttachment attachment);
+
+    /// Opens a received photo or video in the phone's own viewer or player. False if it can't.
+    Task<bool> OpenInViewerAsync(MessageAttachment attachment);
+
+    /// The attachment's full bytes and content type, for showing it inside the app; null if it can't be read.
+    Task<(byte[] Data, string ContentType)?> ReadAsync(MessageAttachment attachment);
+
+    /// Plays a received video full screen inside the app. False if it can't be read.
+    Task<bool> PlayVideoAsync(MessageAttachment attachment);
 }
