@@ -215,7 +215,8 @@ public class NotificationService : INotificationService
             string NameFor(string number) => Contact(number)?.DisplayName ?? PhoneNumberFormatter.ToDisplayFormat(number);
 
             var isGroup = participants.Count > 1;
-            var title = isGroup ? GroupNames.Format(participants.Select(NameFor).ToList()) : NameFor(address);
+            var customName = isGroup ? services.GetRequiredService<ForgeLinkSms.Core.Data.IGroupNameRepository>().GetNameAsync(threadId).GetAwaiter().GetResult() : null;
+            var title = isGroup ? GroupNames.Title(customName, participants.Select(NameFor).ToList()) : NameFor(address);
             var fallback = new NotificationLine(ConversationNotification.SenderKey(address), NameFor(address), fallbackBody, DateTimeOffset.UtcNow);
             var model = ConversationNotification.Build(UnreadIncoming(context, threadId), title, isGroup, NameFor, fallback);
 

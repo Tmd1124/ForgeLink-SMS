@@ -81,7 +81,13 @@
         else
         {
             <div style="display:flex;align-items:center;background:var(--card-color);border-bottom:1px solid #eee;">
-                <div @onclick="OpenContact" style="flex:1;min-width:0;padding:10px;cursor:pointer;" role="button" tabindex="0">@DisplayName</div>
+                <div @onclick="OpenContact" style="flex:1;min-width:0;padding:10px;cursor:pointer;" role="button" tabindex="0">
+                    <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@DisplayName</div>
+                    @if (ViewModel is { IsGroup: true })
+                    {
+                        <div style="font-size:0.75em;color:#94a3b8;">@_memberNames.Count people · tap for details</div>
+                    }
+                </div>
                 <button @onclick="OpenMedia" title="Photos &amp; links"
                         style="border:none;background:transparent;font-size:1.1em;padding:8px 6px;" aria-label="Photos &amp; links">🖼️</button>
                 <button @onclick="OpenSearch" title="Search this conversation"
@@ -569,7 +575,8 @@
                 var member = await _contactService.LookupAsync(participant);
                 _memberNames[PhoneNumberFormatter.ToComparableDigits(participant)] = member?.DisplayName ?? PhoneNumberFormatter.ToDisplayFormat(participant);
             }
-            DisplayName = GroupNames.Format(participants.Select(p => _memberNames[PhoneNumberFormatter.ToComparableDigits(p)]).ToList());
+            var customName = await Services.GetRequiredService<ForgeLinkSms.Core.Data.IGroupNameRepository>().GetNameAsync(ThreadId);
+            DisplayName = GroupNames.Title(customName, participants.Select(p => _memberNames[PhoneNumberFormatter.ToComparableDigits(p)]).ToList());
         }
 
         var smsService = Services.GetRequiredService<ISmsService>();
@@ -1168,6 +1175,7 @@
     {
         if (ViewModel is { IsGroup: true })
         {
+            Services.GetRequiredService<NavigationManager>().NavigateTo($"/conversations/group?id={ThreadId}&address={Uri.EscapeDataString(Address)}");
             return;
         }
         if (_contactService is not null)

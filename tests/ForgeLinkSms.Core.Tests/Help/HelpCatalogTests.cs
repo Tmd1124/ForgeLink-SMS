@@ -12,6 +12,7 @@ public class HelpCatalogTests
         { "conversations", "Chats" },
         { "conversations/thread?id=4&address=555", "Chat" },
         { "conversations/media?id=4", "Photos & links" },
+        { "conversations/group?id=4&address=555", "Group details" },
         { "compose", "New message" },
         { "menu", "Menu" },
         { "settings", "Settings" },

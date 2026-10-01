@@ -9,10 +9,12 @@ namespace ForgeLinkSms.Platforms.Android;
 public class ThreadService : IThreadService
 {
     private readonly IContactService _contactService;
+    private readonly ForgeLinkSms.Core.Data.IGroupNameRepository _groupNames;
 
-    public ThreadService(IContactService contactService)
+    public ThreadService(IContactService contactService, ForgeLinkSms.Core.Data.IGroupNameRepository groupNames)
     {
         _contactService = contactService;
+        _groupNames = groupNames;
     }
 
     private sealed class ThreadLatestMessage
@@ -62,6 +64,7 @@ public class ThreadService : IThreadService
         var memberNames = groupMembers.Zip(memberContacts)
             .ToDictionary(x => x.First, x => x.Second?.DisplayName ?? PhoneNumberFormatter.ToDisplayFormat(x.First));
 
+        var customNames = await _groupNames.GetAllAsync();
         var results = new List<SmsThread>(rawRows.Rows.Count);
         for (var i = 0; i < rawRows.Rows.Count; i++)
         {
@@ -75,7 +78,9 @@ public class ThreadService : IThreadService
             {
                 Id = row.ThreadId,
                 Address = row.Address,
-                DisplayName = isGroup ? GroupNames.Format(participants.Select(p => memberNames[p]).ToList()) : contact?.DisplayName,
+                DisplayName = isGroup
+                    ? GroupNames.Title(customNames.GetValueOrDefault(row.ThreadId), participants.Select(p => memberNames[p]).ToList())
+                    : contact?.DisplayName,
                 PhotoUri = isGroup ? null : contact?.PhotoUri,
                 Participants = participants,
                 LastMessageBody = row.Body,

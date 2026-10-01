@@ -1,0 +1,171 @@
+@page "/conversations/group"
+@inject ForgeLinkSms.Core.Services.IThreadService Threads
+@inject ForgeLinkSms.Core.Services.IContactService Contacts
+@inject ForgeLinkSms.Core.Data.IGroupNameRepository GroupNameStore
+@inject ForgeLinkSms.Core.Data.IMuteRepository Mutes
+@inject ForgeLinkSms.Core.Data.IArchiveRepository Archive
+@inject ForgeLinkSms.Core.Data.ITrashRepository Trash
+@inject ForgeLinkSms.Core.Services.ConversationListRefresher ListRefresher
+@inject NavigationManager Nav
+@using ForgeLinkSms.Core.Models
+@using ForgeLinkSms.Core.Utils
+
+<div class="group-page">
+    <div class="group-hero">
+        <div class="page-title-row" style="margin:0;">
+            <span></span>
+            <HelpButton />
+        </div>
+        <div class="group-avatars" aria-hidden="true">
+            @foreach (var (member, index) in _members.Take(4).Select((m, i) => (m, i)))
+            {
+                <span class="group-avatar" style="--rim:@member.Color;z-index:@(10 - index);">
+                    @if (member.PhotoUri is not null)
+                    {
+                        <img src="@member.PhotoUri" alt="" />
+                    }
+                    else
+                    {
+                        <span style="background:@member.Color">@member.Initials</span>
+                    }
+                </span>
+            }
+        </div>
+        <h2 class="group-title">@Title</h2>
+        <div class="group-subtitle">@_members.Count people</div>
+    </div>
+
+    <h4 class="group-heading">Group name</h4>
+    <div class="group-card group-name">
+        <input @bind="_nameDraft" @bind:event="oninput" placeholder="@GroupNames.Format(_members.Select(m => m.Name).ToList())" aria-label="Group name" maxlength="40" />
+        @if (NameChanged)
+        {
+            <button @onclick="SaveName">Save</button>
+        }
+    </div>
+    <div class="group-hint">Only you see this name. Leave it blank to show everyone's names.</div>
+
+    <h4 class="group-heading">People</h4>
+    <div class="group-card">
+        @foreach (var member in _members)
+        {
+            <div class="group-member">
+                <span class="group-member-photo" style="--rim:@member.Color;">
+                    @if (member.PhotoUri is not null)
+                    {
+                        <img src="@member.PhotoUri" alt="" />
+                    }
+                    else
+                    {
+                        <span style="background:@member.Color">@member.Initials</span>
+                    }
+                </span>
+                <span class="group-member-text">
+                    <span class="group-member-name">@member.Name</span>
+                    <span class="group-member-number">@(member.IsContact ? PhoneNumberFormatter.ToDisplayFormat(member.Number) : "Not in your contacts")</span>
+                </span>
+                <button class="group-icon-button" @onclick="() => MessageMember(member)" aria-label="@($"Text {member.Name}")" title="Text">
+                    <OutlineIcon Name="send" Size="20" />
+                </button>
+                <button class="group-icon-button" @onclick="() => Contacts.OpenContactAsync(member.Number)"
+                        aria-label="@(member.IsContact ? $"Open {member.Name}'s contact" : $"Add {member.Name} to contacts")" title="@(member.IsContact ? "Contact" : "Add contact")">
+                    <OutlineIcon Name="@(member.IsContact ? "contact" : "user")" Size="20" />
+                </button>
+            </div>
+        }
+    </div>
+
+    <h4 class="group-heading">This group</h4>
+    <div class="group-card">
+        <label class="group-row">
+            <span class="group-row-icon"><OutlineIcon Name="bell" Size="20" /></span>
+            <span style="flex:1;">Mute notifications</span>
+            <input type="checkbox" checked="@_muted" @onchange="ToggleMute" style="width:22px;height:22px;" />
+        </label>
+        <div class="group-row" @onclick="OpenMedia" role="button" tabindex="0">
+            <span class="group-row-icon"><OutlineIcon Name="image" Size="20" /></span>
+            <span style="flex:1;">Photos &amp; links</span>
+            <span style="color:#94a3b8;">›</span>
+        </div>
+        <div class="group-row" @onclick="ArchiveGroup" role="button" tabindex="0">
+            <span class="group-row-icon"><OutlineIcon Name="archive" Size="20" /></span>
+            <span style="flex:1;">Archive</span>
+        </div>
+        <div class="group-row danger" @onclick="DeleteGroup" role="button" tabindex="0">
+            <span class="group-row-icon"><OutlineIcon Name="trash" Size="20" /></span>
+            <span style="flex:1;">Delete</span>
+        </div>
+    </div>
+    <div class="group-hint">Group texts can't be left. Archive or Delete hides the chat here; a new message brings it back.</div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")] public long ThreadId { get; set; }
+    [SupplyParameterFromQuery(Name = "address")] public string? Address { get; set; }
+
+    private sealed record Member(string Number, string Name, string Initials, string? PhotoUri, string Color, bool IsContact);
+
+    private List<Member> _members = new();
+    private string? _savedName;
+    private string _nameDraft = string.Empty;
+    private bool _muted;
+
+    private string Title => GroupNames.Title(_savedName, _members.Select(m => m.Name).ToList());
+
+    private bool NameChanged => (_nameDraft.Trim()) != (_savedName ?? string.Empty);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var participants = await Threads.GetParticipantsAsync(ThreadId);
+        foreach (var number in participants)
+        {
+            var contact = await Contacts.LookupAsync(number);
+            var name = contact?.DisplayName ?? PhoneNumberFormatter.ToDisplayFormat(number);
+            var initials = contact?.Initials is { Length: > 0 } i ? i : "#";
+            _members.Add(new Member(number, name, initials, contact?.PhotoUri, PondSelector.ColorFor(number), contact is not null));
+        }
+        _savedName = await GroupNameStore.GetNameAsync(ThreadId);
+        _nameDraft = _savedName ?? string.Empty;
+        _muted = await Mutes.IsMutedAsync(ThreadId, DateTimeOffset.UtcNow);
+    }
+
+    private async Task SaveName()
+    {
+        await GroupNameStore.SetNameAsync(ThreadId, _nameDraft);
+        _savedName = await GroupNameStore.GetNameAsync(ThreadId);
+        _nameDraft = _savedName ?? string.Empty;
+        ListRefresher.RequestRefresh();
+    }
+
+    private async Task ToggleMute(ChangeEventArgs e)
+    {
+        _muted = e.Value is true;
+        if (_muted)
+        {
+            await Mutes.MuteAsync(ThreadId, null);
+        }
+        else
+        {
+            await Mutes.UnmuteAsync(ThreadId);
+        }
+        ListRefresher.RequestRefresh();
+    }
+
+    private void MessageMember(Member member) => Nav.NavigateTo($"/compose?add={Uri.EscapeDataString(member.Number)}");
+
+    private void OpenMedia() => Nav.NavigateTo($"/conversations/media?id={ThreadId}&name={Uri.EscapeDataString(Title)}");
+
+    private async Task ArchiveGroup()
+    {
+        await Archive.ArchiveThreadAsync(ThreadId);
+        ListRefresher.RequestRefresh();
+        Nav.NavigateTo("/conversations");
+    }
+
+    private async Task DeleteGroup()
+    {
+        await Trash.TrashThreadAsync(ThreadId);
+        ListRefresher.RequestRefresh();
+        Nav.NavigateTo("/conversations");
+    }
+}

@@ -90,6 +90,17 @@ public static class HelpCatalog
                 "After you tap send you have 5 seconds to undo.",
                 "Status under your text: Sending, Sent, Delivered or Not sent."
             }),
+        ["conversations/group"] = new("Group details", "Everyone in this group text.",
+            new[]
+            {
+                I("text", "Give the group a name"),
+                I("send", "Text one person on their own"),
+                I("contact", "Open or add a contact"),
+                I("bell", "Mute this group"),
+                I("archive", "Archive the group"),
+                I("trash", "Delete the group")
+            },
+            new[] { "Only you see the group's name.", "Group texts can't be left; a new message brings it back." }),
         ["conversations/media"] = new("Photos & links", "Everything shared in this chat.",
             new[] { I("image", "Photos and videos"), I("play", "Tap a video to play it"), I("download", "Save to your phone") },
             new[] { "Switch to Links to see every web link in the chat." }),
