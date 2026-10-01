@@ -13,4 +13,10 @@ public interface ICrashReportService
 
     /// Opens the email app with a feedback message and the app/phone details filled in.
     void EmailFeedback();
+
+    /// Opens the email app addressed to AzureForge AI.
+    void EmailCompany();
+
+    /// Opens the email app with a star rating (1-5) and optional comment for AzureForge AI.
+    void EmailRating(int stars, string? comment);
 }

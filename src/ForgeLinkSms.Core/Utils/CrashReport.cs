@@ -4,7 +4,8 @@ namespace ForgeLinkSms.Core.Utils;
 
 public sealed record AppDetails(string Version, string Phone, string AndroidVersion);
 
-public sealed record ReportEmail(string Subject, string Body);
+// To is null for the developer address (CrashReport.To).
+public sealed record ReportEmail(string Subject, string Body, string? To = null);
 
 // Crash reports and feedback go out only as an email the person reviews and sends themselves.
 public static class CrashReport

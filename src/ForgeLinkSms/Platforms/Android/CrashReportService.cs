@@ -61,6 +61,11 @@ public class CrashReportService : ICrashReportService
 
     public void EmailFeedback() => Open(CrashReport.ForFeedback(Details()));
 
+    public void EmailCompany() =>
+        Open(new ReportEmail("ForgeLink SMS", CrashReport.ForFeedback(Details()).Body, ForgeLinkSms.Core.Help.AzureForge.Email));
+
+    public void EmailRating(int stars, string? comment) => Open(ForgeLinkSms.Core.Help.AzureForge.RatingEmail(stars, comment, Details()));
+
     private static AppDetails Details() =>
         new($"{AppInfo.Current.VersionString} ({AppInfo.Current.BuildString})",
             $"{DeviceInfo.Current.Manufacturer} {DeviceInfo.Current.Model}",
@@ -70,7 +75,7 @@ public class CrashReportService : ICrashReportService
     private static void Open(ReportEmail email)
     {
         var intent = new Intent(Intent.ActionSendto, AndroidUri.Parse("mailto:"));
-        intent.PutExtra(Intent.ExtraEmail, new[] { CrashReport.To });
+        intent.PutExtra(Intent.ExtraEmail, new[] { email.To ?? CrashReport.To });
         intent.PutExtra(Intent.ExtraSubject, email.Subject);
         intent.PutExtra(Intent.ExtraText, email.Body);
         intent.AddFlags(ActivityFlags.NewTask);

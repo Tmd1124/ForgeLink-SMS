@@ -8,9 +8,12 @@
 @using ForgeLinkSms.Core.ViewModels
 
 <div style="display:flex;flex-direction:column;min-height:100vh;">
-    <div style="padding:10px;background:var(--card-color);border-bottom:1px solid #eee;">
-        <div style="font-weight:600;">Photos &amp; links</div>
-        <div style="font-size:0.8em;color:#94a3b8;">@Name</div>
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--card-color);border-bottom:1px solid #eee;">
+        <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;">Photos &amp; links</div>
+            <div style="font-size:0.8em;color:#94a3b8;">@Name</div>
+        </div>
+        <HelpButton />
     </div>
     <div style="display:flex;gap:6px;padding:8px 12px;">
         <button @onclick="() => _showLinks = false"

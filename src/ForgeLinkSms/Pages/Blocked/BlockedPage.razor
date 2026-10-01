@@ -2,7 +2,10 @@
 @inject ForgeLinkSms.Core.ViewModels.BlockedViewModel ViewModel
 
 <div style="padding:12px;">
-    <h3>Blocked</h3>
+    <div class="page-title-row">
+        <h3>Blocked</h3>
+        <HelpButton />
+    </div>
 
     @if (ViewModel.BlockedNumbers.Count == 0)
     {

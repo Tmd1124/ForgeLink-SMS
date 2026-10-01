@@ -4,7 +4,10 @@
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
 
 <div style="padding:12px;padding-bottom:40px;">
-    <h3>Your Profile</h3>
+    <div class="page-title-row">
+        <h3>Your Profile</h3>
+        <HelpButton />
+    </div>
     <div style="@HintStyle;margin-bottom:12px;">Kept on this phone. Shared only when you send "My card" from the attachment menu.</div>
 
     <div style="display:flex;align-items:center;gap:14px;">

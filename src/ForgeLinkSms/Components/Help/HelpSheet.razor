@@ -1,0 +1,130 @@
+@implements IDisposable
+@inject HelpState Help
+@inject NavigationManager Nav
+@inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
+@inject ForgeLinkSms.Core.Services.ICrashReportService Email
+@using ForgeLinkSms.Core.Help
+
+@if (Help.IsOpen)
+{
+    var topic = HelpCatalog.ForRoute(Nav.ToBaseRelativePath(Nav.Uri), Help.Lane);
+    <div class="help-backdrop" @onclick="Help.Close"></div>
+    <section class="help-sheet" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <div class="help-hero">
+            <div class="help-grip" @onclick="Help.Close" aria-hidden="true"></div>
+            <button class="help-close" @onclick="Help.Close" aria-label="Close help"><OutlineIcon Name="close" Size="20" Stroke="2.2" /></button>
+            <div class="help-hero-badge" aria-hidden="true"><OutlineIcon Name="info" Size="30" Stroke="1.6" /></div>
+            <h2 id="help-title" class="help-title">@topic.Title</h2>
+            <p class="help-summary">@topic.Summary</p>
+        </div>
+
+        <div class="help-body">
+            @if (topic.Icons.Count > 0)
+            {
+                <h3 class="help-heading">Icons on this screen</h3>
+                <ul class="help-icons">
+                    @foreach (var (item, index) in topic.Icons.Select((item, index) => (item, index)))
+                    {
+                        <li style="animation-delay:@(40 + index * 35)ms;">
+                            <span class="help-icon-tile"><OutlineIcon Name="@item.Icon" /></span>
+                            <span>@item.Text</span>
+                        </li>
+                    }
+                </ul>
+            }
+
+            @if (topic.Tips.Count > 0)
+            {
+                <h3 class="help-heading">Good to know</h3>
+                <ul class="help-tips">
+                    @foreach (var tip in topic.Tips)
+                    {
+                        <li>@tip</li>
+                    }
+                </ul>
+            }
+
+            <footer class="help-brand">
+                <div class="help-brand-name">@AzureForge.Company</div>
+                <div class="help-brand-tagline">Made with care for ForgeLink SMS</div>
+                <div class="help-links">
+                    <a href="@AzureForge.Website" @onclick="OpenWebsite" @onclick:preventDefault="true" class="help-link">
+                        <OutlineIcon Name="globe" Size="18" /> @AzureForge.WebsiteLabel
+                    </a>
+                    <a href="mailto:@AzureForge.Email" @onclick="EmailUs" @onclick:preventDefault="true" class="help-link">
+                        <OutlineIcon Name="mail" Size="18" /> @AzureForge.Email
+                    </a>
+                </div>
+                <button class="help-rate" @onclick="Rate">
+                    <span class="help-rate-stars" aria-hidden="true">
+                        @for (var i = 0; i < 5; i++)
+                        {
+                            <OutlineIcon Name="star" Size="18" Stroke="1.7" />
+                        }
+                    </span>
+                    Rate ForgeLink
+                </button>
+            </footer>
+        </div>
+    </section>
+}
+
+@code {
+    private Func<bool>? _previousBack;
+
+    protected override void OnInitialized()
+    {
+        Help.Changed += OnChanged;
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnChanged()
+    {
+        // Back closes the panel first, then whatever the screen itself would close.
+        if (Help.IsOpen && HistoryTracker.LocalBackHandler != CloseForBack)
+        {
+            _previousBack = HistoryTracker.LocalBackHandler;
+            HistoryTracker.LocalBackHandler = CloseForBack;
+        }
+        else if (!Help.IsOpen && HistoryTracker.LocalBackHandler == CloseForBack)
+        {
+            HistoryTracker.LocalBackHandler = _previousBack;
+            _previousBack = null;
+        }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private bool CloseForBack()
+    {
+        if (!Help.IsOpen)
+        {
+            return _previousBack?.Invoke() ?? false;
+        }
+        Help.Close();
+        return true;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (Help.IsOpen)
+        {
+            Help.Close();
+        }
+    }
+
+    private async Task OpenWebsite() => await Launcher.Default.OpenAsync(AzureForge.Website);
+
+    private void EmailUs() => Email.EmailCompany();
+
+    private void Rate()
+    {
+        Help.Close();
+        Nav.NavigateTo("/rate");
+    }
+
+    public void Dispose()
+    {
+        Help.Changed -= OnChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

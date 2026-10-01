@@ -1,0 +1,45 @@
+@page "/rate"
+@inject ForgeLinkSms.Core.Services.ICrashReportService Email
+@using ForgeLinkSms.Components.Help
+@using ForgeLinkSms.Core.Help
+
+<div class="rate-page">
+    <div class="page-title-row">
+        <h3>Rate ForgeLink</h3>
+        <HelpButton />
+    </div>
+
+    <div class="rate-card">
+        <div class="rate-glow" aria-hidden="true"></div>
+        <p class="rate-question">How is ForgeLink working for you?</p>
+        <div class="rate-stars" role="radiogroup" aria-label="Rating">
+            @for (var i = 1; i <= 5; i++)
+            {
+                var star = i;
+                var on = star <= _stars;
+                <button class="rate-star @(on ? "on" : "")" role="radio" aria-checked="@(star == _stars ? "true" : "false")"
+                        aria-label="@star star@(star == 1 ? "" : "s")" @onclick="() => _stars = star"
+                        style="animation-delay:@((star - 1) * 45)ms;">
+                    <svg width="44" height="44" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z" />
+                    </svg>
+                </button>
+            }
+        </div>
+        <div class="rate-label">@(_stars == 0 ? "Tap a star" : Labels[_stars - 1])</div>
+
+        <textarea class="rate-comment" @bind="_comment" @bind:event="oninput" rows="4" placeholder="Tell us more (optional)" aria-label="Tell us more"></textarea>
+
+        <button class="rate-send" disabled="@(_stars == 0)" @onclick="Send">Send rating</button>
+        <p class="rate-note">Opens your email app addressed to @AzureForge.Email. Nothing is sent until you send it.</p>
+    </div>
+</div>
+
+@code {
+    private static readonly string[] Labels = { "Not good", "Could be better", "It's okay", "Really good", "Love it!" };
+
+    private int _stars;
+    private string _comment = string.Empty;
+
+    private void Send() => Email.EmailRating(_stars, _comment);
+}

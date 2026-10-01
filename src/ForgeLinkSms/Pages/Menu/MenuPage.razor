@@ -8,18 +8,21 @@
 
 <div style="padding:12px;">
     @{ var profile = ProfileService.GetProfile(); }
-    <div @onclick="@(() => Nav.NavigateTo("/profile"))"
-         style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--card-color);border-radius:12px;margin-bottom:12px;" role="button" tabindex="0">
-        @if (!string.IsNullOrEmpty(_photoDataUri))
-        {
-            <img src="@_photoDataUri" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;" />
-        }
-        else
-        {
-            <div style="width:56px;height:56px;border-radius:50%;background:#e2e8f0;"></div>
-        }
-        <strong style="flex:1;">@(string.IsNullOrEmpty(profile.DisplayName) ? "Set up your profile" : profile.DisplayName)</strong>
-        <span aria-hidden="true" style="@ChevronStyle">›</span>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <div @onclick="@(() => Nav.NavigateTo("/profile"))"
+             style="flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:12px;background:var(--card-color);border-radius:12px;" role="button" tabindex="0">
+            @if (!string.IsNullOrEmpty(_photoDataUri))
+            {
+                <img src="@_photoDataUri" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;" />
+            }
+            else
+            {
+                <div style="width:56px;height:56px;border-radius:50%;background:#e2e8f0;"></div>
+            }
+            <strong style="flex:1;">@(string.IsNullOrEmpty(profile.DisplayName) ? "Set up your profile" : profile.DisplayName)</strong>
+            <span aria-hidden="true" style="@ChevronStyle">›</span>
+        </div>
+        <HelpButton />
     </div>
 
     @if (!string.IsNullOrEmpty(ViewModel.StatusMessage))

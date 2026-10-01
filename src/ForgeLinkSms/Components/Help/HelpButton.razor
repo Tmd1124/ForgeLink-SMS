@@ -1,0 +1,6 @@
+@inject HelpState Help
+
+@* Always the right-most button in a screen's top bar. *@
+<button class="help-button" @onclick="Help.Open" @onclick:stopPropagation="true" aria-label="Help for this screen" title="Help">
+    <OutlineIcon Name="info" Size="24" Stroke="1.9" />
+</button>

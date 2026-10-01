@@ -17,7 +17,10 @@
     @switch (Section)
     {
         case null:
-            <h3>Settings</h3>
+            <div class="page-title-row">
+                <h3>Settings</h3>
+                <HelpButton />
+            </div>
             @if (!ViewModel.IsDefaultSmsApp)
             {
                 <div @onclick="@(() => Nav.NavigateTo("/onboarding"))" role="button" tabindex="0"
@@ -47,7 +50,10 @@
             break;
 
         case "appearance":
-            <h3>Appearance</h3>
+            <div class="page-title-row">
+                <h3>Appearance</h3>
+                <HelpButton />
+            </div>
             <h4 style="@HeadingStyle">Theme</h4>
             <div style="@GroupStyle">
                 <div @onclick="@(() => Nav.NavigateTo("/theme"))" role="button" tabindex="0" style="display:flex;align-items:center;gap:12px;padding:14px 12px;">
@@ -69,7 +75,10 @@
             break;
 
         case "notifications":
-            <h3>Notifications</h3>
+            <div class="page-title-row">
+                <h3>Notifications</h3>
+                <HelpButton />
+            </div>
             <div style="@GroupStyle">
                 <label style="display:flex;align-items:center;gap:10px;padding:14px 12px;font-weight:600;">
                     <input type="checkbox" checked="@_notify.Enabled" @onchange="e => UpdateNotify(n => n.Enabled = e.Value is true)" style="width:20px;height:20px;" />
@@ -141,7 +150,10 @@
         case "chat-list":
             var hasBubbles = _settings.Layout != ConversationDisplayStyle.Cards;
             var hasList = _settings.Layout != ConversationDisplayStyle.Bubbles;
-            <h3>Chat list</h3>
+            <div class="page-title-row">
+                <h3>Chat list</h3>
+                <HelpButton />
+            </div>
             <h4 style="@HeadingStyle">Layout</h4>
             <div style="@GroupStyle">
                 @foreach (var (layout, icon, title, description) in Layouts)
@@ -220,7 +232,10 @@
             break;
 
         case "backup":
-            <h3>Backup &amp; restore</h3>
+            <div class="page-title-row">
+                <h3>Backup &amp; restore</h3>
+                <HelpButton />
+            </div>
             <div style="@HintStyle">Saves all texts, photos and videos, plus favorites, filters, quick replies, scheduled texts and settings, to a file you choose. Restoring only adds what's missing — nothing is deleted.</div>
             <div style="margin:12px 4px;">
                 <div style="font-weight:600;">@(_backup.LastBackupUtc is { } saved ? $"Last backup: {saved.ToLocalTime():MMM d, h:mm tt}" : "No backups yet")</div>
@@ -255,7 +270,10 @@
             break;
 
         case "help":
-            <h3>Help &amp; feedback</h3>
+            <div class="page-title-row">
+                <h3>Help &amp; feedback</h3>
+                <HelpButton />
+            </div>
             <div style="display:flex;flex-direction:column;gap:6px;">
                 <button @onclick="CrashReports.EmailFeedback" style="@PresetStyle">✉️ Send feedback</button>
                 <span style="@HintStyle;padding:0 4px 8px;">Opens your email app with the app and phone details filled in.</span>
@@ -264,7 +282,10 @@
             break;
 
         case "privacy":
-            <h3>Privacy</h3>
+            <div class="page-title-row">
+                <h3>Privacy</h3>
+                <HelpButton />
+            </div>
             <div style="@GroupStyle">
                 <label style="display:flex;align-items:center;gap:10px;padding:12px;@RowDivider">
                     <input type="checkbox" checked="@_settings.ShowLinkPreviews" @onchange="e => Update(s => s.ShowLinkPreviews = e.Value is true)" style="width:20px;height:20px;" />

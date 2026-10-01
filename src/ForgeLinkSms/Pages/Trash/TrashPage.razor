@@ -5,8 +5,8 @@
 @using ForgeLinkSms.Components
 
 <div style="padding:12px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <h3 style="margin:0;">Trash</h3>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <h3 style="margin:0;flex:1;">Trash</h3>
         @if (ViewModel.TrashedThreads.Count > 0)
         {
             <div style="display:flex;align-items:center;gap:12px;">
@@ -19,6 +19,7 @@
                 </span>
             </div>
         }
+        <HelpButton />
     </div>
 
     @if (ViewModel.TrashedThreads.Count > 0)

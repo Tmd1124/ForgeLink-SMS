@@ -3,7 +3,10 @@
 @inject NavigationManager Nav
 
 <div style="padding:12px;">
-    <h3 style="margin:0 0 12px;">Snoozed</h3>
+    <div class="page-title-row">
+        <h3>Snoozed</h3>
+        <HelpButton />
+    </div>
 
     @if (ViewModel.SnoozedThreads.Count == 0)
     {

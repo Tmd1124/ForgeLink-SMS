@@ -14,6 +14,7 @@
 @inject Microsoft.JSInterop.IJSRuntime JS
 @inject ForgeLinkSms.Core.Services.ConversationListRefresher ListRefresher
 @inject ForgeLinkSms.Core.Services.ICrashReportService CrashReports
+@inject HelpState Help
 @inject ForgeLinkSms.Core.Services.IBackupService Backups
 @using ForgeLinkSms.Core.Utils
 @using ForgeLinkSms.Core.Models
@@ -54,18 +55,21 @@
                     🔍
                 </button>
             </div>
-            @if (!string.IsNullOrEmpty(_photoDataUri))
-            {
-                <img @onclick="@(() => Nav.NavigateTo("/menu"))" src="@_photoDataUri" alt="Menu" role="button" tabindex="0"
-                     style="width:40px;height:40px;border-radius:50%;object-fit:cover;" />
-            }
-            else
-            {
-                <button @onclick="@(() => Nav.NavigateTo("/menu"))" aria-label="Menu"
-                        style="width:40px;height:40px;border-radius:50%;border:none;background:#e2e8f0;font-size:1.1em;padding:0;">
-                    ⚙
-                </button>
-            }
+            <div style="display:flex;align-items:center;gap:12px;">
+                @if (!string.IsNullOrEmpty(_photoDataUri))
+                {
+                    <img @onclick="@(() => Nav.NavigateTo("/menu"))" src="@_photoDataUri" alt="Menu" role="button" tabindex="0"
+                         style="width:40px;height:40px;border-radius:50%;object-fit:cover;" />
+                }
+                else
+                {
+                    <button @onclick="@(() => Nav.NavigateTo("/menu"))" aria-label="Menu"
+                            style="width:40px;height:40px;border-radius:50%;border:none;background:#e2e8f0;font-size:1.1em;padding:0;">
+                        ⚙
+                    </button>
+                }
+                <HelpButton />
+            </div>
         </div>
     }
 
@@ -187,18 +191,6 @@
             }
         </div>
     }
-    @if (showLaneTabs)
-    {
-        @if (ViewModel.Lane == ConversationLane.Screener)
-        {
-            <div style="color:#94a3b8;font-size:0.85em;margin:0 4px 8px;">Texts from numbers that aren't in your contacts and that you've never replied to — often spam, wrong numbers or someone new. They arrive without a notification (except verification codes). Tap ✔ to move a sender to Chats, 🚫 to block them, 🚩 to report the spam to your carrier (7726) and block it, or 🗑 to delete it.</div>
-        }
-        else if (ViewModel.Lane == ConversationLane.Updates)
-        {
-            <div style="color:#94a3b8;font-size:0.85em;margin:0 4px 8px;">Automated texts from businesses (short codes, toll-free numbers and named senders), grouped by topic. They arrive without a notification, except verification codes. Businesses you've saved as contacts stay in Chats.</div>
-        }
-    }
-
     @if (MessagesFirst)
     {
         @MessageResultsBlock()
@@ -827,6 +819,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        Help.Lane = ViewModel.Lane;
         if (firstRender)
         {
             await JS.InvokeVoidAsync("forgeLinkBubblePond.observe", "bubble-pond", "bubble-pond-mini", "conversations-header,lane-tabs");

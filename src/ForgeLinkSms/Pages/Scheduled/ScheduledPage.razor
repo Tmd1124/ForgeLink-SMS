@@ -6,7 +6,10 @@
 @using ForgeLinkSms.Core.Utils
 
 <div style="padding:12px;padding-bottom:40px;">
-    <h3>Scheduled</h3>
+    <div class="page-title-row">
+        <h3>Scheduled</h3>
+        <HelpButton />
+    </div>
 
     @if (ViewModel.ScheduledMessages.Count == 0)
     {

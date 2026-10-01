@@ -85,7 +85,8 @@
                 <button @onclick="OpenMedia" title="Photos &amp; links"
                         style="border:none;background:transparent;font-size:1.1em;padding:8px 6px;" aria-label="Photos &amp; links">🖼️</button>
                 <button @onclick="OpenSearch" title="Search this conversation"
-                        style="border:none;background:transparent;font-size:1.1em;padding:8px 12px;" aria-label="Search this conversation">🔍</button>
+                        style="border:none;background:transparent;font-size:1.1em;padding:8px 6px;" aria-label="Search this conversation">🔍</button>
+                <span style="padding:0 8px 0 4px;display:flex;"><HelpButton /></span>
             </div>
         }
         @if (ViewModel.LoadFailed)
