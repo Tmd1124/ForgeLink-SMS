@@ -5,6 +5,7 @@
 @inject ForgeLinkSms.Core.Services.INotificationSettingsStore NotificationStore
 @inject Microsoft.JSInterop.IJSRuntime JS
 @inject ForgeLinkSms.Core.Services.IBackupService Backups
+@inject ForgeLinkSms.Core.Services.ICrashReportService CrashReports
 @inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Core.Utils
@@ -157,6 +158,10 @@
         <input type="checkbox" checked="@_settings.ShowWidgetText" @onchange="SetWidgetText" style="width:20px;height:20px;" />
         <span>Show message text in the home screen widget<br /><span style="@HintStyle">Off: the widget shows names and unread counts, and "New message" instead of what was said.</span></span>
     </label>
+
+    <h4 style="margin:24px 0 4px;">Feedback</h4>
+    <button @onclick="CrashReports.EmailFeedback" style="@PresetStyle">✉️ Send feedback</button>
+    <span style="@HintStyle;padding:0 4px;">Opens your email app with the app and phone details filled in.</span>
 
     <h4 style="margin:24px 0 4px;">Backup</h4>
     <div style="@HintStyle">Saves all texts, photos and videos, plus favorites, filters, quick replies, scheduled texts and settings, to a file you choose. Restoring only adds what's missing — nothing is deleted.</div>

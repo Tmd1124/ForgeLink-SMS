@@ -13,6 +13,7 @@
 @inject ForgeLinkSms.Core.Services.IReviewPromptService ReviewPrompt
 @inject Microsoft.JSInterop.IJSRuntime JS
 @inject ForgeLinkSms.Core.Services.ConversationListRefresher ListRefresher
+@inject ForgeLinkSms.Core.Services.ICrashReportService CrashReports
 @using ForgeLinkSms.Core.Utils
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Components
@@ -326,6 +327,20 @@
     </button>
 </div>
 
+@if (_pendingCrash is { } crash)
+{
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:30;">
+        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" aria-label="ForgeLink closed unexpectedly">
+            <div style="font-weight:600;font-size:1.1em;">ForgeLink closed unexpectedly last time</div>
+            <div style="color:#94a3b8;margin:8px 0 16px;">Send a report to help fix it? It opens your email app with the error details filled in (no messages or contacts) — nothing is sent unless you send it.</div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button @onclick="DismissCrash" style="padding:10px 14px;border:none;border-radius:10px;background:var(--surface-color);color:var(--text-color);font-size:1em;">Not now</button>
+                <button @onclick="() => SendCrash(crash)" style="padding:10px 14px;border:none;border-radius:10px;background:var(--accent-color);color:white;font-size:1em;font-weight:600;">Send report</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_infoToast is not null)
 {
     <div style="position:fixed;left:16px;right:88px;bottom:28px;z-index:21;background:#1e293b role="alert";color:white;border-radius:8px;padding:12px 16px;box-shadow:0 4px 12px rgba(0,0,0,0.3);pointer-events:none;">@_infoToast</div>
@@ -486,8 +501,11 @@
         return $"color-mix(in srgb, {color} {tint}%, var(--card-color))";
     }
 
+    private string? _pendingCrash;
+
     protected override async Task OnInitializedAsync()
     {
+        _pendingCrash = CrashReports.PendingCrash();
         _photoDataUri = await ProfileService.GetProfilePhotoDataUriAsync();
         ViewModel.Display = DisplayStyles.GetDisplaySettings();
         await ViewModel.LoadCommand.ExecuteAsync(null);
@@ -525,6 +543,18 @@
     {
         _openThreadId = ForgeLinkSms.Core.Utils.TwoPaneRules.OpenThreadId(Nav.ToBaseRelativePath(e.Location));
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void DismissCrash()
+    {
+        CrashReports.ClearPendingCrash();
+        _pendingCrash = null;
+    }
+
+    private void SendCrash(string crash)
+    {
+        DismissCrash();
+        CrashReports.EmailCrashReport(crash);
     }
 
     private void OnRefreshRequested() => _ = InvokeAsync(async () =>

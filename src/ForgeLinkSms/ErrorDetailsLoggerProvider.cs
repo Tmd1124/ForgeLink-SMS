@@ -26,6 +26,8 @@ public sealed class ErrorDetailsLoggerProvider : ILoggerProvider
             if (IsEnabled(logLevel) && exception is not null)
             {
                 ShowDetails?.Invoke(ErrorReport.Format(exception));
+                // A Blazor error breaks the screen until the app restarts, so it's reported like a crash.
+                Platforms.Android.CrashReportService.Save(exception);
             }
         }
     }

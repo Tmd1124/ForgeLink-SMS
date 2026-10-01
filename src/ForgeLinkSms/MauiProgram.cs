@@ -122,6 +122,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IDisplayStyleService, DisplayStyleService>();
 		builder.Services.AddSingleton<INotificationSettingsStore, NotificationSettingsStore>();
 		builder.Services.AddSingleton<IReviewPromptService, ReviewPromptService>();
+		builder.Services.AddSingleton<ICrashReportService, CrashReportService>();
 		builder.Services.AddSingleton<IBackupService, ForgeLinkSms.Platforms.Android.Backup.BackupService>();
 		builder.Services.AddTransient<ThemeViewModel>();
 
