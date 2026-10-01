@@ -16,7 +16,23 @@ internal static class IncomingMessagePipeline
     public static void OnStored(Context context, long threadId, string senderAddress, string notificationBody, string? groupLabel = null)
     {
         var services = MauiApplication.Current.Services;
+        Task? widgetUpdate = null;
+        try
+        {
+            widgetUpdate = Process(context, services, threadId, senderAddress, notificationBody, groupLabel);
+        }
+        finally
+        {
+            // The SMS receiver finishes its broadcast when this returns; waiting (within its time budget)
+            // keeps the process alive until the widget shows the new text. It's waited on last so the
+            // notification never queues behind it.
+            widgetUpdate?.Wait(TimeSpan.FromSeconds(8));
+        }
+    }
 
+    private static Task? Process(Context context, IServiceProvider services, long threadId, string senderAddress, string notificationBody, string? groupLabel)
+    {
+        Task? widgetUpdate = null;
         if (threadId != 0L)
         {
             // A reply to an archived/trashed conversation means the user is actively back in
@@ -38,14 +54,12 @@ internal static class IncomingMessagePipeline
             services.GetRequiredService<ISnoozeService>().UnsnoozeAsync(threadId).GetAwaiter().GetResult();
 
             services.GetRequiredService<IIncomingMessageNotifier>().NotifyMessageReceived(threadId);
-            // The SMS receiver finishes its broadcast when this returns; waiting (within its time budget)
-            // keeps the process alive until the widget shows the new text.
-            ForgeLinkSms.Platforms.Android.Widget.WidgetUpdater.RequestUpdate(context).Wait(TimeSpan.FromSeconds(8));
+            widgetUpdate = ForgeLinkSms.Platforms.Android.Widget.WidgetUpdater.RequestUpdate(context);
         }
 
         if (threadId != 0 && services.GetRequiredService<IMuteRepository>().IsMutedAsync(threadId, DateTimeOffset.UtcNow).GetAwaiter().GetResult())
         {
-            return;
+            return widgetUpdate;
         }
 
         var contact = services.GetRequiredService<IContactService>().LookupAsync(senderAddress).GetAwaiter().GetResult();
@@ -60,12 +74,13 @@ internal static class IncomingMessagePipeline
             TimeOnly.FromDateTime(DateTime.Now));
         if (outcome == NotifyOutcome.None)
         {
-            return;
+            return widgetUpdate;
         }
 
         var senderName = contact?.DisplayName ?? senderAddress;
         var title = groupLabel is null ? senderName : $"{senderName} · {groupLabel}";
-        services.GetRequiredService<INotificationService>().NotifyIncomingMessage(title, ReactionParser.Describe(notificationBody) ?? notificationBody, threadId, senderAddress, outcome == NotifyOutcome.Sound);
+        services.GetRequiredService<INotificationService>().NotifyConversation(threadId, senderAddress, title, ReactionParser.Describe(notificationBody) ?? notificationBody, outcome == NotifyOutcome.Sound);
+        return widgetUpdate;
     }
 
     public static bool ThreadHasOutgoing(Context context, long threadId)

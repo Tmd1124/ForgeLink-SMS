@@ -2,7 +2,15 @@ using Android.App;
 using Android.Content;
 using Android.OS;
 using AndroidX.Core.App;
+using ForgeLinkSms.Core.Models;
 using ForgeLinkSms.Core.Services;
+using ForgeLinkSms.Core.Utils;
+using ForgeLinkSms.Platforms.Android.Widget;
+using Microsoft.Extensions.DependencyInjection;
+using Bitmap = Android.Graphics.Bitmap;
+using AndroidColor = Android.Graphics.Color;
+using Person = AndroidX.Core.App.Person;
+using SmsMessage = ForgeLinkSms.Core.Models.SmsMessage;
 using AndroidApp = Android.App.Application;
 
 namespace ForgeLinkSms.Platforms.Android;
@@ -19,9 +27,55 @@ public class NotificationService : INotificationService
     public static int NotificationIdFor(long threadId) =>
         threadId != 0 ? (int)(threadId % int.MaxValue) : System.Threading.Interlocked.Increment(ref _notificationId) + int.MaxValue / 2;
 
-    public void NotifyIncomingMessage(string fromDisplayName, string body, long threadId, string address, bool withSound = true)
+    public void NotifyIncomingMessage(string fromDisplayName, string body, long threadId, string address, bool withSound = true) =>
+        Post(AndroidApp.Context, threadId, address, fromDisplayName, body, withSound, new NotificationCompat.BigTextStyle().BigText(body), shortcutId: null);
+
+    // Runs inside the SMS broadcast's time budget, so it reads only the chat's unread incoming
+    // messages, and MMS without their photo data.
+    private static List<SmsMessage> UnreadIncoming(Context context, long threadId)
     {
-        var context = AndroidApp.Context;
+        var messages = new List<SmsMessage>();
+        using (var cursor = context.ContentResolver!.Query(global::Android.Net.Uri.Parse("content://sms")!,
+                   new[] { "_id", "address", "body", "date" }, "thread_id = ? AND read = 0 AND type = 1",
+                   new[] { threadId.ToString() }, $"date DESC LIMIT {ConversationNotification.MaxLines}"))
+        {
+            while (cursor?.MoveToNext() == true)
+            {
+                messages.Add(new SmsMessage
+                {
+                    Id = cursor.GetLong(0),
+                    ThreadId = threadId,
+                    Address = cursor.GetString(1) ?? string.Empty,
+                    Body = cursor.GetString(2) ?? string.Empty,
+                    Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(cursor.GetLong(3)),
+                    IsOutgoing = false,
+                    Status = SmsMessageStatus.Delivered
+                });
+            }
+        }
+
+        foreach (var mms in MmsReader.QueryAll(context, threadId).Where(m => !m.IsOutgoing && !m.IsRead).Take(ConversationNotification.MaxLines))
+        {
+            var (body, attachments) = MmsReader.GetContent(context, mms.Id, includeAttachmentData: false);
+            messages.Add(new SmsMessage
+            {
+                Id = mms.Id,
+                ThreadId = threadId,
+                Address = MmsReader.GetAddress(context, mms.Id, false),
+                Body = body,
+                Timestamp = mms.Date,
+                IsOutgoing = false,
+                Status = SmsMessageStatus.Delivered,
+                Attachments = attachments,
+                IsMms = true
+            });
+        }
+        return messages;
+    }
+
+    private static void Post(Context context, long threadId, string address, string title, string body, bool withSound,
+        NotificationCompat.Style style, string? shortcutId)
+    {
         EnsureChannels(context);
 
         var notificationId = NotificationIdFor(threadId);
@@ -37,12 +91,17 @@ public class NotificationService : INotificationService
 
         var builder = new NotificationCompat.Builder(context, withSound ? ChannelId : SilentChannelId)
             .SetSilent(!withSound)
-            .SetContentTitle(fromDisplayName)
+            .SetContentTitle(title)
             .SetContentText(body)
-            .SetStyle(new NotificationCompat.BigTextStyle().BigText(body))
+            .SetStyle(style)
+            .SetCategory(NotificationCompat.CategoryMessage)
             .SetSmallIcon(global::Android.Resource.Drawable.SymActionEmail)
             .SetAutoCancel(true)
             .SetContentIntent(contentIntent);
+        if (shortcutId is not null)
+        {
+            builder.SetShortcutId(shortcutId).SetLocusId(new AndroidX.Core.Content.LocusIdCompat(shortcutId));
+        }
 
         if (threadId != 0)
         {
@@ -50,15 +109,22 @@ public class NotificationService : INotificationService
             var replyInput = new AndroidX.Core.App.RemoteInput.Builder(NotificationActionReceiver.ReplyTextKey).SetLabel("Reply").Build();
             var replyIntent = NotificationActionReceiver.CreateIntent(context, NotificationActionReceiver.ReplyAction, threadId, address, notificationId);
             var replyPending = PendingIntent.GetBroadcast(context, notificationId * 2, replyIntent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Mutable)!;
+            // The semantic actions are what Android Auto looks for to read aloud, reply by voice and mark read.
             var replyAction = new NotificationCompat.Action.Builder(0, "Reply", replyPending)
                 .AddRemoteInput(replyInput)
                 .SetAllowGeneratedReplies(true)
+                .SetSemanticAction(NotificationCompat.Action.SemanticActionReply)
+                .SetShowsUserInterface(false)
                 .Build();
 
             var readIntent = NotificationActionReceiver.CreateIntent(context, NotificationActionReceiver.MarkReadAction, threadId, address, notificationId);
             var readPending = PendingIntent.GetBroadcast(context, notificationId * 2 + 1, readIntent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable)!;
 
-            builder.AddAction(replyAction).AddAction(0, "Mark as read", readPending);
+            var readAction = new NotificationCompat.Action.Builder(0, "Mark as read", readPending)
+                .SetSemanticAction(NotificationCompat.Action.SemanticActionMarkAsRead)
+                .SetShowsUserInterface(false)
+                .Build();
+            builder.AddAction(replyAction).AddAction(readAction);
         }
 
         var notification = builder.Build();
@@ -95,6 +161,85 @@ public class NotificationService : INotificationService
     }
 
     private const int ReminderNotificationIdBase = 1_600_000_000;
+
+    public void NotifyConversation(long threadId, string address, string fallbackTitle, string fallbackBody, bool withSound)
+    {
+        if (threadId == 0)
+        {
+            NotifyIncomingMessage(fallbackTitle, fallbackBody, threadId, address, withSound);
+            return;
+        }
+        try
+        {
+            var context = AndroidApp.Context;
+            var services = MauiApplication.Current.Services;
+            var participants = services.GetRequiredService<IThreadService>().GetParticipantsAsync(threadId).GetAwaiter().GetResult();
+
+            var contacts = services.GetRequiredService<IContactService>();
+            var people = new Dictionary<string, ContactInfo?>();
+            ContactInfo? Contact(string number)
+            {
+                var key = PhoneNumberFormatter.ToComparableDigits(number);
+                if (!people.TryGetValue(key, out var info))
+                {
+                    info = contacts.LookupAsync(number).GetAwaiter().GetResult();
+                    people[key] = info;
+                }
+                return info;
+            }
+            string NameFor(string number) => Contact(number)?.DisplayName ?? PhoneNumberFormatter.ToDisplayFormat(number);
+
+            var isGroup = participants.Count > 1;
+            var title = isGroup ? GroupNames.Format(participants.Select(NameFor).ToList()) : NameFor(address);
+            var fallback = new NotificationLine(ConversationNotification.SenderKey(address), NameFor(address), fallbackBody, DateTimeOffset.UtcNow);
+            var model = ConversationNotification.Build(UnreadIncoming(context, threadId), title, isGroup, NameFor, fallback);
+
+            var accent = AndroidColor.ParseColor("#2563EB");
+            var persons = new Dictionary<string, Person>();
+            Person PersonFor(NotificationLine line)
+            {
+                if (!persons.TryGetValue(line.SenderKey, out var person))
+                {
+                    var contact = Contact(line.SenderKey);
+                    var builder = new Person.Builder().SetKey(line.SenderKey).SetName(line.SenderName);
+                    if (contact?.PhotoUri is { } photo)
+                    {
+                        builder.SetIcon(AndroidX.Core.Graphics.Drawable.IconCompat.CreateWithBitmap(WidgetBitmaps.Circle(context, photo, contact.Initials, accent)));
+                    }
+                    person = builder.Build();
+                    persons[line.SenderKey] = person;
+                }
+                return person;
+            }
+
+            var me = new Person.Builder().SetName("You").Build();
+            var style = new NotificationCompat.MessagingStyle(me);
+            if (model.IsGroup)
+            {
+                style.SetConversationTitle(model.Title);
+                style.SetGroupConversation(true);
+            }
+            foreach (var line in model.Lines)
+            {
+                style.AddMessage(new NotificationCompat.MessagingStyle.Message(new Java.Lang.String(line.Text), line.Time.ToUnixTimeMilliseconds(), PersonFor(line)));
+            }
+
+            Bitmap? shortcutIcon = null;
+            if (!isGroup && Contact(address) is { } single)
+            {
+                shortcutIcon = WidgetBitmaps.Circle(context, single.PhotoUri, single.Initials, accent);
+            }
+            var shortcutId = ConversationShortcuts.Push(context, threadId, address, model.Title, persons.Values.ToList(), shortcutIcon);
+
+            var last = model.Lines[^1];
+            Post(context, threadId, address, model.IsGroup ? model.Title : last.SenderName, last.Text, withSound, style, shortcutId);
+        }
+        catch (Exception e)
+        {
+            global::Android.Util.Log.Warn("ForgeLinkSms", $"Conversation notification for {threadId} failed, using the plain one: {e}");
+            NotifyIncomingMessage(fallbackTitle, fallbackBody, threadId, address, withSound);
+        }
+    }
 
     private static void EnsureChannels(Context context)
     {

@@ -1,6 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <application android:enableOnBackInvokedCallback="true" android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true">
+        <!-- Lets Android Auto read ForgeLink message notifications aloud and send voice replies. -->
+        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
         <!-- SmsManager.SendMultimediaMessage reads the outgoing PDU as the system MMS service,
              not this app's own process — a raw file:// Uri throws FileUriExposedException on
              API 24+, so the PDU is written under cache/mms/ and handed off as a content:// Uri

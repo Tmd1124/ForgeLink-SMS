@@ -14,5 +14,6 @@ public class ThreadDeletionService : IThreadDeletionService
         // than deleting from content://sms and content://mms separately.
         var uri = AndroidUri.Parse($"content://mms-sms/conversations/{threadId}");
         AndroidApp.Context.ContentResolver!.Delete(uri!, null, null);
+        ConversationShortcuts.Remove(AndroidApp.Context, threadId);
     });
 }
