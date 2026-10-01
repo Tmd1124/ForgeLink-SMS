@@ -12,4 +12,7 @@ public interface INotificationService
 
     /// Tapping it opens the chat scrolled to the reminded message.
     void NotifyReminder(string chatName, MessageReminder reminder);
+
+    /// A text didn't leave the phone; tapping it opens the chat, where it can be retried.
+    void NotifySendFailed(long threadId, string address, string recipientName);
 }

@@ -854,4 +854,63 @@ public class ThreadDetailViewModelTests
         Assert.Equal(new[] { "❤️" }, viewModel.Messages[0].Reactions);
         Assert.True(viewModel.Messages[1].IsHiddenReaction);
     }
+
+    private static SmsMessage WithStatus(SmsMessage message, SmsMessageStatus status) => new()
+    {
+        Id = message.Id,
+        ThreadId = message.ThreadId,
+        Address = message.Address,
+        Body = message.Body,
+        Timestamp = message.Timestamp,
+        IsOutgoing = message.IsOutgoing,
+        Status = status
+    };
+
+    [Fact]
+    public async Task Retrying_a_failed_text_removes_the_failed_copy_and_sends_it_again()
+    {
+        var failed = WithStatus(MakeMessage(7, "Running late", DateTimeOffset.UtcNow, isOutgoing: true), SmsMessageStatus.Failed);
+        var sms = new Mock<ISmsService>();
+        sms.Setup(s => s.GetMessagesAsync(1, null, It.IsAny<int>())).ReturnsAsync(new List<SmsMessage> { failed });
+        var viewModel = new ThreadDetailViewModel(sms.Object, new Mock<IMessageSchedulerService>().Object, threadId: 1, address: "555");
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.RetryFailedCommand.ExecuteAsync(failed);
+
+        sms.Verify(s => s.DeleteMessageAsync(failed), Times.Once);
+        sms.Verify(s => s.SendAsync("555", "Running late"), Times.Once);
+    }
+
+    [Fact]
+    public async Task Retry_does_nothing_for_a_text_that_was_sent()
+    {
+        var sent = MakeMessage(7, "On my way", DateTimeOffset.UtcNow, isOutgoing: true);
+        var sms = new Mock<ISmsService>();
+        var viewModel = new ThreadDetailViewModel(sms.Object, new Mock<IMessageSchedulerService>().Object, threadId: 1, address: "555");
+
+        await viewModel.RetryFailedCommand.ExecuteAsync(sent);
+
+        sms.Verify(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        sms.Verify(s => s.DeleteMessageAsync(It.IsAny<SmsMessage>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task A_status_change_updates_the_loaded_text_in_place()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var older = MakeMessage(1, "Hi", now.AddMinutes(-5));
+        var sending = WithStatus(MakeMessage(2, "On my way", now, isOutgoing: true), SmsMessageStatus.Sending);
+        var sms = new Mock<ISmsService>();
+        sms.SetupSequence(s => s.GetMessagesAsync(1, null, It.IsAny<int>()))
+            .ReturnsAsync(new List<SmsMessage> { sending, older })
+            .ReturnsAsync(new List<SmsMessage> { WithStatus(sending, SmsMessageStatus.Delivered), older });
+        var viewModel = new ThreadDetailViewModel(sms.Object, new Mock<IMessageSchedulerService>().Object, threadId: 1, address: "555");
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.RefreshStatusesCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, viewModel.Messages.Count);
+        Assert.Equal("Hi", viewModel.Messages[0].Body);
+        Assert.Equal(SmsMessageStatus.Delivered, viewModel.Messages[1].Status);
+    }
 }

@@ -469,6 +469,45 @@ public partial class ThreadDetailViewModel : ObservableObject
         SearchResults.Remove(message);
     }
 
+    [RelayCommand]
+    private async Task RetryFailed(Models.SmsMessage message)
+    {
+        if (!Utils.SmsStatus.CanRetry(message))
+        {
+            return;
+        }
+
+        await _smsService.DeleteMessageAsync(message);
+        Messages.Remove(message);
+        await _smsService.SendAsync(_address, message.Body);
+        _listRefresher?.RequestRefresh();
+        await Load();
+    }
+
+    // Sent/delivered reports change texts that are already on screen, which appending newer
+    // messages would never pick up.
+    [RelayCommand]
+    private async Task RefreshStatuses()
+    {
+        try
+        {
+            var latest = await _smsService.GetMessagesAsync(_threadId, null, PageSize) ?? Array.Empty<Models.SmsMessage>();
+            foreach (var fresh in latest)
+            {
+                var index = Messages.ToList().FindIndex(m => m.Id == fresh.Id && m.IsMms == fresh.IsMms);
+                if (index >= 0 && Messages[index].Status != fresh.Status)
+                {
+                    Messages[index] = fresh;
+                }
+            }
+            Utils.ReactionAttacher.Apply(Messages);
+        }
+        catch (Exception)
+        {
+            // Best-effort — reopening the thread shows the current status.
+        }
+    }
+
     // Called when leaving the conversation, so unsent text is still there next time.
     public Task SaveDraftAsync() => _drafts?.SaveAsync(_threadId, ComposeText) ?? Task.CompletedTask;
 

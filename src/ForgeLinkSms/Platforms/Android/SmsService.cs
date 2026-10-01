@@ -4,6 +4,7 @@ using SmsMessage = ForgeLinkSms.Core.Models.SmsMessage;
 using SmsMessageStatus = ForgeLinkSms.Core.Models.SmsMessageStatus;
 using SharedMedia = ForgeLinkSms.Core.Models.SharedMedia;
 using AttachmentKindClassifier = ForgeLinkSms.Core.Utils.AttachmentKindClassifier;
+using SmsStatus = ForgeLinkSms.Core.Utils.SmsStatus;
 using AndroidApp = global::Android.App.Application;
 using AndroidTelephony = global::Android.Provider.Telephony;
 using AndroidSmsManager = global::Android.Telephony.SmsManager;
@@ -213,20 +214,17 @@ public class SmsService : ISmsService
         var results = new List<SmsMessage>();
         var projection = new[] { "_id", "thread_id", "address", "body", "date", "type", "status" };
 
-        // Unfiltered, this table also returns draft/outbox/failed/queued placeholder rows (type
-        // 3-6) that Android leaves sitting in the provider — one such row with no date ever set
-        // surfaced as a fake "message" pinned at the very start of a real thread's history.
-        // Restricting to inbox/sent (1/2) matches MmsReader.QueryAll's existing msg_box filter,
-        // so only messages that were actually received or sent show up.
-        var inbox = (int)global::Android.Provider.SmsMessageType.Inbox;
-        var sent = (int)global::Android.Provider.SmsMessageType.Sent;
+        // Android also leaves draft/outbox/failed/queued placeholder rows (type 3-6) in this table;
+        // one with no date ever set surfaced as a fake "message" pinned at the very start of a
+        // thread. Texts still sending or that failed are shown, but only when they have a real date.
+        var types = $"(type IN ({SmsStatus.TypeInbox},{SmsStatus.TypeSent}) OR (type IN ({SmsStatus.TypeOutbox},{SmsStatus.TypeFailed},{SmsStatus.TypeQueued}) AND date > 0))";
         var comparisonOp = ascending ? ">" : "<";
         var selection = pagingCursor is null
-            ? "thread_id = ? AND (type = ? OR type = ?)"
-            : $"thread_id = ? AND (type = ? OR type = ?) AND date {comparisonOp} ?";
+            ? $"thread_id = ? AND {types}"
+            : $"thread_id = ? AND {types} AND date {comparisonOp} ?";
         var args = pagingCursor is null
-            ? new[] { threadId.ToString(), inbox.ToString(), sent.ToString() }
-            : new[] { threadId.ToString(), inbox.ToString(), sent.ToString(), pagingCursor.Value.ToUnixTimeMilliseconds().ToString() };
+            ? new[] { threadId.ToString() }
+            : new[] { threadId.ToString(), pagingCursor.Value.ToUnixTimeMilliseconds().ToString() };
 
         // Android's SMS provider (like most SQLite-backed platform ContentProviders) accepts a
         // raw SQL LIMIT appended to sortOrder — there's no separate paging parameter on
@@ -246,13 +244,13 @@ public class SmsService : ISmsService
         var bodyIdx = cursor.GetColumnIndexOrThrow("body");
         var dateIdx = cursor.GetColumnIndexOrThrow("date");
         var typeIdx = cursor.GetColumnIndexOrThrow("type");
+        var statusIdx = cursor.GetColumnIndexOrThrow("status");
 
         while (cursor.MoveToNext())
         {
-            // type: 1 = inbox (incoming), 2 = sent (outgoing). See
-            // Telephony.TextBasedSmsColumns.MessageTypeInbox / .MessageTypeSent.
-            var type = cursor.GetInt(typeIdx);
-            var isOutgoing = type == (int)global::Android.Provider.SmsMessageType.Sent;
+            var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(cursor.GetLong(dateIdx));
+            var (isOutgoing, status) = SmsStatus.FromProvider(cursor.GetInt(typeIdx),
+                cursor.IsNull(statusIdx) ? SmsStatus.StatusNone : cursor.GetInt(statusIdx), DateTimeOffset.UtcNow - timestamp);
 
             results.Add(new SmsMessage
             {
@@ -260,13 +258,9 @@ public class SmsService : ISmsService
                 ThreadId = cursor.GetLong(threadIdx),
                 Address = cursor.GetString(addressIdx) ?? string.Empty,
                 Body = cursor.GetString(bodyIdx) ?? string.Empty,
-                Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(cursor.GetLong(dateIdx)),
+                Timestamp = timestamp,
                 IsOutgoing = isOutgoing,
-                // A freshly-read Sent row can't distinguish Sent from
-                // Delivered by content alone; DeliveryStatusReceiver
-                // (Step 7) logs the delivery PendingIntent firing, so
-                // this initial read reports Sent for outgoing rows.
-                Status = isOutgoing ? SmsMessageStatus.Sent : SmsMessageStatus.Delivered
+                Status = status
             });
         }
 
@@ -284,44 +278,49 @@ public class SmsService : ISmsService
         var context = AndroidApp.Context;
         var smsManager = AndroidSmsManager.Default!;
 
-        // Intent(action) alone is an *implicit* broadcast, which Android's
-        // background-broadcast limits (and FLAG_EXCLUDE_STOPPED_PACKAGES,
-        // on by default) can silently drop before it ever reaches a
-        // manifest-declared receiver (confirmed via dumpsys activity
-        // broadcasts: dispatchClockTime stayed at epoch and terminalCount
-        // was 0 without this). Setting the package makes it an explicit
-        // broadcast targeted at this app, which manifest receivers do
-        // reliably receive.
-        var sentIntent = new AndroidIntent(SentAction).SetPackage(context.PackageName);
-        var deliveredIntent = new AndroidIntent(DeliveredAction).SetPackage(context.PackageName);
-        var sentPending = AndroidPendingIntent.GetBroadcast(context, 0, sentIntent, AndroidPendingIntentFlags.Immutable | AndroidPendingIntentFlags.UpdateCurrent)!;
-        var deliveredPending = AndroidPendingIntent.GetBroadcast(context, 0, deliveredIntent, AndroidPendingIntentFlags.Immutable | AndroidPendingIntentFlags.UpdateCurrent)!;
-
-        var parts = smsManager.DivideMessage(body);
-        if (parts.Count > 1)
-        {
-            var sentIntents = new List<AndroidPendingIntent>();
-            var deliveredIntents = new List<AndroidPendingIntent>();
-            for (var i = 0; i < parts.Count; i++)
-            {
-                sentIntents.Add(sentPending);
-                deliveredIntents.Add(deliveredPending);
-            }
-            smsManager.SendMultipartTextMessage(address, null, parts, sentIntents, deliveredIntents);
-        }
-        else
-        {
-            smsManager.SendTextMessage(address, null, body, sentPending, deliveredPending);
-        }
-
-        // The default SMS app is responsible for writing its own outgoing
-        // messages into the Sent provider — Android does not do this for us.
+        // The default SMS app writes its own outgoing messages. The row starts in the outbox and
+        // DeliveryStatusReceiver moves it to sent or failed when Android reports back.
         var values = new AndroidContentValues();
         values.Put("address", address);
         values.Put("body", body);
         values.Put("date", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         values.Put("read", 1);
-        context.ContentResolver!.Insert(AndroidTelephony.Sms.Sent.ContentUri!, values);
+        values.Put("status", SmsStatus.StatusNone);
+        var messageUri = context.ContentResolver!.Insert(AndroidTelephony.Sms.Outbox.ContentUri!, values)!;
+
+        // Addressed to the receiver itself: an implicit broadcast can be dropped by Android's background
+        // limits, and one carrying a data URI never matches an action-only intent filter. The message's
+        // URI as the data keeps each send's PendingIntents distinct, so a report lands on its own text.
+        var requestCode = (int)(long.Parse(messageUri.LastPathSegment!) % int.MaxValue);
+        var sentIntent = new AndroidIntent(context, typeof(DeliveryStatusReceiver)).SetAction(SentAction).SetData(messageUri);
+        var deliveredIntent = new AndroidIntent(context, typeof(DeliveryStatusReceiver)).SetAction(DeliveredAction).SetData(messageUri);
+        var sentPending = AndroidPendingIntent.GetBroadcast(context, requestCode, sentIntent, AndroidPendingIntentFlags.Immutable | AndroidPendingIntentFlags.UpdateCurrent)!;
+        var deliveredPending = AndroidPendingIntent.GetBroadcast(context, requestCode, deliveredIntent, AndroidPendingIntentFlags.Immutable | AndroidPendingIntentFlags.UpdateCurrent)!;
+
+        try
+        {
+            var parts = smsManager.DivideMessage(body);
+            if (parts.Count > 1)
+            {
+                var sentIntents = new List<AndroidPendingIntent>();
+                var deliveredIntents = new List<AndroidPendingIntent>();
+                for (var i = 0; i < parts.Count; i++)
+                {
+                    sentIntents.Add(sentPending);
+                    deliveredIntents.Add(deliveredPending);
+                }
+                smsManager.SendMultipartTextMessage(address, null, parts, sentIntents, deliveredIntents);
+            }
+            else
+            {
+                smsManager.SendTextMessage(address, null, body, sentPending, deliveredPending);
+            }
+        }
+        catch (Exception)
+        {
+            _ = Task.Run(() => DeliveryStatusReceiver.MarkFailed(context, messageUri));
+            throw;
+        }
 
         return Task.CompletedTask;
     }

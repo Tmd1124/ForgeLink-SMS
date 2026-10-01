@@ -245,13 +245,20 @@
                             </span>
                         </div>
                     }
+                    @if (ForgeLinkSms.Core.Utils.SmsStatus.CanRetry(message))
+                    {
+                        <button @onclick="() => ViewModel!.RetryFailedCommand.ExecuteAsync(message)" @onclick:stopPropagation="true"
+                                style="margin-top:4px;padding:4px 10px;border:none;border-radius:999px;background:rgba(220,38,38,0.15);color:#ef4444;font-size:0.8em;font-weight:600;">
+                            ⚠ Not sent · Tap to retry
+                        </button>
+                    }
                     <div aria-hidden="true" style="font-size:0.75em;color:#94a3b8;margin-top:2px;">
                         @message.Timestamp.LocalDateTime.ToString("h:mm tt")
                         @if (message.Attachments.Any(a => _savedAttachmentPartIds.Contains(a.PartId)))
                         {
                             <span> · Saved</span>
                         }
-                        @if (!string.IsNullOrEmpty(message.StatusDisplay))
+                        @if (!string.IsNullOrEmpty(message.StatusDisplay) && !ForgeLinkSms.Core.Utils.SmsStatus.CanRetry(message))
                         {
                             <span> · @message.StatusDisplay</span>
                         }
@@ -567,11 +574,26 @@
             return;
         }
         IncomingMessageNotifier.MessageReceived += OnMessageReceived;
+        IncomingMessageNotifier.MessageStatusChanged += OnMessageStatusChanged;
         Playback.PlaybackChanged += OnPlaybackChanged;
         HistoryTracker.LocalBackHandler = TryCloseOverlayForBack;
     }
 
     private bool _disposed;
+
+    private void OnMessageStatusChanged(long threadId)
+    {
+        if (threadId != ThreadId || ViewModel is null)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            await ViewModel.RefreshStatusesCommand.ExecuteAsync(null);
+            StateHasChanged();
+        });
+    }
 
     // Raised from the SMS receiver's background thread, hence InvokeAsync.
     private void OnMessageReceived(long threadId)
@@ -819,6 +841,7 @@
         _ = ViewModel?.SaveDraftAsync();
 
         IncomingMessageNotifier.MessageReceived -= OnMessageReceived;
+        IncomingMessageNotifier.MessageStatusChanged -= OnMessageStatusChanged;
 
         // Blazor's router can create the next page before disposing this one, so only clear the
         // handler if it's still ours — otherwise this would wipe out a registration the next page

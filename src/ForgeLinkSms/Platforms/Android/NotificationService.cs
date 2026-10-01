@@ -161,6 +161,31 @@ public class NotificationService : INotificationService
     }
 
     private const int ReminderNotificationIdBase = 1_600_000_000;
+    private const int SendFailedNotificationIdBase = 1_700_000_000;
+
+    public void NotifySendFailed(long threadId, string address, string recipientName)
+    {
+        var context = AndroidApp.Context;
+        EnsureChannels(context);
+
+        // One per chat, apart from its message notification, so a new failure replaces the last.
+        var notificationId = SendFailedNotificationIdBase + (int)(threadId % 100_000_000);
+        var launchIntent = new Intent(context, typeof(MainActivity));
+        launchIntent.AddFlags(ActivityFlags.NewTask | ActivityFlags.ClearTop);
+        launchIntent.PutExtra("initial_route", $"/conversations/thread?id={threadId}&address={Uri.EscapeDataString(address)}");
+        var contentIntent = PendingIntent.GetActivity(context, notificationId, launchIntent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
+
+        var notification = new NotificationCompat.Builder(context, ChannelId)
+            .SetContentTitle($"Message to {recipientName} not sent")
+            .SetContentText("Tap to open the chat and try again.")
+            .SetSmallIcon(global::Android.Resource.Drawable.StatSysWarning)
+            .SetCategory(NotificationCompat.CategoryError)
+            .SetAutoCancel(true)
+            .SetContentIntent(contentIntent)
+            .Build();
+
+        NotificationManagerCompat.From(context).Notify(notificationId, notification);
+    }
 
     public void NotifyConversation(long threadId, string address, string fallbackTitle, string fallbackBody, bool withSound)
     {
