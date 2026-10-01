@@ -1,4 +1,5 @@
 @page "/settings"
+@page "/settings/{Section}"
 @implements IDisposable
 @inject ForgeLinkSms.Core.ViewModels.SettingsViewModel ViewModel
 @inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
@@ -7,189 +8,270 @@
 @inject ForgeLinkSms.Core.Services.IBackupService Backups
 @inject ForgeLinkSms.Core.Services.ICrashReportService CrashReports
 @inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
+@inject Microsoft.AspNetCore.Components.NavigationManager Nav
+@inject ForgeLinkSms.Core.Services.IReviewPromptService ReviewPrompt
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Core.Utils
 
 <div style="padding:12px;padding-bottom:40px;">
-    <h3>Settings</h3>
-    <p>Default SMS app: @(ViewModel.IsDefaultSmsApp ? "Yes ✓" : "No — open Onboarding to fix this")</p>
-
-    <h4 style="margin:24px 0 4px;">Notifications</h4>
-    <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;font-weight:600;">
-        <input type="checkbox" checked="@_notify.Enabled" @onchange="e => UpdateNotify(n => n.Enabled = e.Value is true)" style="width:20px;height:20px;" />
-        Notify me about new texts
-    </label>
-    @if (_notify.Enabled)
+    @switch (Section)
     {
-        <div style="@HintStyle">Choose who can notify you, and whether it makes a sound. Muted conversations never notify.</div>
-        <div style="display:grid;grid-template-columns:1fr 64px 64px;align-items:center;row-gap:4px;margin-top:8px;">
-            <span></span>
-            <span style="@HintStyle;text-align:center;">Notify</span>
-            <span style="@HintStyle;text-align:center;">Sound</span>
-            @foreach (var (group, icon, title, hint) in NotifyGroups)
+        case null:
+            <h3>Settings</h3>
+            @if (!ViewModel.IsDefaultSmsApp)
             {
-                var setting = _notify.For(group);
-                <div style="padding:8px 4px;">
-                    <div style="font-weight:600;">@icon @title</div>
-                    <div style="@HintStyle">@hint</div>
+                <div @onclick="@(() => Nav.NavigateTo("/onboarding"))" role="button" tabindex="0"
+                     style="display:flex;align-items:center;gap:12px;padding:14px 12px;margin-bottom:12px;border-radius:12px;background:rgba(245,158,11,0.15);">
+                    <span aria-hidden="true">⚠️</span>
+                    <span style="flex:1;">ForgeLink isn't your default SMS app</span>
+                    <span style="font-weight:600;">Fix ›</span>
                 </div>
-                <input type="checkbox" checked="@setting.Notify" aria-label="@($"Notify for {title}")"
-                       @onchange="e => UpdateNotify(n => n.Set(group, new GroupNotifySetting(e.Value is true, e.Value is true)))"
-                       style="width:22px;height:22px;justify-self:center;" />
-                <input type="checkbox" checked="@setting.Sound" disabled="@(!setting.Notify)" aria-label="@($"Sound for {title}")"
-                       @onchange="e => UpdateNotify(n => n.Set(group, setting with { Sound = e.Value is true }))"
-                       style="width:22px;height:22px;justify-self:center;opacity:@(setting.Notify ? "1" : "0.35");" />
             }
-        </div>
-
-        <div style="font-weight:600;margin:16px 0 6px;">Quick picks</div>
-        <div style="display:flex;flex-direction:column;gap:6px;">
-            <button @onclick="() => ApplyNotify(NotificationRules.Everything)" style="@PresetStyle">🔔 Everything</button>
-            <button @onclick="() => ApplyNotify(NotificationRules.FavoritesOnly)" style="@PresetStyle">❤️ Favorites only</button>
-            <button @onclick="() => ApplyNotify(NotificationRules.EverythingSilent)" style="@PresetStyle">🔕 Everything, no sound</button>
-        </div>
-
-        <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;margin-top:8px;">
-            <input type="checkbox" checked="@_notify.AlwaysAlertForCodes" @onchange="e => UpdateNotify(n => n.AlwaysAlertForCodes = e.Value is true)" style="width:20px;height:20px;" />
-            🔑 Always alert me for verification codes, even from Updates or Screener
-        </label>
-
-        <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
-            <input type="checkbox" checked="@_notify.QuietHoursEnabled" @onchange="e => UpdateNotify(n => n.QuietHoursEnabled = e.Value is true)" style="width:20px;height:20px;" />
-            🌙 Quiet hours: notifications arrive without sound
-        </label>
-        @if (_notify.QuietHoursEnabled)
-        {
-            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:0 4px 8px 34px;">
-                <label>From <input type="time" value="@_notify.QuietStart.ToString("HH:mm")" @onchange="e => SetQuietTime(e, start: true)" style="font:inherit;" /></label>
-                <label>to <input type="time" value="@_notify.QuietEnd.ToString("HH:mm")" @onchange="e => SetQuietTime(e, start: false)" style="font:inherit;" /></label>
+            <div style="@GroupStyle">
+                @foreach (var (section, icon, title, summary) in Categories())
+                {
+                    <div @onclick="@(() => Nav.NavigateTo($"/settings/{section}"))" role="button" tabindex="0"
+                         style="display:flex;align-items:center;gap:12px;padding:14px 12px;@(section == "privacy" ? "" : RowDivider)">
+                        <span aria-hidden="true" style="width:1.5em;text-align:center;">@icon</span>
+                        <span style="flex:1;min-width:0;">
+                            <span style="display:block;">@title</span>
+                            @if (!string.IsNullOrEmpty(summary))
+                            {
+                                <span style="@HintStyle;display:block;">@summary</span>
+                            }
+                        </span>
+                        <span aria-hidden="true" style="@ChevronStyle">›</span>
+                    </div>
+                }
             </div>
-            <label style="display:flex;align-items:center;gap:10px;padding:4px 4px 10px 34px;">
-                <input type="checkbox" checked="@_notify.FavoritesRingDuringQuietHours" @onchange="e => UpdateNotify(n => n.FavoritesRingDuringQuietHours = e.Value is true)" style="width:20px;height:20px;" />
-                Let ❤️ favorites ring during quiet hours
-            </label>
-        }
-    }
+            break;
 
-    <h4 style="margin:24px 0 4px;">Display</h4>
-    <div style="@HintStyle">How your Chats list looks.</div>
-    @foreach (var (layout, icon, title, description) in Layouts)
-    {
-        <div @onclick="() => ChooseLayout(layout)" style="@OptionStyle(_settings.Layout == layout)" role="button" tabindex="0">
-            <span style="font-size:1.6em;">@icon</span>
-            <div style="flex:1;min-width:0;">
-                <div style="font-weight:600;">@title</div>
-                <div style="@HintStyle">@description</div>
+        case "appearance":
+            <h3>Appearance</h3>
+            <h4 style="@HeadingStyle">Theme</h4>
+            <div style="@GroupStyle">
+                <div @onclick="@(() => Nav.NavigateTo("/theme"))" role="button" tabindex="0" style="display:flex;align-items:center;gap:12px;padding:14px 12px;">
+                    <span aria-hidden="true" style="width:1.5em;text-align:center;">🎨</span>
+                    <span style="flex:1;">Colors and light or dark mode</span>
+                    <span aria-hidden="true" style="@ChevronStyle">›</span>
+                </div>
             </div>
-            <span style="@RadioStyle(_settings.Layout == layout)"></span>
-        </div>
-    }
 
-    <div style="font-weight:600;margin:16px 0 6px;">Quick presets</div>
-    <div style="display:flex;flex-direction:column;gap:6px;">
-        <button @onclick="() => Apply(DisplayRules.BubblesOnlyFavoritesAndUnreadPreset)" style="@PresetStyle">🫧 Bubbles only: favorites + unread (no list)</button>
-        <button @onclick="() => Apply(DisplayRules.FavoritesAndUnreadPreset)" style="@PresetStyle">🫧💬 Favorites + unread are bubbles</button>
-        <button @onclick="() => Apply(DisplayRules.UnreadOnlyColorPreset)" style="@PresetStyle">💬 Only unread messages are colored</button>
-        <button @onclick="() => Apply(DisplayRules.FavoritesWithFilterColorsPreset)" style="@PresetStyle">🏷️ Favorite bubbles + filter-colored list</button>
-    </div>
-
-    <h4 style="margin:24px 0 4px;">Filter tabs</h4>
-    <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
-        <input type="checkbox" checked="@_settings.ShowFilterTabs" @onchange="e => Update(s => s.ShowFilterTabs = e.Value is true)" style="width:20px;height:20px;" />
-        Show filters that have conversations as tabs under Chats, Updates and Screener
-    </label>
-
-    <h4 style="margin:24px 0 4px;">Bubbles</h4>
-    @if (_settings.Layout != ConversationDisplayStyle.Cards)
-    {
-        <div style="@HintStyle">@(_settings.Layout == ConversationDisplayStyle.Bubbles ? "Who gets a bubble. With no list, anyone else is only found through search and the tabs." : "Who gets a bubble. Everyone else is in the list.")</div>
-        @foreach (var (label, isChecked, set) in BubbleChoices())
-        {
-            <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
-                <input type="checkbox" checked="@isChecked" @onchange="e => Update(s => set(s, e.Value is true))" style="width:20px;height:20px;" />
-                @label
-            </label>
-        }
-    }
-    else
-    {
-        <div style="@HintStyle">The Color list layout has no bubbles.</div>
-    }
-
-    <h4 style="margin:24px 0 4px;">Colored list</h4>
-    <div style="@HintStyle">Color the list by</div>
-    @foreach (var (mode, title) in ColorModes)
-    {
-        <div @onclick="() => Update(s => s.ColorBy = mode)" style="@OptionStyle(_settings.ColorBy == mode)" role="button" tabindex="0">
-            <div style="flex:1;">@title</div>
-            <span style="@RadioStyle(_settings.ColorBy == mode)"></span>
-        </div>
-    }
-
-    <div style="@HintStyle;margin-top:12px;">Unread messages</div>
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;">
-        @foreach (var (color, name) in UnreadColors)
-        {
-            var selected = _settings.UnreadColor == color;
-            <div @onclick="() => Update(s => s.UnreadColor = color)" style="display:flex;flex-direction:column;align-items:center;gap:4px;width:56px;cursor:pointer;" role="button" tabindex="0">
-                <span style="width:40px;height:40px;border-radius:50%;box-sizing:border-box;background:@(color ?? "transparent");border:@(selected ? "3px solid var(--accent-color)" : color is null ? "2px dashed #94a3b8" : "3px solid transparent");display:flex;align-items:center;justify-content:center;color:#94a3b8;">@(color is null ? "∅" : "")</span>
-                <span style="font-size:0.75em;text-align:center;">@name</span>
+            <h4 style="@HeadingStyle">Text size</h4>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+                @foreach (var (scale, label) in TextSizes)
+                {
+                    var selected = DisplayRules.TextScaleOrDefault(_settings.TextScale) == scale;
+                    <button @onclick="() => SetTextScale(scale)"
+                            style="border:2px solid @(selected ? "var(--accent-color)" : "transparent");border-radius:12px;padding:10px 14px;background:var(--card-color);color:var(--text-color);font-size:@(scale / 100.0)em;font-weight:600;">@label</button>
+                }
             </div>
-        }
-    </div>
+            break;
 
-    <h4 style="margin:24px 0 4px;">Text size</h4>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
-        @foreach (var (scale, label) in TextSizes)
-        {
-            var selected = DisplayRules.TextScaleOrDefault(_settings.TextScale) == scale;
-            <button @onclick="() => SetTextScale(scale)"
-                    style="border:2px solid @(selected ? "var(--accent-color)" : "transparent");border-radius:12px;padding:10px 14px;background:var(--card-color);color:var(--text-color);font-size:@(scale / 100.0)em;font-weight:600;">@label</button>
-        }
-    </div>
+        case "notifications":
+            <h3>Notifications</h3>
+            <div style="@GroupStyle">
+                <label style="display:flex;align-items:center;gap:10px;padding:14px 12px;font-weight:600;">
+                    <input type="checkbox" checked="@_notify.Enabled" @onchange="e => UpdateNotify(n => n.Enabled = e.Value is true)" style="width:20px;height:20px;" />
+                    Notify me about new texts
+                </label>
+            </div>
+            @if (_notify.Enabled)
+            {
+                <h4 style="@HeadingStyle">Who can notify you</h4>
+                <div style="@HintStyle">Choose who can notify you, and whether it makes a sound. Muted conversations never notify.</div>
+                <div style="@GroupStyle;padding:4px 8px;margin-top:8px;">
+                    <div style="display:grid;grid-template-columns:1fr 64px 64px;align-items:center;row-gap:4px;">
+                        <span></span>
+                        <span style="@HintStyle;text-align:center;">Notify</span>
+                        <span style="@HintStyle;text-align:center;">Sound</span>
+                        @foreach (var (group, icon, title, hint) in NotifyGroups)
+                        {
+                            var setting = _notify.For(group);
+                            <div style="padding:8px 4px;">
+                                <div style="font-weight:600;">@icon @title</div>
+                                <div style="@HintStyle">@hint</div>
+                            </div>
+                            <input type="checkbox" checked="@setting.Notify" aria-label="@($"Notify for {title}")"
+                                   @onchange="e => UpdateNotify(n => n.Set(group, new GroupNotifySetting(e.Value is true, e.Value is true)))"
+                                   style="width:22px;height:22px;justify-self:center;" />
+                            <input type="checkbox" checked="@setting.Sound" disabled="@(!setting.Notify)" aria-label="@($"Sound for {title}")"
+                                   @onchange="e => UpdateNotify(n => n.Set(group, setting with { Sound = e.Value is true }))"
+                                   style="width:22px;height:22px;justify-self:center;opacity:@(setting.Notify ? "1" : "0.35");" />
+                        }
+                    </div>
+                </div>
 
-    <h4 style="margin:24px 0 4px;">Privacy</h4>
-    <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
-        <input type="checkbox" checked="@_settings.ShowLinkPreviews" @onchange="e => Update(s => s.ShowLinkPreviews = e.Value is true)" style="width:20px;height:20px;" />
-        <span>Show link previews<br /><span style="@HintStyle">To build a preview, ForgeLink opens the linked page — the only time the app uses the internet. Turn off and links stay plain.</span></span>
-    </label>
+                <h4 style="@HeadingStyle">Quick picks</h4>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <button @onclick="() => ApplyNotify(NotificationRules.Everything)" style="@PresetStyle">🔔 Everything</button>
+                    <button @onclick="() => ApplyNotify(NotificationRules.FavoritesOnly)" style="@PresetStyle">❤️ Favorites only</button>
+                    <button @onclick="() => ApplyNotify(NotificationRules.EverythingSilent)" style="@PresetStyle">🔕 Everything, no sound</button>
+                </div>
 
-    <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
-        <input type="checkbox" checked="@_settings.ShowWidgetText" @onchange="SetWidgetText" style="width:20px;height:20px;" />
-        <span>Show message text in the home screen widget<br /><span style="@HintStyle">Off: the widget shows names and unread counts, and "New message" instead of what was said.</span></span>
-    </label>
+                <h4 style="@HeadingStyle">Verification codes</h4>
+                <div style="@GroupStyle">
+                    <label style="display:flex;align-items:center;gap:10px;padding:14px 12px;">
+                        <input type="checkbox" checked="@_notify.AlwaysAlertForCodes" @onchange="e => UpdateNotify(n => n.AlwaysAlertForCodes = e.Value is true)" style="width:20px;height:20px;" />
+                        🔑 Always alert me for verification codes, even from Updates or Screener
+                    </label>
+                </div>
 
-    <h4 style="margin:24px 0 4px;">Feedback</h4>
-    <button @onclick="CrashReports.EmailFeedback" style="@PresetStyle">✉️ Send feedback</button>
-    <span style="@HintStyle;padding:0 4px;">Opens your email app with the app and phone details filled in.</span>
+                <h4 style="@HeadingStyle">Quiet hours</h4>
+                <div style="@GroupStyle">
+                    <label style="display:flex;align-items:center;gap:10px;padding:14px 12px;">
+                        <input type="checkbox" checked="@_notify.QuietHoursEnabled" @onchange="e => UpdateNotify(n => n.QuietHoursEnabled = e.Value is true)" style="width:20px;height:20px;" />
+                        🌙 Quiet hours: notifications arrive without sound
+                    </label>
+                    @if (_notify.QuietHoursEnabled)
+                    {
+                        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:0 12px 8px 42px;">
+                            <label>From <input type="time" value="@_notify.QuietStart.ToString("HH:mm")" @onchange="e => SetQuietTime(e, start: true)" style="font:inherit;" /></label>
+                            <label>to <input type="time" value="@_notify.QuietEnd.ToString("HH:mm")" @onchange="e => SetQuietTime(e, start: false)" style="font:inherit;" /></label>
+                        </div>
+                        <label style="display:flex;align-items:center;gap:10px;padding:4px 12px 14px 42px;">
+                            <input type="checkbox" checked="@_notify.FavoritesRingDuringQuietHours" @onchange="e => UpdateNotify(n => n.FavoritesRingDuringQuietHours = e.Value is true)" style="width:20px;height:20px;" />
+                            Let ❤️ favorites ring during quiet hours
+                        </label>
+                    }
+                </div>
+            }
+            break;
 
-    <h4 style="margin:24px 0 4px;">Backup</h4>
-    <div style="@HintStyle">Saves all texts, photos and videos, plus favorites, filters, quick replies, scheduled texts and settings, to a file you choose. Restoring only adds what's missing — nothing is deleted.</div>
-    <div style="margin:8px 4px;">
-        @if (_backup.LastRunUtc is { } when)
-        {
-            <span>@(_backup.LastSucceeded == true ? "✅" : "⚠️") Last: @when.ToLocalTime().ToString("MMM d, h:mm tt") — @_backup.LastMessage</span>
-        }
-        else
-        {
-            <span style="@HintStyle">No backups yet.</span>
-        }
-        @if (_backup.IsRunning)
-        {
-            <div style="@HintStyle">A backup or restore is running — see the notification.</div>
-        }
-    </div>
-    <div style="display:flex;flex-direction:column;gap:6px;">
-        <button @onclick="BackUpNow" disabled="@_backup.IsRunning" style="@PresetStyle">💾 Back up now</button>
-        <button @onclick="ExportForOtherApps" disabled="@_backup.IsRunning" style="@PresetStyle">📤 Export for other apps (SMS Backup &amp; Restore)</button>
-        <span style="@HintStyle;padding:0 4px;">Saves texts and photos as a file SMS Backup &amp; Restore and other apps can import.</span>
-        <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
-            <input type="checkbox" checked="@_backup.WeeklyEnabled" @onchange="ToggleWeekly" style="width:20px;height:20px;" />
-            <span>Back up automatically every week (while charging)@(_backup.WeeklyFolderName is { } f ? $" to {f}" : "")<br /><span style="@HintStyle">Keeps the newest 4 backups in that folder.</span></span>
-        </label>
-        <button @onclick="() => _passwordSheet = true" style="@PresetStyle">🔒 @(_backup.HasPassword ? "Change or remove backup password" : "Protect backups with a password")</button>
-        <button @onclick="PickRestore" disabled="@_backup.IsRunning" style="@PresetStyle">♻️ Restore from a backup</button>
-    </div>
+        case "chat-list":
+            <h3>Chat list</h3>
+            <h4 style="@HeadingStyle">Layout</h4>
+            @foreach (var (layout, icon, title, description) in Layouts)
+            {
+                <div @onclick="() => ChooseLayout(layout)" style="@OptionStyle(_settings.Layout == layout)" role="button" tabindex="0">
+                    <span style="font-size:1.6em;">@icon</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:600;">@title</div>
+                        <div style="@HintStyle">@description</div>
+                    </div>
+                    <span style="@RadioStyle(_settings.Layout == layout)"></span>
+                </div>
+            }
+
+            <h4 style="@HeadingStyle">Quick presets</h4>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <button @onclick="() => Apply(DisplayRules.BubblesOnlyFavoritesAndUnreadPreset)" style="@PresetStyle">🫧 Bubbles only: favorites + unread (no list)</button>
+                <button @onclick="() => Apply(DisplayRules.FavoritesAndUnreadPreset)" style="@PresetStyle">🫧💬 Favorites + unread are bubbles</button>
+                <button @onclick="() => Apply(DisplayRules.UnreadOnlyColorPreset)" style="@PresetStyle">💬 Only unread messages are colored</button>
+                <button @onclick="() => Apply(DisplayRules.FavoritesWithFilterColorsPreset)" style="@PresetStyle">🏷️ Favorite bubbles + filter-colored list</button>
+            </div>
+
+            <h4 style="@HeadingStyle">Who gets a bubble</h4>
+            @if (_settings.Layout != ConversationDisplayStyle.Cards)
+            {
+                <div style="@HintStyle">@(_settings.Layout == ConversationDisplayStyle.Bubbles ? "With no list, anyone else is only found through search and the tabs." : "Everyone else is in the list.")</div>
+                <div style="@GroupStyle;margin-top:8px;">
+                    @foreach (var (label, isChecked, set) in BubbleChoices())
+                    {
+                        <label style="display:flex;align-items:center;gap:10px;padding:12px;">
+                            <input type="checkbox" checked="@isChecked" @onchange="e => Update(s => set(s, e.Value is true))" style="width:20px;height:20px;" />
+                            @label
+                        </label>
+                    }
+                </div>
+            }
+            else
+            {
+                <div style="@HintStyle">The Color list layout has no bubbles.</div>
+            }
+
+            <h4 style="@HeadingStyle">List colors</h4>
+            <div style="@HintStyle;margin-bottom:6px;">Color the list by</div>
+            @foreach (var (mode, title) in ColorModes)
+            {
+                <div @onclick="() => Update(s => s.ColorBy = mode)" style="@OptionStyle(_settings.ColorBy == mode)" role="button" tabindex="0">
+                    <div style="flex:1;">@title</div>
+                    <span style="@RadioStyle(_settings.ColorBy == mode)"></span>
+                </div>
+            }
+
+            <div style="@HintStyle;margin-top:12px;">Unread messages</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;">
+                @foreach (var (color, name) in UnreadColors)
+                {
+                    var selected = _settings.UnreadColor == color;
+                    <div @onclick="() => Update(s => s.UnreadColor = color)" style="display:flex;flex-direction:column;align-items:center;gap:4px;width:56px;cursor:pointer;" role="button" tabindex="0">
+                        <span style="width:40px;height:40px;border-radius:50%;box-sizing:border-box;background:@(color ?? "transparent");border:@(selected ? "3px solid var(--accent-color)" : color is null ? "2px dashed #94a3b8" : "3px solid transparent");display:flex;align-items:center;justify-content:center;color:#94a3b8;">@(color is null ? "∅" : "")</span>
+                        <span style="font-size:0.75em;text-align:center;">@name</span>
+                    </div>
+                }
+            </div>
+
+            <h4 style="@HeadingStyle">Filter tabs</h4>
+            <div style="@GroupStyle">
+                <label style="display:flex;align-items:center;gap:10px;padding:14px 12px;">
+                    <input type="checkbox" checked="@_settings.ShowFilterTabs" @onchange="e => Update(s => s.ShowFilterTabs = e.Value is true)" style="width:20px;height:20px;" />
+                    Show filters that have conversations as tabs under Chats, Updates and Screener
+                </label>
+            </div>
+            break;
+
+        case "backup":
+            <h3>Backup &amp; restore</h3>
+            <div style="@HintStyle">Saves all texts, photos and videos, plus favorites, filters, quick replies, scheduled texts and settings, to a file you choose. Restoring only adds what's missing — nothing is deleted.</div>
+            <div style="margin:12px 4px;">
+                @if (_backup.LastRunUtc is { } when)
+                {
+                    <span>@(_backup.LastSucceeded == true ? "✅" : "⚠️") Last: @when.ToLocalTime().ToString("MMM d, h:mm tt") — @_backup.LastMessage</span>
+                }
+                else
+                {
+                    <span style="@HintStyle">No backups yet.</span>
+                }
+                @if (_backup.IsRunning)
+                {
+                    <div style="@HintStyle">A backup or restore is running — see the notification.</div>
+                }
+            </div>
+
+            <h4 style="@HeadingStyle">Back up</h4>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <button @onclick="BackUpNow" disabled="@_backup.IsRunning" style="@PresetStyle">💾 Back up now</button>
+                <div style="@GroupStyle">
+                    <label style="display:flex;align-items:center;gap:10px;padding:12px;">
+                        <input type="checkbox" checked="@_backup.WeeklyEnabled" @onchange="ToggleWeekly" style="width:20px;height:20px;" />
+                        <span>Back up automatically every week (while charging)@(_backup.WeeklyFolderName is { } f ? $" to {f}" : "")<br /><span style="@HintStyle">Keeps the newest 4 backups in that folder.</span></span>
+                    </label>
+                </div>
+                <button @onclick="() => _passwordSheet = true" style="@PresetStyle">🔒 @(_backup.HasPassword ? "Change or remove backup password" : "Protect backups with a password")</button>
+            </div>
+
+            <h4 style="@HeadingStyle">Restore</h4>
+            <button @onclick="PickRestore" disabled="@_backup.IsRunning" style="@PresetStyle;width:100%;">♻️ Restore from a backup</button>
+
+            <h4 style="@HeadingStyle">Other apps</h4>
+            <button @onclick="ExportForOtherApps" disabled="@_backup.IsRunning" style="@PresetStyle;width:100%;">📤 Export for other apps (SMS Backup &amp; Restore)</button>
+            <div style="@HintStyle;padding:4px;">Saves texts and photos as a file SMS Backup &amp; Restore and other apps can import.</div>
+            break;
+
+        case "help":
+            <h3>Help &amp; feedback</h3>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <button @onclick="CrashReports.EmailFeedback" style="@PresetStyle">✉️ Send feedback</button>
+                <span style="@HintStyle;padding:0 4px 8px;">Opens your email app with the app and phone details filled in.</span>
+                <button @onclick="ReviewPrompt.OpenStoreListing" style="@PresetStyle">⭐ Rate ForgeLink on Google Play</button>
+            </div>
+            break;
+
+        case "privacy":
+            <h3>Privacy</h3>
+            <div style="@GroupStyle">
+                <label style="display:flex;align-items:center;gap:10px;padding:12px;@RowDivider">
+                    <input type="checkbox" checked="@_settings.ShowLinkPreviews" @onchange="e => Update(s => s.ShowLinkPreviews = e.Value is true)" style="width:20px;height:20px;" />
+                    <span>Show link previews<br /><span style="@HintStyle">To build a preview, ForgeLink opens the linked page — the only time the app uses the internet. Turn off and links stay plain.</span></span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;padding:12px;">
+                    <input type="checkbox" checked="@_settings.ShowWidgetText" @onchange="SetWidgetText" style="width:20px;height:20px;" />
+                    <span>Show message text in the home screen widget<br /><span style="@HintStyle">Off: the widget shows names and unread counts, and "New message" instead of what was said.</span></span>
+                </label>
+            </div>
+            break;
+    }
 
     @if (_passwordSheet)
     {
@@ -261,6 +343,39 @@
 @code {
     private const string HintStyle = "color:#94a3b8;font-size:0.85em";
     private const string PresetStyle = "text-align:left;border:none;border-radius:12px;padding:12px;background:var(--card-color);color:var(--text-color);font:inherit;font-weight:600;";
+    private const string HeadingStyle = "margin:20px 4px 6px;font-size:0.8em;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#94a3b8;";
+    private const string GroupStyle = "background:var(--card-color);border-radius:12px;overflow:hidden";
+    private const string ChevronStyle = "color:#94a3b8;font-size:1.3em;line-height:1;";
+    private const string RowDivider = "border-bottom:1px solid rgba(127,127,127,0.2);";
+
+    // Null shows the list of categories; otherwise one category's own screen.
+    [Parameter] public string? Section { get; set; }
+
+    private IEnumerable<(string Section, string Icon, string Title, string Summary)> Categories()
+    {
+        var textSize = TextSizes.First(t => t.Scale == DisplayRules.TextScaleOrDefault(_settings.TextScale)).Label;
+        yield return ("appearance", "🎨", "Appearance", $"Theme · Text size {textSize}");
+        yield return ("notifications", "🔔", "Notifications", NotificationSummary());
+        yield return ("chat-list", "💬", "Chat list", Layouts.First(l => l.Layout == _settings.Layout).Title);
+        yield return ("backup", "💾", "Backup & restore", _backup.LastRunUtc is { } when
+            ? $"Last: {when.ToLocalTime():MMM d, h:mm tt} {(_backup.LastSucceeded == true ? "✅" : "⚠️")}"
+            : "No backups yet");
+        yield return ("help", "✉️", "Help & feedback", "Send feedback, rate the app");
+        yield return ("privacy", "🔒", "Privacy", $"Link previews {(_settings.ShowLinkPreviews ? "on" : "off")}");
+    }
+
+    private string NotificationSummary()
+    {
+        if (!_notify.Enabled)
+        {
+            return "Off";
+        }
+        var who = NotifyGroups.Where(g => _notify.For(g.Group).Notify).Select(g => g.Title).ToList();
+        var summary = who.Count == NotifyGroups.Length ? "Everyone" : who.Count == 0 ? "No one" : string.Join(", ", who);
+        return _notify.QuietHoursEnabled
+            ? $"{summary} · Quiet {_notify.QuietStart:h:mm tt}–{_notify.QuietEnd:h:mm tt}"
+            : summary;
+    }
 
     private static readonly (ConversationDisplayStyle Layout, string Icon, string Title, string Description)[] Layouts =
     {
