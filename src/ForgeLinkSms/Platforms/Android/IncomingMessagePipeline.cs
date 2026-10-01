@@ -38,6 +38,9 @@ internal static class IncomingMessagePipeline
             services.GetRequiredService<ISnoozeService>().UnsnoozeAsync(threadId).GetAwaiter().GetResult();
 
             services.GetRequiredService<IIncomingMessageNotifier>().NotifyMessageReceived(threadId);
+            // The SMS receiver finishes its broadcast when this returns; waiting (within its time budget)
+            // keeps the process alive until the widget shows the new text.
+            ForgeLinkSms.Platforms.Android.Widget.WidgetUpdater.RequestUpdate(context).Wait(TimeSpan.FromSeconds(8));
         }
 
         if (threadId != 0 && services.GetRequiredService<IMuteRepository>().IsMutedAsync(threadId, DateTimeOffset.UtcNow).GetAwaiter().GetResult())

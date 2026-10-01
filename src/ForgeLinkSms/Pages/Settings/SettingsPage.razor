@@ -153,6 +153,11 @@
         <span>Show link previews<br /><span style="@HintStyle">To build a preview, ForgeLink opens the linked page — the only time the app uses the internet. Turn off and links stay plain.</span></span>
     </label>
 
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
+        <input type="checkbox" checked="@_settings.ShowWidgetText" @onchange="SetWidgetText" style="width:20px;height:20px;" />
+        <span>Show message text in the home screen widget<br /><span style="@HintStyle">Off: the widget shows names and unread counts, and "New message" instead of what was said.</span></span>
+    </label>
+
     <h4 style="margin:24px 0 4px;">Backup</h4>
     <div style="@HintStyle">Saves all texts, photos and videos, plus favorites, filters, quick replies, scheduled texts and settings, to a file you choose. Restoring only adds what's missing — nothing is deleted.</div>
     <div style="margin:8px 4px;">
@@ -380,6 +385,12 @@
         }
         _ = InvokeAsync(StateHasChanged);
         return true;
+    }
+
+    private void SetWidgetText(ChangeEventArgs e)
+    {
+        Update(s => s.ShowWidgetText = e.Value is true);
+        ForgeLinkSms.Platforms.Android.Widget.WidgetUpdater.RequestUpdate(global::Android.App.Application.Context);
     }
 
     private async Task ExportForOtherApps()

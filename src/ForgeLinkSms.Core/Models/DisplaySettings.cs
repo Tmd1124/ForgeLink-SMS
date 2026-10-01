@@ -31,6 +31,9 @@ public class DisplaySettings
     // Building a preview fetches the linked page — the app's only use of the internet.
     public bool ShowLinkPreviews { get; set; } = true;
 
+    /// Off: the home screen widget shows names and counts, but "New message" instead of the text.
+    public bool ShowWidgetText { get; set; } = true;
+
     /// Percent of the normal text size; one of DisplayRules.TextScales.
     public int TextScale { get; set; } = 100;
 

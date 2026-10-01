@@ -38,6 +38,18 @@ public class MarkAsReadService : IMarkAsReadService
 
     private static void SetReadFlag(IReadOnlyList<long> threadIds, int read)
     {
+        try
+        {
+            WriteReadFlag(threadIds, read);
+        }
+        finally
+        {
+            ForgeLinkSms.Platforms.Android.Widget.WidgetUpdater.RequestUpdate(global::Android.App.Application.Context);
+        }
+    }
+
+    private static void WriteReadFlag(IReadOnlyList<long> threadIds, int read)
+    {
         var context = AndroidApp.Context;
         var values = new AndroidContentValues();
         values.Put("read", read);

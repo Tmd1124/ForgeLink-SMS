@@ -116,6 +116,13 @@ public class MainActivity : MauiAppCompatActivity
         MauiApplication.Current.Services.GetRequiredService<IAppResumeNotifier>().NotifyResumed();
     }
 
+    // Leaving the app is when the widget is next seen, and favorites, archive or snooze may have changed.
+    protected override void OnPause()
+    {
+        base.OnPause();
+        ForgeLinkSms.Platforms.Android.Widget.WidgetUpdater.RequestUpdate(this);
+    }
+
     // Notification taps and ACTION_SENDTO hand-offs (ComposeSmsActivity) launch this Activity with
     // an "initial_route" extra. MainActivity and the BlazorWebView's NavigationManager are in
     // different DI scopes, so the route is staged here and picked up by SplashPage on the circuit

@@ -128,7 +128,9 @@ public static class MauiProgram
 		builder.Services.AddTransient<SettingsViewModel>();
 		builder.Services.AddSingleton<PendingNavigationStore>();
 		builder.Services.AddSingleton<NavigationHistoryTracker>();
-		builder.Services.AddSingleton<ConversationListRefresher>();
+		var listRefresher = new ConversationListRefresher();
+		listRefresher.RefreshRequested += () => ForgeLinkSms.Platforms.Android.Widget.WidgetUpdater.RequestUpdate(global::Android.App.Application.Context);
+		builder.Services.AddSingleton(listRefresher);
 
 		builder.Services.AddSingleton<IProfileService, ProfileService>();
 		builder.Services.AddTransient<ProfileViewModel>();
