@@ -3,6 +3,8 @@
 @inject ForgeLinkSms.Core.Services.IProfileService ProfileService
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
 @inject ForgeLinkSms.Core.Services.IReviewPromptService ReviewPrompt
+@inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
+@using ForgeLinkSms.Core.Utils
 
 <div style="padding:12px;">
     @{ var profile = ProfileService.GetProfile(); }
@@ -31,7 +33,8 @@
             @Row("✓", "Mark all as read", () => ViewModel.MarkAllAsReadCommand.ExecuteAsync(null), opensScreen: false)
             @Row("↩", "Undo last action", () => ViewModel.UndoCommand.ExecuteAsync(null), opensScreen: false)
             @Row("⏰", "Scheduled", () => Go("/scheduled"))
-            @Row("🔔", "Reminders", () => Go("/reminders"), last: true)
+            @Row("🔔", "Reminders", () => Go("/reminders"))
+            @Row("↔️", "Scrolling", () => Go("/scrolling"), last: true, summary: SwipeRules.Summary(DisplayStyles.GetDisplaySettings()))
         </div>
     </section>
 
@@ -74,11 +77,11 @@
         return Task.CompletedTask;
     }
 
-    private RenderFragment Row(string icon, string label, Func<Task> onClick, bool last = false, bool opensScreen = true) =>
+    private RenderFragment Row(string icon, string label, Func<Task> onClick, bool last = false, bool opensScreen = true, string? summary = null) =>
         @<div @onclick="onClick" role="button" tabindex="0"
               style="display:flex;align-items:center;gap:12px;padding:14px 12px;@(last ? "" : "border-bottom:1px solid rgba(127,127,127,0.2);")">
             <span aria-hidden="true" style="width:1.5em;text-align:center;">@icon</span>
-            <span style="flex:1;">@label</span>
+            <span style="flex:1;min-width:0;"><span style="display:block;">@label</span>@if (summary is not null) { <span style="display:block;color:#94a3b8;font-size:0.85em;">@summary</span> }</span>
             @if (opensScreen)
             {
                 <span aria-hidden="true" style="@ChevronStyle">›</span>

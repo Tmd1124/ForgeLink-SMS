@@ -37,5 +37,9 @@ public class DisplaySettings
     /// Percent of the normal text size; one of DisplayRules.TextScales.
     public int TextScale { get; set; } = 100;
 
+    public SwipeAction SwipeRight { get; set; } = SwipeAction.Trash;
+
+    public SwipeAction SwipeLeft { get; set; } = SwipeAction.Archive;
+
     public DisplaySettings Clone() => (DisplaySettings)MemberwiseClone();
 }

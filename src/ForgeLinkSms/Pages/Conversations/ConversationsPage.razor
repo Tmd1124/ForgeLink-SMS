@@ -497,7 +497,6 @@
     private bool _longPressTriggered;
     private long? _activePointerDownThreadId;
     private double _pointerDownX;
-    private const double SwipeThreshold = 80;
     private string? _photoDataUri;
     private bool _isSearchOpen;
     private bool _shouldFocusSearch;
@@ -926,16 +925,20 @@
         }
 
         var deltaX = e.ClientX - _pointerDownX;
-        if (deltaX >= SwipeThreshold)
+        if (Math.Abs(deltaX) >= SwipeRules.Threshold)
         {
-            await ViewModel.TrashThreadCommand.ExecuteAsync(threadId);
-            ShowUndoToast("Deleted");
-            return;
-        }
-        if (deltaX <= -SwipeThreshold)
-        {
-            await ViewModel.ArchiveThreadCommand.ExecuteAsync(threadId);
-            ShowUndoToast("Archived");
+            switch (SwipeRules.ActionFor(deltaX, ViewModel.Display))
+            {
+                case SwipeAction.Trash:
+                    await ViewModel.TrashThreadCommand.ExecuteAsync(threadId);
+                    ShowUndoToast("Deleted");
+                    break;
+                case SwipeAction.Archive:
+                    await ViewModel.ArchiveThreadCommand.ExecuteAsync(threadId);
+                    ShowUndoToast("Archived");
+                    break;
+            }
+            // A swipe set to Nothing is still a swipe, not a tap that opens the chat.
             return;
         }
 

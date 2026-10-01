@@ -1,0 +1,130 @@
+@page "/scrolling"
+@inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
+@inject Microsoft.JSInterop.IJSRuntime JS
+@using ForgeLinkSms.Core.Models
+@using ForgeLinkSms.Core.Utils
+
+<style>
+    .swipe-stage { position: relative; height: 92px; border-radius: 18px; overflow: hidden; margin: 6px 0 4px; }
+    .swipe-reveal { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; font-weight: 700; color: white; }
+    .swipe-reveal span { display: flex; align-items: center; gap: 8px; font-size: 1.05em; }
+    .swipe-card {
+        position: absolute; inset: 0; display: flex; align-items: center; gap: 12px; padding: 0 14px;
+        border-radius: 18px; background: var(--card-color); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+    .swipe-choice {
+        flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 6px;
+        border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-color);
+        background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        transition: transform 0.18s ease, box-shadow 0.25s ease, background 0.25s ease; position: relative; font: inherit;
+    }
+    .swipe-choice:active { transform: scale(0.95); }
+    .swipe-choice .glyph { font-size: 1.7em; transition: transform 0.25s ease; }
+    .swipe-choice.on .glyph { transform: scale(1.15); }
+    .swipe-choice .tick {
+        position: absolute; top: 6px; right: 8px; width: 20px; height: 20px; border-radius: 50%; font-size: 0.75em;
+        display: flex; align-items: center; justify-content: center; color: white; animation: tick-pop 0.25s ease;
+    }
+    @@keyframes tick-pop { from { transform: scale(0); } to { transform: scale(1); } }
+</style>
+
+<div style="padding:12px;padding-bottom:40px;">
+    <h3>Scrolling</h3>
+    <div style="@HintStyle">Choose what happens when you swipe a chat in your list. Undo appears after every swipe.</div>
+
+    <style>
+        @@keyframes @AnimationName {
+            0%, 8% { transform: translateX(0); }
+            22%, 38% { transform: translateX(@Reach(_settings.SwipeRight, 1)); }
+            50%, 58% { transform: translateX(0); }
+            72%, 88% { transform: translateX(@Reach(_settings.SwipeLeft, -1)); }
+            100% { transform: translateX(0); }
+        }
+    </style>
+    <div class="swipe-stage" aria-hidden="true">
+        <div class="swipe-reveal" style="background:linear-gradient(90deg, @Look(_settings.SwipeRight).Color 0%, @Look(_settings.SwipeRight).Color 50%, @Look(_settings.SwipeLeft).Color 50%, @Look(_settings.SwipeLeft).Color 100%);">
+            <span>@Look(_settings.SwipeRight).Glyph @SwipeRules.Label(_settings.SwipeRight)</span>
+            <span>@SwipeRules.Label(_settings.SwipeLeft) @Look(_settings.SwipeLeft).Glyph</span>
+        </div>
+        <div class="swipe-card" style="animation:@AnimationName 5.2s cubic-bezier(.65, 0, .35, 1) infinite;">
+            <div style="width:44px;height:44px;border-radius:50%;background:var(--accent-color);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">KD</div>
+            <div style="min-width:0;">
+                <div style="font-weight:600;">Kim Donnelly</div>
+                <div style="@HintStyle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">See you at practice tonight!</div>
+            </div>
+        </div>
+    </div>
+    <div style="@HintStyle;text-align:center;margin-bottom:6px;">Preview</div>
+
+    @foreach (var (direction, title, arrow) in Directions)
+    {
+        var current = direction > 0 ? _settings.SwipeRight : _settings.SwipeLeft;
+        <h4 style="@HeadingStyle">@arrow @title</h4>
+        <div role="radiogroup" aria-label="@title" style="display:flex;gap:10px;">
+            @foreach (var action in Choices)
+            {
+                var on = current == action;
+                var look = Look(action);
+                <button class="swipe-choice @(on ? "on" : "")" role="radio" aria-checked="@(on ? "true" : "false")"
+                        @onclick="() => Choose(direction, action)"
+                        style="@(on ? $"background:linear-gradient(160deg, {look.Color}55, {look.Color}22);box-shadow:0 0 0 2px {look.Color}, 0 8px 22px {look.Color}55;" : "")">
+                    <span class="glyph" aria-hidden="true">@look.Glyph</span>
+                    <span style="font-weight:600;">@SwipeRules.Label(action)</span>
+                    @if (on)
+                    {
+                        <span class="tick" aria-hidden="true" style="background:@look.Color;">✓</span>
+                    }
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private const string HintStyle = "color:#94a3b8;font-size:0.85em";
+    private const string HeadingStyle = "margin:22px 4px 8px;font-size:0.8em;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#94a3b8;";
+
+    private static readonly (int Direction, string Title, string Arrow)[] Directions = { (1, "Swipe right", "👉"), (-1, "Swipe left", "👈") };
+    private static readonly SwipeAction[] Choices = { SwipeAction.Archive, SwipeAction.Trash, SwipeAction.Nothing };
+
+    private DisplaySettings _settings = new();
+
+    protected override void OnInitialized() => _settings = DisplayStyles.GetDisplaySettings();
+
+    private static (string Glyph, string Color) Look(SwipeAction action) => action switch
+    {
+        SwipeAction.Archive => ("📦", "#16a34a"),
+        SwipeAction.Trash => ("🗑", "#dc2626"),
+        _ => ("🚫", "#64748b")
+    };
+
+    // A new name per combination restarts the preview whenever a choice changes.
+    private string AnimationName => $"swipe-demo-{_settings.SwipeRight}-{_settings.SwipeLeft}";
+
+    // "Nothing" only nudges the card, the way a swipe set to do nothing feels in the list.
+    private static string Reach(SwipeAction action, int direction) =>
+        $"{(action == SwipeAction.Nothing ? 10 : 46) * direction}%";
+
+    private async Task Choose(int direction, SwipeAction action)
+    {
+        var updated = _settings.Clone();
+        if (direction > 0)
+        {
+            updated.SwipeRight = action;
+        }
+        else
+        {
+            updated.SwipeLeft = action;
+        }
+        _settings = updated;
+        DisplayStyles.SaveDisplaySettings(updated);
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.vibrate", 12);
+        }
+        catch (JSException)
+        {
+        }
+    }
+}
