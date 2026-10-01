@@ -14,6 +14,7 @@
 @inject Microsoft.JSInterop.IJSRuntime JS
 @inject ForgeLinkSms.Core.Services.ConversationListRefresher ListRefresher
 @inject ForgeLinkSms.Core.Services.ICrashReportService CrashReports
+@inject ForgeLinkSms.Core.Services.IBackupService Backups
 @using ForgeLinkSms.Core.Utils
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Components
@@ -65,6 +66,18 @@
                     ⚙
                 </button>
             }
+        </div>
+    }
+
+    @if (_selectedThreadIds.Count == 0 && _showBackupNudge)
+    {
+        <div role="region" aria-label="Backups" style="margin-bottom:8px;padding:12px;border-radius:12px;background:var(--card-color);">
+            <div style="font-weight:600;">💾 Your messages aren't backed up</div>
+            <div style="color:#94a3b8;font-size:0.85em;margin:4px 0 10px;">Weekly backups save your texts, photos and settings to a folder you choose, such as Google Drive, while the phone charges.</div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+                <button @onclick="DismissBackupNudge" style="padding:8px 14px;border:none;border-radius:10px;background:var(--surface-color);color:var(--text-color);font-size:1em;">Not now</button>
+                <button @onclick="TurnOnWeeklyBackups" style="padding:8px 14px;border:none;border-radius:10px;background:var(--accent-color);color:white;font-size:1em;font-weight:600;">Turn on weekly backups</button>
+            </div>
         </div>
     }
 
@@ -502,10 +515,40 @@
     }
 
     private string? _pendingCrash;
+    private bool _showBackupNudge;
+
+    private async Task CheckBackupsAsync()
+    {
+        try
+        {
+            await Task.Run(Backups.CheckBackupHealth);
+            _showBackupNudge = await Task.Run(Backups.ShouldNudge);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception)
+        {
+            // Only a reminder; the list works without it.
+        }
+    }
+
+    private void DismissBackupNudge()
+    {
+        Backups.DismissNudge();
+        _showBackupNudge = false;
+    }
+
+    private async Task TurnOnWeeklyBackups()
+    {
+        if (await Backups.EnableWeeklyAsync())
+        {
+            _showBackupNudge = false;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
         _pendingCrash = CrashReports.PendingCrash();
+        _ = CheckBackupsAsync();
         _photoDataUri = await ProfileService.GetProfilePhotoDataUriAsync();
         ViewModel.Display = DisplayStyles.GetDisplaySettings();
         await ViewModel.LoadCommand.ExecuteAsync(null);

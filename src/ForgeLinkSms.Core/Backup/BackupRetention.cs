@@ -15,6 +15,14 @@ public static partial class BackupRetention
             .Skip(keep)
             .ToList();
 
+    // Local time the newest backup in a folder was made, read from its name.
+    public static DateTime? NewestBackupTime(IEnumerable<string> names) =>
+        names.Where(n => BackupName().IsMatch(n))
+            .Select(n => DateTime.TryParseExact(n["ForgeLink-backup-".Length..^".flbackup".Length], "yyyy-MM-dd-HHmm",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var when) ? when : (DateTime?)null)
+            .Where(when => when is not null)
+            .Max();
+
     [GeneratedRegex(@"^ForgeLink-backup-\d{4}-\d{2}-\d{2}-\d{4}\.flbackup$")]
     private static partial Regex BackupName();
 }

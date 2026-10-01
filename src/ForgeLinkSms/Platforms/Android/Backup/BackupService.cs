@@ -29,7 +29,48 @@ public sealed class BackupService : IBackupService
         var folder = Preferences.Get(BackupFiles.WeeklyFolderKey, string.Empty);
         var hasPassword = !string.IsNullOrEmpty(SecureStorage.GetAsync(BackupFiles.PasswordKey).GetAwaiter().GetResult());
         return new BackupStatus(last?.When, last?.Ok, last?.Message, folder.Length > 0,
-            folder.Length > 0 ? BackupFiles.DisplayName(Context, DocumentsTreeRoot(folder)) : null, hasPassword, IsRunning());
+            folder.Length > 0 ? BackupFiles.DisplayName(Context, DocumentsTreeRoot(folder)) : null, hasPassword, IsRunning(),
+            BackupFiles.ReadTime(BackupFiles.LastBackupKey));
+    }
+
+    public bool ShouldNudge() => BackupHealth.ShouldNudge(BackupFiles.ReadTime(BackupFiles.LastBackupKey),
+        Preferences.Get(BackupFiles.WeeklyFolderKey, string.Empty).Length > 0, BackupFiles.ReadTime(BackupFiles.NudgeDismissedKey), DateTimeOffset.UtcNow);
+
+    public void DismissNudge() => BackupFiles.WriteTime(BackupFiles.NudgeDismissedKey, DateTimeOffset.UtcNow);
+
+    public void CheckBackupHealth()
+    {
+        var folder = Preferences.Get(BackupFiles.WeeklyFolderKey, string.Empty);
+        if (folder.Length == 0)
+        {
+            return;
+        }
+
+        // The recorded time can be lost (app reinstalled, data cleared) while the backups themselves are still in the folder.
+        var recorded = BackupFiles.ReadTime(BackupFiles.LastBackupKey);
+        if (BackupFiles.HasFolderAccess(Context, folder))
+        {
+            try
+            {
+                if (BackupRetention.NewestBackupTime(BackupFiles.ListFolder(Context, AndroidUri.Parse(folder)!).Keys) is { } newestLocal
+                    && BackupHealth.LastBackup(recorded, new DateTimeOffset(newestLocal)) is { } newest && newest != recorded)
+                {
+                    BackupFiles.WriteTime(BackupFiles.LastBackupKey, newest);
+                    recorded = newest;
+                }
+            }
+            catch (Exception e) when (e is Java.Lang.Exception or IOException)
+            {
+            }
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        if (BackupHealth.ShouldWarn(true, recorded, BackupFiles.ReadTime(BackupFiles.WeeklySinceKey), BackupFiles.ReadTime(BackupFiles.LastWarnedKey), now))
+        {
+            BackupFiles.WriteTime(BackupFiles.LastWarnedKey, now);
+            BackupNotifier.Result(Context, "Weekly backups have stopped",
+                "ForgeLink hasn't saved a weekly backup in 3 weeks. Weekly backups run while the phone is charging. Open Settings → Backup & restore to check, or tap Back up now.");
+        }
     }
 
     public async Task<bool> BackUpNowAsync()
@@ -67,6 +108,7 @@ public sealed class BackupService : IBackupService
         }
         Context.ContentResolver!.TakePersistableUriPermission(uri, ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission);
         Preferences.Set(BackupFiles.WeeklyFolderKey, uri.ToString());
+        BackupFiles.WriteTime(BackupFiles.WeeklySinceKey, DateTimeOffset.UtcNow);
         var constraints = new Constraints.Builder().SetRequiresCharging(true).SetRequiresBatteryNotLow(true).Build();
         var request = (PeriodicWorkRequest)new PeriodicWorkRequest.Builder(Java.Lang.Class.FromType(typeof(BackupWorker)), 7, Java.Util.Concurrent.TimeUnit.Days!)
             .SetConstraints(constraints)
@@ -90,6 +132,7 @@ public sealed class BackupService : IBackupService
             }
         }
         Preferences.Remove(BackupFiles.WeeklyFolderKey);
+        Preferences.Remove(BackupFiles.WeeklySinceKey);
     }
 
     public async Task SetPasswordAsync(string? password)

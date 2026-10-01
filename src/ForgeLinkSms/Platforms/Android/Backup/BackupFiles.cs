@@ -12,6 +12,10 @@ internal static class BackupFiles
     public const string PasswordKey = "backup_password";
     public const string MimeType = "application/octet-stream";
     public const string WeeklyWorkName = "forgelink-weekly-backup";
+    public const string LastBackupKey = "backup_last_success";
+    public const string WeeklySinceKey = "backup_weekly_since";
+    public const string NudgeDismissedKey = "backup_nudge_dismissed";
+    public const string LastWarnedKey = "backup_last_warned";
     public static string RestoreWorkDirectory => Path.Combine(FileSystem.CacheDirectory, "restore");
 
     public static bool HasFolderAccess(Context context, string folder) =>
@@ -93,21 +97,33 @@ internal static class BackupFiles
 
     public static void DeleteOldWeekly(Context context, AndroidUri tree)
     {
-        var treeId = DocumentsContract.GetTreeDocumentId(tree);
-        var children = DocumentsContract.BuildChildDocumentsUriUsingTree(tree, treeId)!;
-        var byName = new Dictionary<string, string>();
-        using (var cursor = context.ContentResolver!.Query(children, new[] { DocumentsContract.Document.ColumnDocumentId, DocumentsContract.Document.ColumnDisplayName }, null, null, null))
-        {
-            while (cursor is not null && cursor.MoveToNext())
-            {
-                byName[cursor.GetString(1) ?? string.Empty] = cursor.GetString(0)!;
-            }
-        }
+        var byName = ListFolder(context, tree);
         foreach (var name in BackupRetention.FilesToDelete(byName.Keys))
         {
             DocumentsContract.DeleteDocument(context.ContentResolver!, DocumentsContract.BuildDocumentUriUsingTree(tree, byName[name])!);
         }
     }
+
+    // File name to document id for everything directly inside the chosen folder.
+    public static Dictionary<string, string> ListFolder(Context context, AndroidUri tree)
+    {
+        var treeId = DocumentsContract.GetTreeDocumentId(tree);
+        var children = DocumentsContract.BuildChildDocumentsUriUsingTree(tree, treeId)!;
+        var byName = new Dictionary<string, string>();
+        using var cursor = context.ContentResolver!.Query(children, new[] { DocumentsContract.Document.ColumnDocumentId, DocumentsContract.Document.ColumnDisplayName }, null, null, null);
+        while (cursor is not null && cursor.MoveToNext())
+        {
+            byName[cursor.GetString(1) ?? string.Empty] = cursor.GetString(0)!;
+        }
+        return byName;
+    }
+
+    public static DateTimeOffset? ReadTime(string key) =>
+        DateTimeOffset.TryParse(Preferences.Get(key, string.Empty), System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind, out var when) ? when : null;
+
+    public static void WriteTime(string key, DateTimeOffset when) =>
+        Preferences.Set(key, when.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
 
     public static void TryDelete(Context context, AndroidUri uri)
     {

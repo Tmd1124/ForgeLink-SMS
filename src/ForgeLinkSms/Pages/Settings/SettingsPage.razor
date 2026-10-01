@@ -223,13 +223,10 @@
             <h3>Backup &amp; restore</h3>
             <div style="@HintStyle">Saves all texts, photos and videos, plus favorites, filters, quick replies, scheduled texts and settings, to a file you choose. Restoring only adds what's missing — nothing is deleted.</div>
             <div style="margin:12px 4px;">
-                @if (_backup.LastRunUtc is { } when)
+                <div style="font-weight:600;">@(_backup.LastBackupUtc is { } saved ? $"Last backup: {saved.ToLocalTime():MMM d, h:mm tt}" : "No backups yet")</div>
+                @if (_backup.LastRunUtc is { } when && when != _backup.LastBackupUtc)
                 {
-                    <span>@(_backup.LastSucceeded == true ? "✅" : "⚠️") Last: @when.ToLocalTime().ToString("MMM d, h:mm tt") — @_backup.LastMessage</span>
-                }
-                else
-                {
-                    <span style="@HintStyle">No backups yet.</span>
+                    <div style="@HintStyle">@(_backup.LastSucceeded == true ? "✅" : "⚠️") Latest activity @when.ToLocalTime().ToString("MMM d, h:mm tt") — @_backup.LastMessage</div>
                 }
                 @if (_backup.IsRunning)
                 {
@@ -366,9 +363,8 @@
         yield return ("appearance", "🎨", "Appearance", $"Theme · Text size {textSize}");
         yield return ("notifications", "🔔", "Notifications", NotificationSummary());
         yield return ("chat-list", "💬", "Chat list", Layouts.First(l => l.Layout == _settings.Layout).Title);
-        yield return ("backup", "💾", "Backup & restore", _backup.LastRunUtc is { } when
-            ? $"Last: {when.ToLocalTime():MMM d, h:mm tt} {(_backup.LastSucceeded == true ? "✅" : "⚠️")}"
-            : "No backups yet");
+        yield return ("backup", "💾", "Backup & restore", (_backup.LastBackupUtc is { } when ? $"Last backup: {when.ToLocalTime():MMM d}" : "No backups yet")
+            + (_backup.WeeklyEnabled ? " · Weekly on" : ""));
         yield return ("help", "✉️", "Help & feedback", "Send feedback, rate the app");
         yield return ("privacy", "🔒", "Privacy", $"Link previews {(_settings.ShowLinkPreviews ? "on" : "off")}");
     }

@@ -121,8 +121,15 @@ public sealed class BackupWorker(Context context, WorkerParameters parameters) :
         SaveStatus(false, reason);
     }
 
-    internal static void SaveStatus(bool ok, string message) =>
+    // A restore runs through here too, but only backups and exports count as the messages being saved.
+    internal static void SaveStatus(bool ok, string message, bool savedMessages = true)
+    {
         Preferences.Set(BackupFiles.StatusKey, JsonSerializer.Serialize(new StoredStatus(DateTimeOffset.UtcNow, ok, message)));
+        if (ok && savedMessages)
+        {
+            BackupFiles.WriteTime(BackupFiles.LastBackupKey, DateTimeOffset.UtcNow);
+        }
+    }
 
     internal sealed record StoredStatus(DateTimeOffset When, bool Ok, string Message);
 }

@@ -59,7 +59,7 @@ public sealed class RestoreWorker(Context context, WorkerParameters parameters) 
             var result = RestoreRunner.RunAsync(reader, target, includeSettings, includeScheduled, DateTimeOffset.UtcNow, progress, CancellationToken.None).GetAwaiter().GetResult();
             var summary = $"Added {result.Added:N0} messages. {result.Skipped:N0} were already on this phone."
                 + (result.MediaTooLarge > 0 ? $" {result.MediaTooLarge:N0} attachment{(result.MediaTooLarge == 1 ? " was" : "s were")} too large to import." : "");
-            BackupWorker.SaveStatus(true, "Restore: " + summary);
+            BackupWorker.SaveStatus(true, "Restore: " + summary, savedMessages: false);
             BackupNotifier.Result(context, "Restore complete", summary);
             return Result.InvokeSuccess();
         }
