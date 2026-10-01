@@ -10,6 +10,9 @@ public interface IFilterRepository
     Task RenameFilterAsync(long filterId, string newName);
     Task SetFilterColorAsync(long filterId, string colorHex);
     Task DeleteFilterAsync(long filterId);
+
+    /// Saves the order filters are shown in, first to last.
+    Task ReorderFiltersAsync(IReadOnlyList<long> orderedIds);
     Task<IReadOnlyDictionary<long, List<long>>> GetAllAssignmentsAsync();
     Task AssignFilterAsync(long threadId, long filterId);
     Task UnassignFilterAsync(long threadId, long filterId);

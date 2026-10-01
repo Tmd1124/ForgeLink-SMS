@@ -166,16 +166,24 @@
             }
             @if (filterTabs.Count > 0)
             {
-                <div class="filter-tabs" style="display:flex;gap:6px;overflow-x:auto;touch-action:pan-x;scrollbar-width:none;margin-top:@(showLaneTabs ? "6px" : "0");padding-bottom:2px;">
+                <div @ref="_filterTabsRow" class="filter-tabs" style="display:flex;gap:6px;overflow-x:auto;touch-action:@(_arrangingFilters ? "none" : "pan-x");scrollbar-width:none;margin-top:@(showLaneTabs ? "6px" : "0");padding:2px 2px 4px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;">
                     @foreach (var filter in filterTabs)
                     {
                         var isActive = ViewModel.ActiveFilterIds.Contains(filter.Id);
-                        <button @key="filter.Id" @onclick="() => ViewModel.SelectOnlyFilter(filter.Id)"
-                                style="flex-shrink:0;border:2px solid @filter.ColorHex;border-radius:999px;padding:3px 12px;font-size:0.8em;font-weight:600;white-space:nowrap;background:@(isActive ? filter.ColorHex : "transparent");color:@(isActive ? "white" : "var(--text-color)");">
+                        <button @key="filter.Id" data-filter-id="@filter.Id" @onclick="() => OnFilterTabTap(filter.Id)"
+                                aria-description="@(_arrangingFilters ? null : "Long-press to rearrange")"
+                                style="flex-shrink:0;border:2px solid @filter.ColorHex;border-radius:999px;padding:3px 12px;font-size:0.8em;font-weight:600;white-space:nowrap;background:@(isActive ? filter.ColorHex : "transparent");color:@(isActive ? "white" : "var(--text-color)");transition:transform 0.1s;@FilterTabExtraStyle(filter.Id)">
                             @filter.Name
                         </button>
                     }
                 </div>
+                @if (_arrangingFilters)
+                {
+                    <div role="status" style="display:flex;align-items:center;gap:8px;margin-top:4px;padding:0 4px;font-size:0.85em;color:#94a3b8;user-select:none;-webkit-user-select:none;">
+                        <span style="flex:1;">Drag a filter to move it</span>
+                        <button @onclick="StopArrangingFilters" style="border:none;border-radius:999px;padding:4px 14px;background:var(--accent-color);color:white;font-weight:600;font-size:1em;">Done</button>
+                    </div>
+                }
             }
         </div>
     }
@@ -664,8 +672,62 @@
     // an unrelated bug, so it no longer reaches this page's own click handlers or the filter
     // sheet's own click-outside-to-close handler — it must close the sheet or clear an active
     // multi-select itself instead of falling through to exiting the app.
+    private ElementReference _filterTabsRow;
+    private DotNetObjectReference<ConversationsPage>? _selfRef;
+    private bool _arrangingFilters;
+    private long? _draggingFilterId;
+
+    private string FilterTabExtraStyle(long filterId) => !_arrangingFilters ? string.Empty
+        : _draggingFilterId == filterId ? "transform:scale(1.12);box-shadow:0 4px 12px rgba(0,0,0,0.45);"
+        : "border-style:dashed;";
+
+    private void OnFilterTabTap(long filterId)
+    {
+        if (!_arrangingFilters)
+        {
+            ViewModel.SelectOnlyFilter(filterId);
+        }
+    }
+
+    [JSInvokable]
+    public void StartFilterDrag(long filterId)
+    {
+        _arrangingFilters = true;
+        _draggingFilterId = filterId;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void MoveFilterTab(long filterId, int toTabIndex)
+    {
+        ViewModel.MoveFilterTab(filterId, toTabIndex);
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task DropFilterTab()
+    {
+        _draggingFilterId = null;
+        StateHasChanged();
+        await ViewModel.SaveFilterOrderAsync();
+    }
+
+    private async Task StopArrangingFilters()
+    {
+        _arrangingFilters = false;
+        _draggingFilterId = null;
+        await JS.InvokeVoidAsync("forgeLinkFilterTabs.stopArranging", _filterTabsRow);
+    }
+
     private bool TryCloseOverlayForBack()
     {
+        if (_arrangingFilters)
+        {
+            _ = StopArrangingFilters();
+            StateHasChanged();
+            return true;
+        }
+
         if (_reportThread is not null)
         {
             _reportThread = null;
@@ -727,6 +789,7 @@
         _ = JS.InvokeVoidAsync("forgeLinkBubblePond.dispose").AsTask().ContinueWith(_ => { }, TaskScheduler.Default);
         _undoToastCts?.Cancel();
         _codeExpiryCts.Cancel();
+        _selfRef?.Dispose();
 
         // Blazor's router can create the next page before disposing this one, so only clear the
         // handler if it's still ours — otherwise this would wipe out a registration the next page
@@ -761,6 +824,12 @@
         {
             _shouldFocusSearch = false;
             await _searchInput.FocusAsync();
+        }
+        // The tab row comes and goes with search and selection, so a new row gets the gesture attached; an old one is skipped.
+        if (_filterTabsRow.Context is not null)
+        {
+            _selfRef ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("forgeLinkFilterTabs.attach", _filterTabsRow, _selfRef);
         }
     }
 

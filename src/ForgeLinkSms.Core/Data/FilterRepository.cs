@@ -27,11 +27,12 @@ public class FilterRepository : IFilterRepository, IDisposable
     }
 
     public async Task<IReadOnlyList<Filter>> GetAllFiltersAsync() =>
-        await _db.Table<Filter>().ToListAsync();
+        await _db.Table<Filter>().OrderBy(f => f.SortOrder).ThenBy(f => f.Id).ToListAsync();
 
     public async Task<Filter> CreateFilterAsync(string name, string colorHex)
     {
-        var filter = new Filter { Name = name, ColorHex = colorHex };
+        var last = await _db.ExecuteScalarAsync<int>("SELECT IFNULL(MAX(SortOrder), 0) FROM Filter");
+        var filter = new Filter { Name = name, ColorHex = colorHex, SortOrder = last + 1 };
         await _db.InsertAsync(filter);
         return filter;
     }
@@ -41,6 +42,15 @@ public class FilterRepository : IFilterRepository, IDisposable
 
     public Task SetFilterColorAsync(long filterId, string colorHex) =>
         _db.ExecuteAsync("UPDATE Filter SET ColorHex = ? WHERE Id = ?", colorHex, filterId);
+
+    public Task ReorderFiltersAsync(IReadOnlyList<long> orderedIds) =>
+        _db.RunInTransactionAsync(connection =>
+        {
+            for (var i = 0; i < orderedIds.Count; i++)
+            {
+                connection.Execute("UPDATE Filter SET SortOrder = ? WHERE Id = ?", i + 1, orderedIds[i]);
+            }
+        });
 
     public async Task DeleteFilterAsync(long filterId)
     {

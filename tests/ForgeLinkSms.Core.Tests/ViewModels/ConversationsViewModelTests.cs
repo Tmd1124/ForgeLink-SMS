@@ -1464,6 +1464,36 @@ public class ConversationsViewModelTests
     }
 
     [Fact]
+    public async Task Dragging_a_filter_tab_reorders_all_filters_and_saves_the_order()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(FiveNamedChats());
+        var filterRepository = MakeEmptyFilterRepository();
+        filterRepository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter>
+        {
+            new() { Id = 1, Name = "Family", ColorHex = "#e11d48" },
+            new() { Id = 2, Name = "Unused", ColorHex = "#16a34a" },
+            new() { Id = 3, Name = "Work", ColorHex = "#0ea5e9" },
+            new() { Id = 4, Name = "Golf", ColorHex = "#f59e0b" }
+        });
+        filterRepository.Setup(r => r.GetAllAssignmentsAsync()).ReturnsAsync(new Dictionary<long, List<long>>
+        {
+            [2] = new() { 1, 3, 4 }
+        });
+        IReadOnlyList<long>? saved = null;
+        filterRepository.Setup(r => r.ReorderFiltersAsync(It.IsAny<IReadOnlyList<long>>()))
+            .Callback<IReadOnlyList<long>>(ids => saved = ids).Returns(Task.CompletedTask);
+        var viewModel = MakeViewModel(threadService, filterRepository: filterRepository);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        viewModel.MoveFilterTab(filterId: 4, toTabIndex: 0);
+        await viewModel.SaveFilterOrderAsync();
+
+        Assert.Equal(new long[] { 4, 1, 3 }, viewModel.FiltersInUse.Select(f => f.Id));
+        Assert.Equal(new long[] { 4, 1, 2, 3 }, saved);
+    }
+
+    [Fact]
     public async Task FiltersInUse_lists_only_filters_with_conversations_assigned()
     {
         var threadService = new Mock<IThreadService>();

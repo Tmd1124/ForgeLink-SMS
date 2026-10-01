@@ -24,6 +24,29 @@ public class FilterRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Filters_come_back_in_the_order_they_were_made_and_new_ones_go_last()
+    {
+        var a = await _repository.CreateFilterAsync("A", "#111111");
+        var b = await _repository.CreateFilterAsync("B", "#222222");
+        var c = await _repository.CreateFilterAsync("C", "#333333");
+
+        Assert.Equal(new[] { a.Id, b.Id, c.Id }, (await _repository.GetAllFiltersAsync()).Select(f => f.Id));
+    }
+
+    [Fact]
+    public async Task ReorderFiltersAsync_saves_a_new_order_and_later_filters_still_go_last()
+    {
+        var a = await _repository.CreateFilterAsync("A", "#111111");
+        var b = await _repository.CreateFilterAsync("B", "#222222");
+        var c = await _repository.CreateFilterAsync("C", "#333333");
+
+        await _repository.ReorderFiltersAsync(new[] { c.Id, a.Id, b.Id });
+        var d = await _repository.CreateFilterAsync("D", "#444444");
+
+        Assert.Equal(new[] { c.Id, a.Id, b.Id, d.Id }, (await _repository.GetAllFiltersAsync()).Select(f => f.Id));
+    }
+
+    [Fact]
     public async Task GetAllFiltersAsync_is_empty_initially()
     {
         var filters = await _repository.GetAllFiltersAsync();

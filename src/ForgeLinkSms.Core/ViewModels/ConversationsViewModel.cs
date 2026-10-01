@@ -83,6 +83,25 @@ public partial class ConversationsViewModel : ObservableObject
     }
 
     /// The list row's tint, or null for an uncolored row.
+    /// Moves a filter tab while it's being dragged; SaveFilterOrderAsync keeps the result.
+    public void MoveFilterTab(long filterId, int toTabIndex)
+    {
+        var order = FilterOrder.MoveTab(Filters.Select(f => f.Id).ToList(), FiltersInUse.Select(f => f.Id).ToList(), filterId, toTabIndex);
+        if (order.SequenceEqual(Filters.Select(f => f.Id)))
+        {
+            return;
+        }
+        var byId = Filters.ToDictionary(f => f.Id);
+        Filters.Clear();
+        foreach (var id in order)
+        {
+            Filters.Add(byId[id]);
+        }
+        OnPropertyChanged(nameof(FiltersInUse));
+    }
+
+    public Task SaveFilterOrderAsync() => _filterRepository.ReorderFiltersAsync(Filters.Select(f => f.Id).ToList());
+
     public string? RowColor(SmsThread thread) => DisplayRules.RowColor(thread, Display, Filters);
 
     private ConversationLane LaneOf(SmsThread thread) => SenderScreening.LaneFor(thread, _allowedSenders);
