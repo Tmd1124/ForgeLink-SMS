@@ -16,60 +16,72 @@
         {
             <div style="width:56px;height:56px;border-radius:50%;background:#e2e8f0;"></div>
         }
-        <strong>@(string.IsNullOrEmpty(profile.DisplayName) ? "Set up your profile" : profile.DisplayName)</strong>
+        <strong style="flex:1;">@(string.IsNullOrEmpty(profile.DisplayName) ? "Set up your profile" : profile.DisplayName)</strong>
+        <span aria-hidden="true" style="@ChevronStyle">›</span>
     </div>
 
     @if (!string.IsNullOrEmpty(ViewModel.StatusMessage))
     {
-        <p style="color:#06b6d4;">@ViewModel.StatusMessage</p>
+        <p style="color:#06b6d4;" role="status">@ViewModel.StatusMessage</p>
     }
 
-    <div @onclick="@(() => Nav.NavigateTo("/theme"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">🎨</span> Theme
-    </div>
-    <div @onclick="@(() => Nav.NavigateTo("/profile"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">👤</span> Your Profile
-    </div>
-    <div @onclick="@(() => Nav.NavigateTo("/trash"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">🗑</span> Trash
-    </div>
-    <div @onclick="@(() => Nav.NavigateTo("/archived"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">📦</span> Archived
-    </div>
-    <div @onclick="@(() => Nav.NavigateTo("/snoozed"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">💤</span> Snoozed
-    </div>
-    <div @onclick="@(() => Nav.NavigateTo("/blocked"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">🚫</span> Blocked
-    </div>
-    <div @onclick="@(() => Nav.NavigateTo("/filters"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">🏷️</span> Filters
-    </div>
-    <div @onclick="@(() => Nav.NavigateTo("/scheduled"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">⏰</span> Scheduled
-    </div>
-    <div @onclick="@(() => Nav.NavigateTo("/reminders"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">🔔</span> Reminders
-    </div>
-    <div @onclick="() => ViewModel.MarkAllAsReadCommand.ExecuteAsync(null)" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">✓</span> Mark as Read
-    </div>
-    <div @onclick="() => ViewModel.UndoCommand.ExecuteAsync(null)" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">↩</span> Undo
-    </div>
-    <div @onclick="@(() => Nav.NavigateTo("/settings"))" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">⚙</span> Settings
-    </div>
-    <div @onclick="ReviewPrompt.OpenStoreListing" style="padding:12px 0;border-bottom:1px solid #eee;" role="button" tabindex="0">
-        <span aria-hidden="true">⭐</span> Rate ForgeLink on Google Play
-    </div>
+    <section aria-labelledby="menu-messages">
+        <h2 id="menu-messages" style="@HeadingStyle">Messages</h2>
+        <div style="@GroupStyle">
+            @Row("✓", "Mark all as read", () => ViewModel.MarkAllAsReadCommand.ExecuteAsync(null), opensScreen: false)
+            @Row("↩", "Undo last action", () => ViewModel.UndoCommand.ExecuteAsync(null), opensScreen: false)
+            @Row("⏰", "Scheduled", () => Go("/scheduled"))
+            @Row("🔔", "Reminders", () => Go("/reminders"), last: true)
+        </div>
+    </section>
+
+    <section aria-labelledby="menu-organize">
+        <h2 id="menu-organize" style="@HeadingStyle">Organize</h2>
+        <div style="@GroupStyle">
+            @Row("🏷️", "Filters", () => Go("/filters"))
+            @Row("📦", "Archived", () => Go("/archived"))
+            @Row("💤", "Snoozed", () => Go("/snoozed"))
+            @Row("🚫", "Blocked", () => Go("/blocked"))
+            @Row("🗑", "Trash", () => Go("/trash"), last: true)
+        </div>
+    </section>
+
+    <section aria-labelledby="menu-app">
+        <h2 id="menu-app" style="@HeadingStyle">App</h2>
+        <div style="@GroupStyle">
+            @Row("🎨", "Theme", () => Go("/theme"))
+            @Row("⚙", "Settings", () => Go("/settings"))
+            @Row("⭐", "Rate ForgeLink on Google Play", () => { ReviewPrompt.OpenStoreListing(); return Task.CompletedTask; }, last: true)
+        </div>
+    </section>
 </div>
 
 @code {
+    private const string HeadingStyle = "margin:20px 4px 6px;font-size:0.8em;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#94a3b8;";
+    private const string GroupStyle = "background:var(--card-color);border-radius:12px;overflow:hidden;";
+    private const string ChevronStyle = "color:#94a3b8;font-size:1.3em;line-height:1;";
+
     private string? _photoDataUri;
 
     protected override async Task OnInitializedAsync()
     {
         _photoDataUri = await ProfileService.GetProfilePhotoDataUriAsync();
     }
+
+    private Task Go(string route)
+    {
+        Nav.NavigateTo(route);
+        return Task.CompletedTask;
+    }
+
+    private RenderFragment Row(string icon, string label, Func<Task> onClick, bool last = false, bool opensScreen = true) =>
+        @<div @onclick="onClick" role="button" tabindex="0"
+              style="display:flex;align-items:center;gap:12px;padding:14px 12px;@(last ? "" : "border-bottom:1px solid rgba(127,127,127,0.2);")">
+            <span aria-hidden="true" style="width:1.5em;text-align:center;">@icon</span>
+            <span style="flex:1;">@label</span>
+            @if (opensScreen)
+            {
+                <span aria-hidden="true" style="@ChevronStyle">›</span>
+            }
+        </div>;
 }
