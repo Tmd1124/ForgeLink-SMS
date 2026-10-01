@@ -170,6 +170,12 @@
                                 <div style="position:relative;margin-top:@(string.IsNullOrEmpty(message.Body) ? "0" : "6px");">
                                     <img src="@attachment.DataUri" alt="@attachment.FileName" style="display:block;max-width:100%;max-height:240px;border-radius:10px;cursor:pointer;"
                                          @onclick="() => OpenImageViewer(attachment)" @onclick:stopPropagation="true" />
+                                    @if (attachment.Kind == AttachmentKind.Video)
+                                    {
+                                        <span aria-hidden="true" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+                                            <span style="width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,0.55);color:white;font-size:1.5em;display:flex;align-items:center;justify-content:center;padding-left:4px;box-sizing:border-box;">▶</span>
+                                        </span>
+                                    }
                                     <button @onclick="() => SaveAttachment(attachment)" @onclick:stopPropagation="true"
                                             @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true"
                                             title="Save"

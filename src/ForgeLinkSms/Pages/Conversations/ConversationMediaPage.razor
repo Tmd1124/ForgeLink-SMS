@@ -38,14 +38,18 @@
             {
                 <div @key="item.PartId" @onclick="() => OpenMedia(item)"
                      style="aspect-ratio:1;max-width:100%;background:var(--card-color);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;position:relative;" role="button" tabindex="0">
-                    @if (item.Kind == AttachmentKind.Video)
+                    @if (_thumbnails.TryGetValue(item.PartId, out var thumbnail) && thumbnail is not null)
+                    {
+                        <img src="@thumbnail" alt="@item.FileName" style="width:100%;height:100%;object-fit:cover;" />
+                        @if (item.Kind == AttachmentKind.Video)
+                        {
+                            <span aria-hidden="true" style="position:absolute;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,0.55);color:white;display:flex;align-items:center;justify-content:center;padding-left:3px;box-sizing:border-box;">▶</span>
+                        }
+                    }
+                    else if (item.Kind == AttachmentKind.Video)
                     {
                         <span style="font-size:1.8em;">🎬</span>
                         <span style="position:absolute;bottom:4px;left:4px;right:4px;font-size:0.65em;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@item.FileName</span>
-                    }
-                    else if (_thumbnails.TryGetValue(item.PartId, out var thumbnail) && thumbnail is not null)
-                    {
-                        <img src="@thumbnail" alt="@item.FileName" style="width:100%;height:100%;object-fit:cover;" />
                     }
                     else
                     {
@@ -137,7 +141,7 @@
     private async Task LoadThumbnailsAsync(CancellationToken token)
     {
         var pending = _viewModel.Media.Take(_visibleCount)
-            .Where(m => m.Kind != AttachmentKind.Video && !_thumbnails.ContainsKey(m.PartId))
+            .Where(m => !_thumbnails.ContainsKey(m.PartId))
             .ToList();
         foreach (var batch in pending.Chunk(6))
         {
@@ -145,7 +149,9 @@
             {
                 return;
             }
-            var images = await Task.WhenAll(batch.Select(m => Thumbnails.GetImageDataUriAsync(m.PartId, ThumbnailSize)));
+            var images = await Task.WhenAll(batch.Select(m => m.Kind == AttachmentKind.Video
+                ? Thumbnails.GetVideoFrameDataUriAsync(m.PartId, ThumbnailSize)
+                : Thumbnails.GetImageDataUriAsync(m.PartId, ThumbnailSize)));
             for (var i = 0; i < batch.Length; i++)
             {
                 _thumbnails[batch[i].PartId] = images[i];

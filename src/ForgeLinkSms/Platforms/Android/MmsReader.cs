@@ -205,8 +205,9 @@ internal static class MmsReader
             // Decoding and base64-encoding image/GIF bytes is the expensive part of reading an
             // MMS — skip it entirely when the caller only needs a preview label (kind + file
             // name), e.g. building the conversation list's snippet text for dozens of threads.
-            var dataUri = includeAttachmentData && kind is AttachmentKind.Image or AttachmentKind.Gif
-                ? ReadPartAsDataUri(context, partId, contentType, budget)
+            var dataUri = !includeAttachmentData ? null
+                : kind is AttachmentKind.Image or AttachmentKind.Gif ? ReadPartAsDataUri(context, partId, contentType, budget)
+                : kind == AttachmentKind.Video ? ReadVideoFrameAsDataUri(partId, budget)
                 : null;
 
             attachments.Add(new MessageAttachment
@@ -237,6 +238,17 @@ internal static class MmsReader
         {
             return null;
         }
+    }
+
+    // For a video, DataUri holds a still frame for the bubble, not the video itself.
+    private static string? ReadVideoFrameAsDataUri(long partId, AttachmentBudget? budget)
+    {
+        var jpeg = MediaThumbnailService.VideoFrameJpeg(partId, 480);
+        if (jpeg is null || (budget is not null && !budget.TryReserve(jpeg.Length)))
+        {
+            return null;
+        }
+        return $"data:image/jpeg;base64,{Convert.ToBase64String(jpeg)}";
     }
 
     private static string? ReadPartAsDataUri(AndroidContext context, long partId, string contentType, AttachmentBudget? budget)
