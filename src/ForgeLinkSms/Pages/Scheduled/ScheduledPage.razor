@@ -3,26 +3,34 @@
 @inject ForgeLinkSms.Core.ViewModels.ScheduledViewModel ViewModel
 @inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
 
-<div style="padding:12px;">
-    <h3>Scheduled Messages</h3>
+<div style="padding:12px;padding-bottom:40px;">
+    <h3>Scheduled</h3>
 
     @if (ViewModel.ScheduledMessages.Count == 0)
     {
-        <p>No scheduled messages.</p>
+        <div style="@GroupStyle;padding:16px 12px;">
+            <div>No scheduled texts.</div>
+            <div style="color:#94a3b8;font-size:0.85em;margin-top:4px;">To schedule one, open a chat, tap + next to the message box, then Schedule.</div>
+        </div>
     }
     else
     {
-        @foreach (var message in ViewModel.ScheduledMessages)
-        {
-            <div style="padding:10px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <div @onclick="() => StartEdit(message)" role="button" tabindex="0" style="min-width:0;flex:1;cursor:pointer;">
-                    <strong>@(message.IsGroup ? "👥 " + string.Join(", ", message.Recipients.Select(ViewModel.GetDisplayName)) : ViewModel.GetDisplayName(message.Address))</strong>
-                    <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@message.Body</div>
-                    <div style="color:#06b6d4;font-size:0.8em;">@(message.Repeat == ForgeLinkSms.Core.Models.ScheduleRepeat.None ? "Sends" : ForgeLinkSms.Core.Utils.ScheduleRepeatRules.Label(message.Repeat) + " · next") @message.SendAtUtc.LocalDateTime.ToString("ddd MMM d, h:mm tt")</div>
+        <div style="color:#94a3b8;font-size:0.85em;padding:0 4px 6px;">Tap a text to change its wording, time or repeat.</div>
+        <div style="@GroupStyle">
+            @foreach (var message in ViewModel.ScheduledMessages)
+            {
+                var repeats = message.Repeat != ForgeLinkSms.Core.Models.ScheduleRepeat.None;
+                <div style="padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;@(message == ViewModel.ScheduledMessages[^1] ? "" : "border-bottom:1px solid rgba(127,127,127,0.2);")">
+                    <div @onclick="() => StartEdit(message)" role="button" tabindex="0" style="min-width:0;flex:1;cursor:pointer;">
+                        <strong>@(message.IsGroup ? "👥 " + string.Join(", ", message.Recipients.Select(ViewModel.GetDisplayName)) : ViewModel.GetDisplayName(message.Address))</strong>
+                        <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@message.Body</div>
+                        <div style="color:var(--accent-color);font-size:0.8em;margin-top:2px;">@(repeats ? "🔁 " + ForgeLinkSms.Core.Utils.ScheduleRepeatRules.Label(message.Repeat) + " · next" : "⏰ Sends") @message.SendAtUtc.LocalDateTime.ToString("ddd MMM d, h:mm tt")</div>
+                    </div>
+                    <button @onclick="() => ViewModel.CancelCommand.ExecuteAsync(message.Id)"
+                            style="flex-shrink:0;padding:8px 12px;border:none;border-radius:10px;background:var(--surface-color);color:#ef4444;font-size:0.9em;font-weight:600;">@(repeats ? "Stop repeating" : "Cancel")</button>
                 </div>
-                <button @onclick="() => ViewModel.CancelCommand.ExecuteAsync(message.Id)" style="flex-shrink:0;">@(message.Repeat == ForgeLinkSms.Core.Models.ScheduleRepeat.None ? "Cancel" : "Stop repeating")</button>
-            </div>
-        }
+            }
+        </div>
     }
 </div>
 
@@ -58,6 +66,8 @@
 }
 
 @code {
+    private const string GroupStyle = "background:var(--card-color);border-radius:12px;overflow:hidden";
+
     private ForgeLinkSms.Core.Models.ScheduledMessage? _editing;
     private string _editBody = string.Empty;
     private DateTime? _editTime;

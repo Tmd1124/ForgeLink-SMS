@@ -1,77 +1,91 @@
 @page "/filters"
 @inject ForgeLinkSms.Core.ViewModels.FiltersViewModel ViewModel
 
-<div style="padding:12px;">
+<div style="padding:12px;padding-bottom:40px;">
     <h3>Filters</h3>
+    <div style="@HintStyle">Group conversations under a name, emoji and color. They show as tabs above your chats.</div>
 
-    <div style="display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid #eee;margin-bottom:12px;">
-        <input placeholder="New filter name" @bind="ViewModel.NewFilterName" @bind:event="oninput"
-               style="padding:8px;border-radius:8px;border:1px solid #cbd5e1;font-size:1em;" />
+    <h4 style="@HeadingStyle">New filter</h4>
+    <div style="@GroupStyle;display:flex;flex-direction:column;gap:10px;padding:12px;">
+        <input placeholder="Name, an emoji, or both" @bind="ViewModel.NewFilterName" @bind:event="oninput" aria-label="New filter name"
+               style="padding:10px;border-radius:10px;border:1px solid rgba(127,127,127,0.35);background:var(--surface-color);color:var(--text-color);font-size:1em;" />
         <div class="filter-tabs" style="display:flex;gap:4px;overflow-x:auto;touch-action:pan-x;scrollbar-width:none;">
             @foreach (var emoji in Emojis)
             {
-                <button @onclick="() => ViewModel.AddEmoji(emoji)"
-                        style="flex-shrink:0;width:40px;height:40px;border:none;border-radius:10px;background:var(--card-color);font-size:1.4em;padding:0;">@emoji</button>
+                <button @onclick="() => ViewModel.AddEmoji(emoji)" aria-label="@($"Add {emoji}")"
+                        style="flex-shrink:0;width:40px;height:40px;border:none;border-radius:10px;background:var(--surface-color);font-size:1.4em;padding:0;">@emoji</button>
             }
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div role="radiogroup" aria-label="Color" style="display:flex;gap:10px;flex-wrap:wrap;">
             @foreach (var color in ForgeLinkSms.Core.ViewModels.FiltersViewModel.PresetColors)
             {
-                <div @onclick="() => ViewModel.NewFilterColorHex = color"
-                     style="width:28px;height:28px;border-radius:50%;background:@color;cursor:pointer;border:3px solid @(ViewModel.NewFilterColorHex == color ? "#1e293b" : "transparent");" role="button" tabindex="0"></div>
+                <div @onclick="() => ViewModel.NewFilterColorHex = color" role="radio" aria-checked="@(ViewModel.NewFilterColorHex == color ? "true" : "false")" tabindex="0"
+                     style="@Swatch(color, ViewModel.NewFilterColorHex == color, 30)"></div>
             }
         </div>
         <button @onclick="() => ViewModel.CreateFilterCommand.ExecuteAsync(null)"
                 disabled="@(string.IsNullOrWhiteSpace(ViewModel.NewFilterName))"
-                style="padding:8px;border-radius:8px;border:none;background:var(--accent-color);color:white;font-size:1em;">
-            Add
+                style="padding:10px;border-radius:10px;border:none;background:var(--accent-color);color:white;font-size:1em;font-weight:600;opacity:@(string.IsNullOrWhiteSpace(ViewModel.NewFilterName) ? "0.5" : "1");">
+            Add filter
         </button>
     </div>
 
+    <h4 style="@HeadingStyle">Your filters</h4>
     @if (ViewModel.Filters.Count == 0)
     {
-        <p>No filters yet.</p>
+        <div style="@HintStyle;padding:0 4px;">No filters yet.</div>
     }
     else
     {
-        @foreach (var filter in ViewModel.Filters)
-        {
-            <div style="padding:10px 0;border-bottom:1px solid #eee;">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <div @onclick="() => ToggleColorPicker(filter.Id)"
-                         style="width:24px;height:24px;border-radius:50%;background:@filter.ColorHex;cursor:pointer;flex-shrink:0;" role="button" tabindex="0"></div>
+        <div style="@HintStyle;padding:0 4px 6px;">Tap a name to rename it, or the dot to change its color.</div>
+        <div style="@GroupStyle">
+            @foreach (var filter in ViewModel.Filters)
+            {
+                <div style="padding:10px 12px;@(filter == ViewModel.Filters[^1] ? "" : RowDivider)">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div @onclick="() => ToggleColorPicker(filter.Id)" aria-label="@($"Change color of {filter.Name}")"
+                             style="width:24px;height:24px;border-radius:50%;background:@filter.ColorHex;cursor:pointer;flex-shrink:0;" role="button" tabindex="0"></div>
 
-                    @if (_editingFilterId == filter.Id)
-                    {
-                        <input @bind="_editingName" @bind:event="oninput" @onkeyup="@(e => OnRenameKeyUp(e, filter.Id))"
-                               style="flex:1;padding:6px;border-radius:6px;border:1px solid #cbd5e1;" />
-                        <button @onclick="() => ConfirmRename(filter.Id)" style="border:none;background:transparent;">✓</button>
-                    }
-                    else
-                    {
-                        <span @onclick="() => StartRename(filter)" style="flex:1;cursor:pointer;" role="button" tabindex="0">@filter.Name</span>
-                    }
-
-                    <button @onclick="() => ViewModel.DeleteFilterCommand.ExecuteAsync(filter.Id)"
-                            style="border:none;background:transparent;font-size:1.1em;">🗑</button>
-                </div>
-
-                @if (_colorPickerFilterId == filter.Id)
-                {
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 0 0 34px;">
-                        @foreach (var color in ForgeLinkSms.Core.ViewModels.FiltersViewModel.PresetColors)
+                        @if (_editingFilterId == filter.Id)
                         {
-                            <div @onclick="() => SetColor(filter.Id, color)"
-                                 style="width:24px;height:24px;border-radius:50%;background:@color;cursor:pointer;border:3px solid @(filter.ColorHex == color ? "#1e293b" : "transparent");" role="button" tabindex="0"></div>
+                            <input @bind="_editingName" @bind:event="oninput" @onkeyup="@(e => OnRenameKeyUp(e, filter.Id))" aria-label="Filter name"
+                                   style="flex:1;min-width:0;padding:6px;border-radius:6px;border:1px solid rgba(127,127,127,0.35);background:var(--surface-color);color:var(--text-color);font-size:1em;" />
+                            <button @onclick="() => ConfirmRename(filter.Id)" aria-label="Save name" style="border:none;background:transparent;color:var(--text-color);font-size:1.2em;">✓</button>
                         }
+                        else
+                        {
+                            <span @onclick="() => StartRename(filter)" style="flex:1;cursor:pointer;" role="button" tabindex="0">@filter.Name</span>
+                        }
+
+                        <button @onclick="() => ViewModel.DeleteFilterCommand.ExecuteAsync(filter.Id)" aria-label="@($"Delete {filter.Name}")"
+                                style="border:none;background:transparent;font-size:1.1em;">🗑</button>
                     </div>
-                }
-            </div>
-        }
+
+                    @if (_colorPickerFilterId == filter.Id)
+                    {
+                        <div role="radiogroup" aria-label="Color" style="display:flex;gap:10px;flex-wrap:wrap;padding:10px 0 2px 36px;">
+                            @foreach (var color in ForgeLinkSms.Core.ViewModels.FiltersViewModel.PresetColors)
+                            {
+                                <div @onclick="() => SetColor(filter.Id, color)" role="radio" aria-checked="@(filter.ColorHex == color ? "true" : "false")" tabindex="0"
+                                     style="@Swatch(color, filter.ColorHex == color, 26)"></div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     }
 </div>
 
 @code {
+    private const string HintStyle = "color:#94a3b8;font-size:0.85em";
+    private const string HeadingStyle = "margin:20px 4px 6px;font-size:0.8em;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#94a3b8;";
+    private const string GroupStyle = "background:var(--card-color);border-radius:12px;overflow:hidden";
+    private const string RowDivider = "border-bottom:1px solid rgba(127,127,127,0.2);";
+
+    private static string Swatch(string color, bool selected, int size) =>
+        $"width:{size}px;height:{size}px;border-radius:50%;background:{color};cursor:pointer;box-shadow:{(selected ? "0 0 0 2px var(--card-color), 0 0 0 4px var(--text-color)" : "none")};";
+
     private static readonly string[] Emojis =
     {
         "❤️", "⭐", "👨‍👩‍👧‍👦", "🏠", "💼", "👥", "👶", "💍", "🏀", "⚾", "🏈", "⚽", "🥎", "🏐", "🎓", "🏫",

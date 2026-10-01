@@ -2,37 +2,51 @@
 @inject ForgeLinkSms.Core.ViewModels.ThemeViewModel ViewModel
 @inject Microsoft.JSInterop.IJSRuntime JS
 
-<div style="padding:12px;">
+<div style="padding:12px;padding-bottom:40px;">
     <h3>Theme</h3>
 
-    <label>
-        <input type="radio" name="mode" checked="@(ViewModel.SelectedMode == ForgeLinkSms.Core.Models.ThemeMode.Light)" @onchange="() => SelectMode(ForgeLinkSms.Core.Models.ThemeMode.Light)" />
-        Light
-    </label>
-    <br />
-    <label>
-        <input type="radio" name="mode" checked="@(ViewModel.SelectedMode == ForgeLinkSms.Core.Models.ThemeMode.Dark)" @onchange="() => SelectMode(ForgeLinkSms.Core.Models.ThemeMode.Dark)" />
-        Dark
-    </label>
-    <br />
-    <label>
-        <input type="radio" name="mode" checked="@(ViewModel.SelectedMode == ForgeLinkSms.Core.Models.ThemeMode.System)" @onchange="() => SelectMode(ForgeLinkSms.Core.Models.ThemeMode.System)" />
-        System
-    </label>
-
-    <h4>Accent color</h4>
-    <div style="display:flex;gap:8px;">
-        @foreach (var color in _accentChoices)
+    <h4 style="@HeadingStyle">Mode</h4>
+    <div role="radiogroup" aria-label="Mode" style="@GroupStyle">
+        @foreach (var (mode, icon, label) in Modes)
         {
-            <button @onclick="() => SelectAccent(color)"
-                    style="width:36px;height:36px;border-radius:50%;background:@color;border:@(ViewModel.AccentColor == color ? "3px solid black" : "none");">
+            var selected = ViewModel.SelectedMode == mode;
+            <div @onclick="() => SelectMode(mode)" role="radio" aria-checked="@(selected ? "true" : "false")" tabindex="0"
+                 style="display:flex;align-items:center;gap:12px;padding:14px 12px;@(mode == Modes[^1].Mode ? "" : RowDivider)">
+                <span aria-hidden="true" style="width:1.5em;text-align:center;">@icon</span>
+                <span style="flex:1;">@label</span>
+                <span style="width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid var(--accent-color);background:@(selected ? "var(--accent-color)" : "transparent");"></span>
+            </div>
+        }
+    </div>
+
+    <h4 style="@HeadingStyle">Accent color</h4>
+    <div role="radiogroup" aria-label="Accent color" style="@GroupStyle;display:flex;flex-wrap:wrap;gap:14px;padding:14px 12px;">
+        @foreach (var (color, name) in AccentChoices)
+        {
+            var selected = ViewModel.AccentColor == color;
+            <button @onclick="() => SelectAccent(color)" role="radio" aria-checked="@(selected ? "true" : "false")" aria-label="@name"
+                    style="width:44px;height:44px;border-radius:50%;background:@color;border:none;padding:0;box-shadow:@(selected ? "0 0 0 3px var(--card-color), 0 0 0 6px var(--text-color)" : "none");">
             </button>
         }
     </div>
 </div>
 
 @code {
-    private readonly string[] _accentChoices = { "#25D366", "#3b82f6", "#a855f7", "#ef4444", "#f59e0b" };
+    private const string HeadingStyle = "margin:20px 4px 6px;font-size:0.8em;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#94a3b8;";
+    private const string GroupStyle = "background:var(--card-color);border-radius:12px;overflow:hidden";
+    private const string RowDivider = "border-bottom:1px solid rgba(127,127,127,0.2);";
+
+    private static readonly (ForgeLinkSms.Core.Models.ThemeMode Mode, string Icon, string Label)[] Modes =
+    {
+        (ForgeLinkSms.Core.Models.ThemeMode.Light, "☀️", "Light"),
+        (ForgeLinkSms.Core.Models.ThemeMode.Dark, "🌙", "Dark"),
+        (ForgeLinkSms.Core.Models.ThemeMode.System, "📱", "Match my phone")
+    };
+
+    private static readonly (string Color, string Name)[] AccentChoices =
+    {
+        ("#25D366", "Green"), ("#3b82f6", "Blue"), ("#a855f7", "Purple"), ("#ef4444", "Red"), ("#f59e0b", "Orange")
+    };
 
     private async Task SelectMode(ForgeLinkSms.Core.Models.ThemeMode mode)
     {
