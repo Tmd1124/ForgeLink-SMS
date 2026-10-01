@@ -103,7 +103,7 @@ public static class WidgetUpdater
         }
     }
 
-    private static AndroidColor Accent(IServiceProvider services)
+    internal static AndroidColor Accent(IServiceProvider services)
     {
         try
         {

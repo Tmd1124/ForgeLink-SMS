@@ -32,6 +32,19 @@ public static class ConversationNotification
         return digits.Length > 0 ? digits : address;
     }
 
+    public static string InitialsFor(string name)
+    {
+        if (name.Any(char.IsLetter))
+        {
+            var letters = name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Select(word => word.FirstOrDefault(char.IsLetterOrDigit))
+                .Where(c => c != default)
+                .Take(2);
+            return string.Concat(letters).ToUpperInvariant();
+        }
+        return name.Any(char.IsDigit) ? "#" : "?";
+    }
+
     private static string TextOf(SmsMessage message)
     {
         if (!string.IsNullOrWhiteSpace(message.Body))

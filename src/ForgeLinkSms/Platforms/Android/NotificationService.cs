@@ -194,19 +194,17 @@ public class NotificationService : INotificationService
             var fallback = new NotificationLine(ConversationNotification.SenderKey(address), NameFor(address), fallbackBody, DateTimeOffset.UtcNow);
             var model = ConversationNotification.Build(UnreadIncoming(context, threadId), title, isGroup, NameFor, fallback);
 
-            var accent = AndroidColor.ParseColor("#2563EB");
+            var accent = WidgetUpdater.Accent(services);
             var persons = new Dictionary<string, Person>();
             Person PersonFor(NotificationLine line)
             {
                 if (!persons.TryGetValue(line.SenderKey, out var person))
                 {
                     var contact = Contact(line.SenderKey);
-                    var builder = new Person.Builder().SetKey(line.SenderKey).SetName(line.SenderName);
-                    if (contact?.PhotoUri is { } photo)
-                    {
-                        builder.SetIcon(AndroidX.Core.Graphics.Drawable.IconCompat.CreateWithBitmap(WidgetBitmaps.Circle(context, photo, contact.Initials, accent)));
-                    }
-                    person = builder.Build();
+                    var icon = WidgetBitmaps.Circle(context, contact?.PhotoUri, ConversationNotification.InitialsFor(line.SenderName), accent);
+                    person = new Person.Builder().SetKey(line.SenderKey).SetName(line.SenderName)
+                        .SetIcon(AndroidX.Core.Graphics.Drawable.IconCompat.CreateWithBitmap(icon))
+                        .Build();
                     persons[line.SenderKey] = person;
                 }
                 return person;
@@ -224,11 +222,7 @@ public class NotificationService : INotificationService
                 style.AddMessage(new NotificationCompat.MessagingStyle.Message(new Java.Lang.String(line.Text), line.Time.ToUnixTimeMilliseconds(), PersonFor(line)));
             }
 
-            Bitmap? shortcutIcon = null;
-            if (!isGroup && Contact(address) is { } single)
-            {
-                shortcutIcon = WidgetBitmaps.Circle(context, single.PhotoUri, single.Initials, accent);
-            }
+            var shortcutIcon = WidgetBitmaps.Circle(context, isGroup ? null : Contact(address)?.PhotoUri, ConversationNotification.InitialsFor(model.Title), accent);
             var shortcutId = ConversationShortcuts.Push(context, threadId, address, model.Title, persons.Values.ToList(), shortcutIcon);
 
             var last = model.Lines[^1];

@@ -20,6 +20,8 @@ internal static class ConversationShortcuts
             var id = IdFor(threadId);
             var intent = new Intent(context, typeof(MainActivity));
             intent.SetAction(Intent.ActionView);
+            // Same as a notification tap: reuse the open app instead of stacking a second copy on it.
+            intent.AddFlags(ActivityFlags.NewTask | ActivityFlags.ClearTop);
             intent.PutExtra("initial_route", $"/conversations/thread?id={threadId}&address={Uri.EscapeDataString(address)}");
             var builder = new ShortcutInfoCompat.Builder(context, id)
                 .SetShortLabel(string.IsNullOrWhiteSpace(name) ? address : name)

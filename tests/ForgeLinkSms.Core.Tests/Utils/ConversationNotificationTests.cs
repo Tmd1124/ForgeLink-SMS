@@ -92,4 +92,14 @@ public class ConversationNotificationTests
         Assert.Equal(new[] { Fallback }, Build(Array.Empty<SmsMessage>()).Lines);
         Assert.Equal(new[] { Fallback }, Build(new[] { Msg("mine", 1, outgoing: true) }).Lines);
     }
+
+    [Theory]
+    [InlineData("Kim Donnelly", "KD")]
+    [InlineData("Kim, Ever & Dare", "KE")]
+    [InlineData("CarelonRx", "C")]
+    [InlineData("(404) 555-0199", "#")]
+    [InlineData("+14045550199", "#")]
+    [InlineData("", "?")]
+    public void Avatars_without_a_photo_show_initials_or_a_number_sign(string name, string expected) =>
+        Assert.Equal(expected, ConversationNotification.InitialsFor(name));
 }
