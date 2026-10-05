@@ -3,6 +3,11 @@ namespace ForgeLinkSms.Core.Utils;
 public static class TwoPaneRules
 {
     public const double MinWidthPx = 600;
+    public const double DefaultLeftPct = 50;
+    public const double MinLeftPct = 30;
+    public const double MaxLeftPct = 70;
+
+    public static double ClampLeftPct(double pct) => Math.Clamp(pct, MinLeftPct, MaxLeftPct);
 
     public static bool ShowsTwoPanes(double widthPx, string relativeUri) =>
         widthPx >= MinWidthPx && PathOf(relativeUri) is "conversations" or "conversations/thread";

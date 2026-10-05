@@ -5,13 +5,16 @@
 @inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
 
 @* The routed page keeps the same place in the tree in both modes, so folding or unfolding doesn't rebuild an open chat. *@
-<div style="@(_twoPane ? "display:flex;height:100vh;width:100%;" : "")">
+<div id="fl-two-pane" style="@(_twoPane ? "display:flex;height:100vh;width:100%;" : "")">
     @if (_twoPane)
     {
-        <div data-no-back-swipe style="flex:0 0 40%;min-width:320px;height:100vh;overflow-y:auto;position:relative;transform:translateZ(0);border-right:1px solid rgba(127,127,127,0.3);">
+        <div id="fl-two-pane-left" data-no-back-swipe style="@($"flex:0 0 {_leftPct}%;min-width:280px;height:100vh;overflow-y:auto;position:relative;transform:translateZ(0);")">
             <CascadingValue Name="TwoPane" Value="true">
                 <ForgeLinkSms.Pages.Conversations.ConversationsPage />
             </CascadingValue>
+        </div>
+        <div id="fl-two-pane-divider" style="flex:0 0 6px;height:100vh;cursor:col-resize;background:rgba(127,127,127,0.3);position:relative;touch-action:none;">
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:36px;border-radius:2px;background:rgba(127,127,127,0.6);"></div>
         </div>
     }
     <div style="@(_twoPane ? "flex:1;min-width:0;height:100vh;overflow:hidden;position:relative;transform:translateZ(0);" : "")">
@@ -42,6 +45,7 @@
     private DotNetObjectReference<MainLayout>? _ref;
     private double _widthPx;
     private bool _twoPane;
+    private double _leftPct = ForgeLinkSms.Core.Utils.TwoPaneRules.DefaultLeftPct;
 
     // Runs before the router's render for a new route, so a page is never first created in the
     // wrong mode and then thrown away mid-load.
@@ -52,7 +56,24 @@
         if (firstRender)
         {
             _ref = DotNetObjectReference.Create(this);
+            var savedPct = await JS.InvokeAsync<double?>("forgeLinkTwoPane.getSavedLeftPct");
+            if (savedPct is { } pct)
+            {
+                _leftPct = ForgeLinkSms.Core.Utils.TwoPaneRules.ClampLeftPct(pct);
+            }
             await JS.InvokeVoidAsync("forgeLinkTwoPane.watch", _ref, ForgeLinkSms.Core.Utils.TwoPaneRules.MinWidthPx);
+        }
+
+        if (_twoPane)
+        {
+            await JS.InvokeVoidAsync(
+                "forgeLinkTwoPane.initDivider",
+                _ref,
+                "fl-two-pane-divider",
+                "fl-two-pane-left",
+                "fl-two-pane",
+                ForgeLinkSms.Core.Utils.TwoPaneRules.MinLeftPct,
+                ForgeLinkSms.Core.Utils.TwoPaneRules.MaxLeftPct);
         }
     }
 
@@ -61,6 +82,13 @@
     {
         _widthPx = widthPx;
         Update();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnLeftPctChanged(double pct)
+    {
+        _leftPct = ForgeLinkSms.Core.Utils.TwoPaneRules.ClampLeftPct(pct);
         StateHasChanged();
     }
 

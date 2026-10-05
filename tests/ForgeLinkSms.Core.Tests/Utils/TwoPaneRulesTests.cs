@@ -28,4 +28,15 @@ public class TwoPaneRulesTests
         Assert.True(TwoPaneRules.IsChat("conversations/thread?id=4"));
         Assert.False(TwoPaneRules.IsChat("conversations"));
     }
+
+    [Theory]
+    [InlineData(50, 50)]
+    [InlineData(10, 30)]
+    [InlineData(30, 30)]
+    [InlineData(70, 70)]
+    [InlineData(90, 70)]
+    public void The_left_pane_width_is_clamped_to_a_draggable_range(double pct, double expected)
+    {
+        Assert.Equal(expected, TwoPaneRules.ClampLeftPct(pct));
+    }
 }
