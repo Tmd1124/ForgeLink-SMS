@@ -169,7 +169,8 @@ public class RunnerTests : IDisposable
     [Fact]
     public async Task Preview_counts_scheduled_texts_that_a_restore_could_re_add()
     {
-        var scheduled = new BackupScheduled("4045550199", "4045550199", "Practice at 6", Now.AddDays(2), "");
+        // PreviewAsync compares against the real clock (RestoreRunner.cs), not the fixed Now above, so this must stay ahead of DateTimeOffset.UtcNow.
+        var scheduled = new BackupScheduled("4045550199", "4045550199", "Practice at 6", DateTimeOffset.UtcNow.AddDays(2), "");
         using var reader = BackupReader.Open(new MemoryStream(await BackUpWith(new AppData { Scheduled = new[] { scheduled } })), null, _work);
 
         var preview = await RestoreRunner.PreviewAsync(reader, new FakeTarget(), CancellationToken.None);
