@@ -10,10 +10,10 @@ variables:
 
 steps:
   - task: UseDotNet@2
-    displayName: Install .NET 9 SDK
+    displayName: Install .NET 10 SDK
     inputs:
       packageType: sdk
-      version: 9.0.x
+      version: 10.0.x
 
   - script: dotnet restore $(testProject)
     displayName: Restore
