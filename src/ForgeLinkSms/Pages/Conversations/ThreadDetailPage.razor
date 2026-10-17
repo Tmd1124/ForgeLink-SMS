@@ -367,6 +367,13 @@
         }
     </div>
 }
+else
+{
+    @* ViewModel loads over several awaits before any of the chat renders. Without something
+       visible here, the page-entry slide animation plays out on an empty element and finishes
+       before there's any content to show sliding — the chat just pops in already in place. *@
+    <div style="height:100vh;background:var(--card-color);"></div>
+}
 
 <AttachmentDrawer @ref="_drawer" OnInsertText="InsertIntoCompose" OnAttachmentPicked="a => _pendingAttachment = a" OnScheduleTimePicked="t => _scheduledSendTime = t" />
 

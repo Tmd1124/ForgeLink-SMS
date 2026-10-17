@@ -4,6 +4,26 @@
 @inject Microsoft.JSInterop.IJSRuntime JS
 @inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
 
+<style>
+    @@keyframes nav-slide-up {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+
+    @@keyframes nav-slide-down {
+        from { transform: translateY(-100%); }
+        to { transform: translateY(0); }
+    }
+
+    .nav-enter-forward {
+        animation: nav-slide-up 0.2s ease;
+    }
+
+    .nav-enter-back {
+        animation: nav-slide-down 0.2s ease;
+    }
+</style>
+
 @* The routed page keeps the same place in the tree in both modes, so folding or unfolding doesn't rebuild an open chat. *@
 <div id="fl-two-pane" style="@(_twoPane ? "display:flex;height:100vh;width:100%;" : "")">
     @if (_twoPane)
@@ -17,12 +37,12 @@
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:36px;border-radius:2px;background:rgba(127,127,127,0.6);"></div>
         </div>
     }
-    <div style="@(_twoPane ? "flex:1;min-width:0;height:100vh;overflow:hidden;position:relative;transform:translateZ(0);" : "")">
+    <div style="@(_twoPane ? "flex:1;min-width:0;height:100vh;overflow:hidden;position:relative;transform:translateZ(0);" : "overflow:hidden;height:100vh;")">
         @if (!_twoPane || ForgeLinkSms.Core.Utils.TwoPaneRules.IsChat(Nav.ToBaseRelativePath(Nav.Uri)))
         {
             <CascadingValue Name="TwoPane" Value="_twoPane">
                 @* The chat page loads its conversation once, so switching chats must rebuild it rather than reuse it. *@
-                <div @key="Nav.Uri" style="@(_twoPane ? "height:100%;" : "")">
+                <div @key="Nav.Uri" class="@(_isBackNav ? "nav-enter-back" : "nav-enter-forward")" style="height:100%;">
                     @Body
                 </div>
             </CascadingValue>
@@ -45,11 +65,19 @@
     private DotNetObjectReference<MainLayout>? _ref;
     private double _widthPx;
     private bool _twoPane;
+    private bool _isBackNav;
     private double _leftPct = ForgeLinkSms.Core.Utils.TwoPaneRules.DefaultLeftPct;
 
     // Runs before the router's render for a new route, so a page is never first created in the
     // wrong mode and then thrown away mid-load.
-    protected override void OnParametersSet() => Update();
+    protected override void OnParametersSet()
+    {
+        // Consumed here (not in Update(), which also runs from the width-change JS callback)
+        // so only an actual navigation picks up the transition direction.
+        _isBackNav = HistoryTracker.WasBackNavigation;
+        HistoryTracker.WasBackNavigation = false;
+        Update();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

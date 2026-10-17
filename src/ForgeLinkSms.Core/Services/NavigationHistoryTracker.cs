@@ -33,6 +33,12 @@ public class NavigationHistoryTracker
     /// pane, so Back should close the chat rather than step through every chat looked at.
     public bool CollapseChatSwitches { get; set; }
 
+    /// Set true right before a Back navigation fires, so MainLayout can play the reverse (slide
+    /// down) transition instead of the forward (slide up) one. The reader is expected to flip it
+    /// back to false immediately after consuming it, so a later forward navigation doesn't
+    /// inherit it.
+    public bool WasBackNavigation { get; set; }
+
     public void RecordNavigation(string relativePath)
     {
         lock (_lock)
@@ -76,6 +82,7 @@ public class NavigationHistoryTracker
             target = _stack[^1];
         }
 
+        WasBackNavigation = true;
         NavigateAction?.Invoke(target);
         return true;
     }

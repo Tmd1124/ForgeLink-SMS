@@ -29,6 +29,30 @@ public class NavigationHistoryTrackerTests
     }
 
     [Fact]
+    public void TryGoBack_marks_the_navigation_as_a_back_navigation()
+    {
+        var tracker = new NavigationHistoryTracker();
+        tracker.RecordNavigation("conversations");
+        tracker.RecordNavigation("conversations/thread?id=18");
+
+        Assert.False(tracker.WasBackNavigation);
+        tracker.TryGoBack();
+
+        Assert.True(tracker.WasBackNavigation);
+    }
+
+    [Fact]
+    public void A_failed_TryGoBack_does_not_mark_a_back_navigation()
+    {
+        var tracker = new NavigationHistoryTracker();
+        tracker.RecordNavigation("conversations");
+
+        tracker.TryGoBack();
+
+        Assert.False(tracker.WasBackNavigation);
+    }
+
+    [Fact]
     public void TryGoBack_pops_one_screen_at_a_time()
     {
         var tracker = new NavigationHistoryTracker();
