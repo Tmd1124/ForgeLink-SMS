@@ -87,7 +87,7 @@ public static class HelpCatalog
             new[]
             {
                 "Long-press a message to react, reply, copy or set a reminder.",
-                "After you tap send you have 5 seconds to undo.",
+                "After you tap send you have 3 seconds to undo.",
                 "Status under your text: Sending, Sent, Delivered or Not sent."
             }),
         ["conversations/group"] = new("Group details", "Everyone in this group text.",

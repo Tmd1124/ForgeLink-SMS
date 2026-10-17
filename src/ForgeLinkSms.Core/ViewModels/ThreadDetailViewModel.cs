@@ -94,7 +94,7 @@ public partial class ThreadDetailViewModel : ObservableObject
         _scheduler = scheduler;
         _threadId = threadId;
         _address = address;
-        _undoSendWindow = undoSendWindow ?? TimeSpan.FromSeconds(5);
+        _undoSendWindow = undoSendWindow ?? TimeSpan.FromSeconds(3);
     }
 
     [RelayCommand]
