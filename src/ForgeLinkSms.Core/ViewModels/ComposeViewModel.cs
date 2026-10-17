@@ -34,6 +34,9 @@ public partial class ComposeViewModel : ObservableObject
     [ObservableProperty]
     private bool _isMultiSelecting;
 
+    [ObservableProperty]
+    private string? _blockedNumberMessage;
+
     public int SelectedCount => _selectedForGroup.Count;
 
     public bool IsContactSelected(ContactInfo contact) =>
@@ -69,6 +72,13 @@ public partial class ComposeViewModel : ObservableObject
     [RelayCommand]
     private void SelectContact(ContactInfo contact)
     {
+        if (!contact.CanReceiveText)
+        {
+            BlockedNumberMessage = "Can't text a business or home number.";
+            return;
+        }
+
+        BlockedNumberMessage = null;
         AddRecipient(contact.PhoneNumber);
         SearchText = string.Empty;
     }
@@ -83,6 +93,13 @@ public partial class ComposeViewModel : ObservableObject
     [RelayCommand]
     private void ToggleContactSelection(ContactInfo contact)
     {
+        if (!contact.CanReceiveText)
+        {
+            BlockedNumberMessage = "Can't text a business or home number.";
+            return;
+        }
+
+        BlockedNumberMessage = null;
         var digits = PhoneNumberFormatter.ToComparableDigits(contact.PhoneNumber);
         if (!_selectedForGroup.Remove(digits))
         {
@@ -118,7 +135,11 @@ public partial class ComposeViewModel : ObservableObject
     [RelayCommand]
     private void AddRecipient(string rawNumber)
     {
-        var digits = Regex.Replace(rawNumber, @"[^\d]", "");
+        // A contact's number can carry an extension after a pause marker (",", ";") or "ext"/"x"
+        // text (e.g. "(205) 391-2000 ,1523" or "391-2000 ext. 1021") — SMS can't reach an
+        // extension anyway, so only the base number before that marker is used.
+        var basePart = Regex.Split(rawNumber, @"[,;]|\bext\.?\b|\bx(?=\d)", RegexOptions.IgnoreCase)[0];
+        var digits = Regex.Replace(basePart, @"[^\d]", "");
         if (digits.Length is not (10 or 11))
         {
             return; // not a valid US-style number; reject silently, UI shows its own validation message

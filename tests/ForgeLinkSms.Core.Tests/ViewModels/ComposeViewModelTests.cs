@@ -38,6 +38,19 @@ public class ComposeViewModelTests
         Assert.Single(viewModel.Recipients);
     }
 
+    [Theory]
+    [InlineData("(205) 391-2000 ,,1079")]
+    [InlineData("(205) 391-2000 ext. 1021")]
+    [InlineData("205-391-2000 x1523")]
+    public void AddRecipientCommand_accepts_numbers_with_an_extension(string rawNumber)
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.AddRecipientCommand.Execute(rawNumber);
+
+        Assert.Single(viewModel.Recipients);
+    }
+
     [Fact]
     public void IsGroupSend_is_true_only_with_more_than_one_recipient()
     {
@@ -97,6 +110,9 @@ public class ComposeViewModelTests
     }
 
     private static ContactInfo Contact(string name, string phone) => new() { DisplayName = name, PhoneNumber = phone };
+
+    private static ContactInfo Contact(string name, string phone, bool canReceiveText) =>
+        new() { DisplayName = name, PhoneNumber = phone, CanReceiveText = canReceiveText };
 
     [Fact]
     public async Task FilteredContacts_matches_by_name_case_insensitive()
@@ -168,6 +184,60 @@ public class ComposeViewModelTests
 
         Assert.Equal(new[] { "5550148890" }, viewModel.Recipients);
         Assert.Equal(string.Empty, viewModel.SearchText);
+    }
+
+    [Fact]
+    public async Task SelectContactCommand_blocks_a_number_that_cannot_receive_text()
+    {
+        var contacts = new Mock<IContactService>();
+        contacts.Setup(c => c.GetAllContactsAsync()).ReturnsAsync(new[]
+        {
+            Contact("Acme Office", "5550148890", canReceiveText: false)
+        });
+        var viewModel = CreateViewModel(contacts: contacts);
+        await viewModel.LoadContactsCommand.ExecuteAsync(null);
+
+        viewModel.SelectContactCommand.Execute(viewModel.FilteredContacts[0]);
+
+        Assert.Empty(viewModel.Recipients);
+        Assert.NotNull(viewModel.BlockedNumberMessage);
+    }
+
+    [Fact]
+    public async Task SelectContactCommand_clears_a_previous_blocked_message_once_a_valid_contact_is_picked()
+    {
+        var contacts = new Mock<IContactService>();
+        contacts.Setup(c => c.GetAllContactsAsync()).ReturnsAsync(new[]
+        {
+            Contact("Acme Office", "5550148890", canReceiveText: false),
+            Contact("Alice Smith", "5550142231")
+        });
+        var viewModel = CreateViewModel(contacts: contacts);
+        await viewModel.LoadContactsCommand.ExecuteAsync(null);
+        viewModel.SelectContactCommand.Execute(viewModel.FilteredContacts.Single(c => c.DisplayName == "Acme Office"));
+
+        viewModel.SelectContactCommand.Execute(viewModel.FilteredContacts.Single(c => c.DisplayName == "Alice Smith"));
+
+        Assert.Equal(new[] { "5550142231" }, viewModel.Recipients);
+        Assert.Null(viewModel.BlockedNumberMessage);
+    }
+
+    [Fact]
+    public async Task ToggleContactSelectionCommand_blocks_a_number_that_cannot_receive_text()
+    {
+        var contacts = new Mock<IContactService>();
+        contacts.Setup(c => c.GetAllContactsAsync()).ReturnsAsync(new[]
+        {
+            Contact("Acme Office", "5550148890", canReceiveText: false)
+        });
+        var viewModel = CreateViewModel(contacts: contacts);
+        await viewModel.LoadContactsCommand.ExecuteAsync(null);
+        var contact = viewModel.FilteredContacts[0];
+
+        viewModel.ToggleContactSelectionCommand.Execute(contact);
+
+        Assert.False(viewModel.IsContactSelected(contact));
+        Assert.NotNull(viewModel.BlockedNumberMessage);
     }
 
     [Fact]

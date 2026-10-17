@@ -94,6 +94,14 @@ public class ContactService : IContactService
         }
     }
 
+    // ContactsContract.CommonDataKinds.Phone's TYPE_* constants (stable since API level 5; the
+    // .NET binding only carries TypeCustom, so these are the documented Android values directly):
+    // 1=Home, 3=Work, 4=FaxWork, 5=FaxHome, 6=Pager, 10=CompanyMain, 18=WorkPager.
+    // Numbers explicitly labeled as a landline or a shared office line can't receive a text.
+    // Ambiguous labels (Main/Other/Custom) are left allowed — plenty of people's real cell
+    // number ends up under one of those, and wrongly blocking it is worse than the reverse.
+    private static bool CanReceiveText(int phoneType) => phoneType is not (1 or 3 or 4 or 5 or 6 or 10 or 18);
+
     public Task<IReadOnlyList<ContactInfo>> GetAllContactsAsync()
     {
         var context = AndroidApp.Context;
@@ -102,7 +110,8 @@ public class ContactService : IContactService
         {
             AndroidContactsContract.CommonDataKinds.Phone.InterfaceConsts.DisplayName,
             AndroidContactsContract.CommonDataKinds.Phone.Number,
-            AndroidContactsContract.CommonDataKinds.Phone.InterfaceConsts.PhotoUri
+            AndroidContactsContract.CommonDataKinds.Phone.InterfaceConsts.PhotoThumbnailUri,
+            AndroidContactsContract.CommonDataKinds.Phone.InterfaceConsts.Type
         };
 
         using var cursor = context.ContentResolver!.Query(AndroidContactsContract.CommonDataKinds.Phone.ContentUri!, projection, null, null, null);
@@ -110,7 +119,8 @@ public class ContactService : IContactService
         {
             var nameIdx = cursor.GetColumnIndexOrThrow(AndroidContactsContract.CommonDataKinds.Phone.InterfaceConsts.DisplayName);
             var numberIdx = cursor.GetColumnIndexOrThrow(AndroidContactsContract.CommonDataKinds.Phone.Number);
-            var photoIdx = cursor.GetColumnIndex(AndroidContactsContract.CommonDataKinds.Phone.InterfaceConsts.PhotoUri);
+            var photoIdx = cursor.GetColumnIndex(AndroidContactsContract.CommonDataKinds.Phone.InterfaceConsts.PhotoThumbnailUri);
+            var typeIdx = cursor.GetColumnIndex(AndroidContactsContract.CommonDataKinds.Phone.InterfaceConsts.Type);
 
             while (cursor.MoveToNext())
             {
@@ -125,7 +135,8 @@ public class ContactService : IContactService
                 {
                     DisplayName = displayName ?? number,
                     PhoneNumber = number,
-                    PhotoUri = photoIdx >= 0 ? cursor.GetString(photoIdx) : null
+                    PhotoUri = photoIdx >= 0 ? cursor.GetString(photoIdx) : null,
+                    CanReceiveText = typeIdx < 0 || CanReceiveText(cursor.GetInt(typeIdx))
                 });
             }
         }

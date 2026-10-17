@@ -6,6 +6,11 @@ public class ContactInfo
     public required string PhoneNumber { get; init; }
     public string? PhotoUri { get; init; }
 
+    // Defaults true: most ContactInfo instances (e.g. resolving an existing conversation's
+    // display name/photo) have no phone-number-type lookup behind them and shouldn't be
+    // restricted just because that information wasn't available.
+    public bool CanReceiveText { get; init; } = true;
+
     public string Initials
     {
         get
