@@ -41,7 +41,12 @@ public class ContactService : IContactService
     {
         var context = AndroidApp.Context;
         var uri = AndroidUri.WithAppendedPath(AndroidContactsContract.PhoneLookup.ContentFilterUri, AndroidUri.Encode(phoneNumber));
-        var projection = new[] { AndroidContactsContract.PhoneLookup.InterfaceConsts.DisplayName, AndroidContactsContract.PhoneLookup.InterfaceConsts.PhotoUri };
+        // PhotoThumbnailUri, not PhotoUri: PhotoUri is the contact's full, unscaled original photo.
+        // Every conversation row embeds this as base64 with no resizing, and the list renders every
+        // row at once with no virtualization — a handful of contacts with multi-megabyte photos
+        // (common with photos synced from Google/social accounts) made the list slow to load and
+        // janky to scroll. The thumbnail is exactly what a 40px avatar needs.
+        var projection = new[] { AndroidContactsContract.PhoneLookup.InterfaceConsts.DisplayName, AndroidContactsContract.PhoneLookup.InterfaceConsts.PhotoThumbnailUri };
 
         using var cursor = context.ContentResolver!.Query(uri!, projection, null, null, null);
         if (cursor is null || !cursor.MoveToFirst())
@@ -50,7 +55,7 @@ public class ContactService : IContactService
         }
 
         var name = cursor.GetString(cursor.GetColumnIndexOrThrow(AndroidContactsContract.PhoneLookup.InterfaceConsts.DisplayName));
-        var photoIndex = cursor.GetColumnIndex(AndroidContactsContract.PhoneLookup.InterfaceConsts.PhotoUri);
+        var photoIndex = cursor.GetColumnIndex(AndroidContactsContract.PhoneLookup.InterfaceConsts.PhotoThumbnailUri);
         var photoUri = photoIndex >= 0 ? cursor.GetString(photoIndex) : null;
 
         return new ContactInfo
