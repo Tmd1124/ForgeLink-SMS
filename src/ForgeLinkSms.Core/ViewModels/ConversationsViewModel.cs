@@ -235,18 +235,38 @@ public partial class ConversationsViewModel : ObservableObject
         try
         {
             await _snoozeService.WakeExpiredAsync(DateTimeOffset.UtcNow);
-            var snoozed = await _snoozeService.GetSnoozedAsync();
-            var threads = await _threadService.GetThreadsAsync();
-            var trashedIds = await _trashRepository.GetTrashedThreadIdsAsync();
-            var blockedNumbers = await _blockService.GetBlockedNumbersAsync();
-            var favoriteIds = await _favoriteRepository.GetFavoriteThreadIdsAsync();
-            var pinnedIds = _pinnedRepository is null ? new List<long>() : await _pinnedRepository.GetPinnedThreadIdsAsync();
-            var archivedIds = await _archiveRepository.GetArchivedThreadIdsAsync();
-            var filters = await _filterRepository.GetAllFiltersAsync();
-            var assignments = await _filterRepository.GetAllAssignmentsAsync();
-            _allowedSenders = await _allowedSenderRepository.GetAllAsync();
-            var drafts = await _draftRepository.GetAllAsync();
-            var muted = await _muteRepository.GetMutedThreadIdsAsync(DateTimeOffset.UtcNow);
+
+            // Independent reads (none depends on another's result) — running them concurrently
+            // instead of one at a time is what keeps returning to this list fast; sequential
+            // awaits here made every navigation back pay the sum of all twelve queries' latency.
+            var snoozedTask = _snoozeService.GetSnoozedAsync();
+            var threadsTask = _threadService.GetThreadsAsync();
+            var trashedTask = _trashRepository.GetTrashedThreadIdsAsync();
+            var blockedTask = _blockService.GetBlockedNumbersAsync();
+            var favoriteTask = _favoriteRepository.GetFavoriteThreadIdsAsync();
+            var pinnedTask = _pinnedRepository?.GetPinnedThreadIdsAsync() ?? Task.FromResult<IReadOnlyList<long>>(new List<long>());
+            var archivedTask = _archiveRepository.GetArchivedThreadIdsAsync();
+            var filtersTask = _filterRepository.GetAllFiltersAsync();
+            var assignmentsTask = _filterRepository.GetAllAssignmentsAsync();
+            var allowedSendersTask = _allowedSenderRepository.GetAllAsync();
+            var draftsTask = _draftRepository.GetAllAsync();
+            var mutedTask = _muteRepository.GetMutedThreadIdsAsync(DateTimeOffset.UtcNow);
+
+            await Task.WhenAll(snoozedTask, threadsTask, trashedTask, blockedTask, favoriteTask, pinnedTask,
+                archivedTask, filtersTask, assignmentsTask, allowedSendersTask, draftsTask, mutedTask);
+
+            var snoozed = snoozedTask.Result;
+            var threads = threadsTask.Result;
+            var trashedIds = trashedTask.Result;
+            var blockedNumbers = blockedTask.Result;
+            var favoriteIds = favoriteTask.Result;
+            var pinnedIds = pinnedTask.Result;
+            var archivedIds = archivedTask.Result;
+            var filters = filtersTask.Result;
+            var assignments = assignmentsTask.Result;
+            _allowedSenders = allowedSendersTask.Result;
+            var drafts = draftsTask.Result;
+            var muted = mutedTask.Result;
 
             Filters.Clear();
             foreach (var filter in filters)

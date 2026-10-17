@@ -232,8 +232,8 @@
     }
     else
     {
-        @foreach (var (group, thread) in VisibleRows())
-        {
+        <Virtualize Items="@VisibleRows().ToList()" ItemSize="72" Context="row">
+            @{ var (group, thread) = row; }
             @if (group is { } g)
             {
                 var isExpanded = _expandedUpdateGroups.Contains(g.Category);
@@ -248,8 +248,9 @@
                     </div>
                     <span style="color:#94a3b8;flex-shrink:0;">@(isExpanded ? "▾" : "▸")</span>
                 </div>
-                continue;
             }
+            else
+            {
             <div @key="thread!.Id" class="swipe-wrap">
                 @if (_pendingSwipeThreadId == thread.Id)
                 {
@@ -280,7 +281,7 @@
                         }
                         else if (!string.IsNullOrEmpty(thread.PhotoUri))
                         {
-                            <img src="@thread.PhotoUri" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
+                            <img src="@thread.PhotoUri" alt="" loading="lazy" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
                         }
                         else if (!string.IsNullOrWhiteSpace(thread.DisplayName))
                         {
@@ -361,7 +362,8 @@
                     </div>
                 }
             </div>
-        }
+            }
+        </Virtualize>
     }
 
     @if (!MessagesFirst)
