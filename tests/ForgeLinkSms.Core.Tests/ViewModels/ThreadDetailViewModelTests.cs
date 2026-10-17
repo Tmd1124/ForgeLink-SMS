@@ -307,6 +307,33 @@ public class ThreadDetailViewModelTests
         Assert.Equal(string.Empty, viewModel.ComposeText);
     }
 
+    // A full Load() after every send re-decodes the whole loaded window's MMS attachments from
+    // scratch, which made sending in a media-heavy thread (and the undo bar that waits on it)
+    // far slower than it needed to be. Sending should only fetch what's new.
+    [Fact]
+    public async Task SendCommand_fetches_only_the_new_message_instead_of_reloading_the_whole_thread()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sms = new Mock<ISmsService>();
+        sms.Setup(s => s.GetMessagesAsync(1, null, It.IsAny<int>())).ReturnsAsync(new List<SmsMessage>
+        {
+            MakeMessage(1, "hi", now)
+        });
+        sms.Setup(s => s.GetNewerMessagesAsync(1, now, It.IsAny<int>())).ReturnsAsync(new List<SmsMessage>
+        {
+            MakeMessage(2, "See you then", now.AddSeconds(5), isOutgoing: true)
+        });
+        var viewModel = new ThreadDetailViewModel(sms.Object, new Mock<IMessageSchedulerService>().Object, threadId: 1, address: "5550148890", undoSendWindow: TimeSpan.Zero);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+        viewModel.ComposeText = "See you then";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        sms.Verify(s => s.GetMessagesAsync(1, null, It.IsAny<int>()), Times.Once);
+        sms.Verify(s => s.GetNewerMessagesAsync(1, now, It.IsAny<int>()), Times.Once);
+        Assert.Equal(new[] { "hi", "See you then" }, viewModel.Messages.Select(m => m.Body));
+    }
+
     [Fact]
     public async Task SendCommand_sends_mms_with_caption_when_an_attachment_is_passed()
     {

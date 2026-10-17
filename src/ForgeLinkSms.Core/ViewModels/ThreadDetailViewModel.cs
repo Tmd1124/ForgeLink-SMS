@@ -457,8 +457,10 @@ public partial class ThreadDetailViewModel : ObservableObject
         _reviewPrompt?.RecordSent();
         // After the send, not when the undo window ends: the text only exists once it's sent, and
         // this also covers leaving the chat mid-undo, where the send finishes after the page closed.
+        // RefreshLatest (not Load) fetches only the new message instead of re-decoding the whole
+        // loaded window's MMS attachments from scratch on every single send.
         _listRefresher?.RequestRefresh();
-        await Load();
+        await RefreshLatest();
     }
 
     [RelayCommand]
