@@ -20,7 +20,7 @@
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Components
 
-<div style="padding:12px;">
+<div style="padding:12px;display:flex;flex-direction:column;height:100vh;box-sizing:border-box;">
     @if (_selectedThreadIds.Count > 0)
     {
         <div style="position:sticky;top:0;z-index:10;background:var(--surface-color);display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:6px 4px;overflow-x:auto;">
@@ -191,6 +191,7 @@
             }
         </div>
     }
+    <div style="flex:1;overflow-y:auto;min-height:0;">
     @if (MessagesFirst)
     {
         @MessageResultsBlock()
@@ -370,6 +371,7 @@
     {
         @MessageResultsBlock()
     }
+    </div>
 
     <button @onclick="@(() => Nav.NavigateTo("/compose"))" aria-label="New message"
             style="position:fixed;right:24px;bottom:24px;width:56px;height:56px;border-radius:50%;background:var(--accent-color);color:white;font-size:1.5em;border:none;">
