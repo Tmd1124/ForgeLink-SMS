@@ -1,5 +1,22 @@
 # ForgeLink SMS
 
+## Pick up here
+
+*Last updated 2026-10-18.*
+
+**Run it:** connect a physical Android device over USB (the emulator does not run on this ARM64 machine), check `adb devices`, then `dotnet build src/ForgeLinkSms/ForgeLinkSms.csproj -t:Run -f net9.0-android`. Unit tests: `dotnet test tests/ForgeLinkSms.Core.Tests`.
+
+**Deploy:** CI is `azure-pipelines.yml`. Push to both remotes (`origin` = GitHub, `azuredevops`).
+
+**State of play:**
+- Recent work (latest commit `b7602e9`) is UI polish: conversation list scrolling, screen slide transitions, New Message sheet, contact thumbnails, 3-second undo-send window.
+- Feature plans in `docs/superpowers/plans/` cover conversation filters, notifications, backup/restore, home widget, two-pane fold and computer access. Which of those are fully shipped was not re-verified on 2026-10-18.
+- Uncommitted: only the untracked `.vscode/` folder.
+
+**Decisions:** none recorded here; see the specs and plans in `docs/superpowers/`.
+
+**Open items:** confirm the status of each plan listed above.
+
 A native Android app that sends and receives real SMS text messages through
 the phone's own cellular connection — not a chat app, no backend, no cloud
 database. See `SMS Messenger App Requirements Document.html` for the full
