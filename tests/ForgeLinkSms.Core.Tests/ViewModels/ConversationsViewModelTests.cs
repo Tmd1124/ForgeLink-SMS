@@ -107,7 +107,7 @@ public class ConversationsViewModelTests
     }
 
     [Fact]
-    public async Task Pinned_chats_come_first_newest_first_ahead_of_unread_chats()
+    public async Task Pinned_chats_come_first_newest_first_and_unread_chats_wait_in_the_unread_tab()
     {
         var now = DateTimeOffset.UtcNow;
         var viewModel = MakeViewModel(ThreadsOf(
@@ -119,8 +119,12 @@ public class ConversationsViewModelTests
 
         await viewModel.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(new[] { "New pin", "Old pin", "Unread", "Plain" }, viewModel.Threads.Select(t => t.DisplayName));
+        Assert.Equal(new[] { "New pin", "Old pin", "Plain" }, viewModel.Threads.Select(t => t.DisplayName));
         Assert.True(viewModel.Threads[0].IsPinned);
+
+        viewModel.SelectLane(ConversationLane.Unread);
+
+        Assert.Equal(new[] { "Unread" }, viewModel.Threads.Select(t => t.DisplayName));
     }
 
     [Fact]
@@ -395,7 +399,7 @@ public class ConversationsViewModelTests
     }
 
     [Fact]
-    public async Task LoadCommand_sorts_unread_threads_below_favorites_and_above_read_threads()
+    public async Task LoadCommand_lists_favorites_before_other_chats_and_keeps_unread_out_of_chats()
     {
         var newest = DateTimeOffset.UtcNow;
         var middle = DateTimeOffset.UtcNow.AddDays(-1);
@@ -413,9 +417,28 @@ public class ConversationsViewModelTests
 
         await viewModel.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(3, viewModel.Threads[0].Id);
-        Assert.Equal(2, viewModel.Threads[1].Id);
-        Assert.Equal(1, viewModel.Threads[2].Id);
+        Assert.Equal(new long[] { 3, 1 }, viewModel.Threads.Select(t => t.Id));
+    }
+
+    [Fact]
+    public async Task MarkThreadReadStateCommand_moves_a_chat_between_the_unread_tab_and_chats()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(new List<SmsThread>
+        {
+            MakeThread(1, "5550142231", "Alice Smith", "hi", unreadCount: 0),
+            MakeThread(2, "5550148890", "Bob Jones", "hey", unreadCount: 2)
+        });
+        var viewModel = MakeViewModel(threadService);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+        viewModel.SelectLane(ConversationLane.Unread);
+        Assert.Equal(1, viewModel.UnreadTabCount);
+
+        await viewModel.MarkThreadReadStateCommand.ExecuteAsync(2L);
+
+        Assert.Equal(ConversationLane.Conversations, viewModel.Lane);
+        Assert.Equal(0, viewModel.UnreadTabCount);
+        Assert.Equal(2, viewModel.Threads.Count);
     }
 
     [Fact]
@@ -747,7 +770,7 @@ public class ConversationsViewModelTests
     }
 
     [Fact]
-    public async Task ShowUnreadOnly_filters_out_read_threads()
+    public async Task Unread_tab_lists_only_unread_threads()
     {
         var threadService = new Mock<IThreadService>();
         threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(new List<SmsThread>
@@ -758,14 +781,14 @@ public class ConversationsViewModelTests
         var viewModel = MakeViewModel(threadService);
         await viewModel.LoadCommand.ExecuteAsync(null);
 
-        viewModel.ShowUnreadOnly = true;
+        viewModel.SelectLane(ConversationLane.Unread);
 
         Assert.Single(viewModel.Threads);
         Assert.Equal(2, viewModel.Threads[0].Id);
     }
 
     [Fact]
-    public async Task ShowUnreadOnly_set_back_to_false_restores_all_threads()
+    public async Task Selecting_chats_after_the_unread_tab_shows_read_threads_only()
     {
         var threadService = new Mock<IThreadService>();
         threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(new List<SmsThread>
@@ -775,11 +798,12 @@ public class ConversationsViewModelTests
         });
         var viewModel = MakeViewModel(threadService);
         await viewModel.LoadCommand.ExecuteAsync(null);
-        viewModel.ShowUnreadOnly = true;
+        viewModel.SelectLane(ConversationLane.Unread);
 
-        viewModel.ShowUnreadOnly = false;
+        viewModel.SelectLane(ConversationLane.Conversations);
 
-        Assert.Equal(2, viewModel.Threads.Count);
+        Assert.Single(viewModel.Threads);
+        Assert.Equal(1, viewModel.Threads[0].Id);
     }
 
     [Fact]
@@ -902,13 +926,14 @@ public class ConversationsViewModelTests
     }
 
     [Fact]
-    public async Task ActiveFilterIds_stacks_with_ShowUnreadOnly()
+    public async Task ActiveFilterIds_stacks_with_the_unread_tab()
     {
         var threadService = new Mock<IThreadService>();
         threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(new List<SmsThread>
         {
             MakeThread(1, "5550142231", "Alice Smith", "hi", unreadCount: 0),
-            MakeThread(2, "5550148890", "Bob Jones", "hey", unreadCount: 3)
+            MakeThread(2, "5550148890", "Bob Jones", "hey", unreadCount: 3),
+            MakeThread(3, "5550149999", "Carol Lee", "yo", unreadCount: 1)
         });
         var filterRepository = new Mock<IFilterRepository>();
         filterRepository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter>());
@@ -919,9 +944,9 @@ public class ConversationsViewModelTests
         });
         var viewModel = MakeViewModel(threadService, filterRepository: filterRepository);
         await viewModel.LoadCommand.ExecuteAsync(null);
-        viewModel.ToggleActiveFilter(10);
+        viewModel.SelectLane(ConversationLane.Unread);
 
-        viewModel.ShowUnreadOnly = true;
+        viewModel.ToggleActiveFilter(10);
 
         Assert.Single(viewModel.Threads);
         Assert.Equal(2, viewModel.Threads[0].Id);
@@ -1398,28 +1423,29 @@ public class ConversationsViewModelTests
     public async Task Bubble_checklist_decides_who_is_in_the_pond()
     {
         var chats = FiveNamedChats();
-        chats[0].UnreadCount = 2;
         var threadService = new Mock<IThreadService>();
         threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(chats);
         var favorites = MakeEmptyFavoriteRepository();
-        favorites.Setup(r => r.GetFavoriteThreadIdsAsync()).ReturnsAsync(new List<long> { 3, 4 });
+        favorites.Setup(r => r.GetFavoriteThreadIdsAsync()).ReturnsAsync(new List<long> { 2, 3, 4 });
         var viewModel = MakeViewModel(threadService, favoriteRepository: favorites);
-        viewModel.Display = new DisplaySettings { BubbleFavorites = true, BubbleUnread = true, BubbleRecent = false };
+        viewModel.Display = new DisplaySettings { BubbleFavorites = true, BubbleUnread = false, BubbleRecent = false };
 
         await viewModel.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(new long[] { 3, 4, 1 }, viewModel.PondThreads.Select(t => t.Id));
-        Assert.Equal(new long[] { 2, 5 }, viewModel.ListThreads.Select(t => t.Id));
+        Assert.Equal(new long[] { 2, 3, 4 }, viewModel.PondThreads.Select(t => t.Id).OrderBy(i => i));
+        Assert.Equal(new long[] { 1, 5 }, viewModel.ListThreads.Select(t => t.Id).OrderBy(i => i));
     }
 
     [Fact]
     public async Task More_bubbles_than_the_pond_holds_go_to_the_grid()
     {
-        var chats = Enumerable.Range(1, 12).Select(i => MakeThread(i, $"55500000{i:00}", $"P{i}", "x", DateTimeOffset.UtcNow.AddMinutes(-i), unreadCount: 1)).ToList();
+        var chats = Enumerable.Range(1, 12).Select(i => MakeThread(i, $"55500000{i:00}", $"P{i}", "x", DateTimeOffset.UtcNow.AddMinutes(-i))).ToList();
         var threadService = new Mock<IThreadService>();
         threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(chats);
-        var viewModel = MakeViewModel(threadService);
-        viewModel.Display = new DisplaySettings { BubbleUnread = true, BubbleRecent = false, BubbleFavorites = false };
+        var favorites = MakeEmptyFavoriteRepository();
+        favorites.Setup(r => r.GetFavoriteThreadIdsAsync()).ReturnsAsync(Enumerable.Range(1, 12).Select(i => (long)i).ToList());
+        var viewModel = MakeViewModel(threadService, favoriteRepository: favorites);
+        viewModel.Display = new DisplaySettings { BubbleUnread = false, BubbleRecent = false, BubbleFavorites = true };
 
         await viewModel.LoadCommand.ExecuteAsync(null);
 
@@ -1448,17 +1474,16 @@ public class ConversationsViewModelTests
     public async Task Bubbles_layout_without_everyone_shows_only_the_checked_groups_and_no_list()
     {
         var chats = FiveNamedChats();
-        chats[1].UnreadCount = 1;
         var threadService = new Mock<IThreadService>();
         threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(chats);
         var favorites = MakeEmptyFavoriteRepository();
-        favorites.Setup(r => r.GetFavoriteThreadIdsAsync()).ReturnsAsync(new List<long> { 4 });
+        favorites.Setup(r => r.GetFavoriteThreadIdsAsync()).ReturnsAsync(new List<long> { 4, 2 });
         var viewModel = MakeViewModel(threadService, favoriteRepository: favorites);
-        viewModel.Display = new DisplaySettings { Layout = ConversationDisplayStyle.Bubbles, BubbleFavorites = true, BubbleUnread = true, BubbleRecent = false };
+        viewModel.Display = new DisplaySettings { Layout = ConversationDisplayStyle.Bubbles, BubbleFavorites = true, BubbleUnread = false, BubbleRecent = false };
 
         await viewModel.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(new long[] { 4, 2 }, viewModel.GridThreads.Select(t => t.Id));
+        Assert.Equal(new long[] { 2, 4 }, viewModel.GridThreads.Select(t => t.Id).OrderBy(i => i));
         Assert.Empty(viewModel.ListThreads);
         Assert.Empty(viewModel.PondThreads);
     }

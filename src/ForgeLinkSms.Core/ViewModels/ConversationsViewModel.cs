@@ -57,6 +57,8 @@ public partial class ConversationsViewModel : ObservableObject
 
     public int UpdatesCount => _allThreads.Count(t => LaneOf(t) == ConversationLane.Updates);
 
+    public int UnreadTabCount => _allThreads.Count(t => TabOf(t) == ConversationLane.Unread);
+
     // Groups the visible Updates threads by what their latest text is about, busiest-recent first.
     public IReadOnlyList<(UpdateCategory Category, IReadOnlyList<SmsThread> Threads)> UpdateGroups => Threads
         .GroupBy(t => UpdateCategorizer.Categorize(t.LastMessageBody, t.DisplayNameOrAddress))
@@ -105,6 +107,13 @@ public partial class ConversationsViewModel : ObservableObject
     public string? RowColor(SmsThread thread) => DisplayRules.RowColor(thread, Display, Filters);
 
     private ConversationLane LaneOf(SmsThread thread) => SenderScreening.LaneFor(thread, _allowedSenders);
+
+    // Unread chats from real conversations wait in their own tab and return to Chats once read.
+    private ConversationLane TabOf(SmsThread thread)
+    {
+        var lane = LaneOf(thread);
+        return lane == ConversationLane.Conversations && thread.UnreadCount > 0 ? ConversationLane.Unread : lane;
+    }
 
     public ConversationsViewModel(
         IThreadService threadService,
@@ -724,11 +733,17 @@ public partial class ConversationsViewModel : ObservableObject
 
     private void ApplyFilter()
     {
+        if (Lane == ConversationLane.Unread && UnreadTabCount == 0)
+        {
+            Lane = ConversationLane.Conversations;
+            return;
+        }
+
         Threads.Clear();
         var query = SearchText.Trim();
         // Search deliberately spans both lanes so a screened sender is still findable by name or text.
         var matches = string.IsNullOrEmpty(query)
-            ? _allThreads.Where(t => LaneOf(t) == Lane)
+            ? _allThreads.Where(t => TabOf(t) == Lane)
             : _allThreads.Where(t =>
                 t.DisplayNameOrAddress.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 t.LastMessageBody.Contains(query, StringComparison.OrdinalIgnoreCase));
@@ -758,6 +773,7 @@ public partial class ConversationsViewModel : ObservableObject
         }
         OnPropertyChanged(nameof(ScreenerCount));
         OnPropertyChanged(nameof(UpdatesCount));
+        OnPropertyChanged(nameof(UnreadTabCount));
         ArrangeThreads();
     }
 

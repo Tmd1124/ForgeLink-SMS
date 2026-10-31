@@ -4,5 +4,6 @@ public enum ConversationLane
 {
     Conversations,
     Updates,
-    Screener
+    Screener,
+    Unread
 }

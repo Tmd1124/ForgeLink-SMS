@@ -42,9 +42,9 @@
     {
         <div id="conversations-header" style="position:sticky;top:0;z-index:10;background:var(--surface-color);display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:6px 0;">
             <div style="display:flex;align-items:center;gap:16px;">
-                <button @onclick="ToggleUnreadFilter" aria-label="@(ViewModel.ShowUnreadOnly ? "Show all chats" : "Show unread only")"
-                        style="width:40px;height:40px;border-radius:50%;border:none;padding:0;display:flex;align-items:center;justify-content:center;background:@(ViewModel.ShowUnreadOnly ? "var(--accent-color)" : "#e2e8f0");color:@(ViewModel.ShowUnreadOnly ? "white" : "#1e293b");">
-                    @(ViewModel.ShowUnreadOnly ? EyeSlashIcon : EyeOpenIcon)
+                <button @onclick="ToggleUnreadFilter" aria-label="@(ViewModel.Lane == ConversationLane.Unread ? "Show all chats" : "Show unread only")"
+                        style="width:40px;height:40px;border-radius:50%;border:none;padding:0;display:flex;align-items:center;justify-content:center;background:@(ViewModel.Lane == ConversationLane.Unread ? "var(--accent-color)" : "#e2e8f0");color:@(ViewModel.Lane == ConversationLane.Unread ? "white" : "#1e293b");">
+                    @(ViewModel.Lane == ConversationLane.Unread ? EyeSlashIcon : EyeOpenIcon)
                 </button>
                 <button @onclick="OpenFilterBrowsePicker" aria-label="Filters"
                         style="width:40px;height:40px;border-radius:50%;border:none;padding:0;display:flex;align-items:center;justify-content:center;background:@(ViewModel.ActiveFilterIds.Count > 0 ? "var(--accent-color)" : "#e2e8f0");color:@(ViewModel.ActiveFilterIds.Count > 0 ? "white" : "#1e293b");">
@@ -103,7 +103,7 @@
 
     @{
         var showLaneTabs = _selectedThreadIds.Count == 0 && string.IsNullOrWhiteSpace(ViewModel.SearchText)
-            && (ViewModel.ScreenerCount > 0 || ViewModel.UpdatesCount > 0 || ViewModel.Lane != ConversationLane.Conversations);
+            && (ViewModel.ScreenerCount > 0 || ViewModel.UpdatesCount > 0 || ViewModel.UnreadTabCount > 0 || ViewModel.Lane != ConversationLane.Conversations);
         var filterTabs = _selectedThreadIds.Count == 0 && string.IsNullOrWhiteSpace(ViewModel.SearchText) && ViewModel.Display.ShowFilterTabs
             ? ViewModel.FiltersInUse
             : Array.Empty<ForgeLinkSms.Core.Models.Filter>();
@@ -305,6 +305,10 @@
                             {
                                 <span title="Pinned">📌 </span>
                             }
+                            @if (thread.UnreadCount > 0)
+                            {
+                                <span aria-hidden="true" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--accent-color);margin-right:6px;"></span>
+                            }
                             <strong>@thread.DisplayNameOrAddress</strong>
                             @if (thread.IsFavorite)
                             {
@@ -322,20 +326,20 @@
                                     <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:@filter.ColorHex;margin-left:4px;"></span>
                                 }
                             }
-                            @if (thread.UnreadCount > 0)
-                            {
-                                <span style="color:#06b6d4;"> ● @thread.UnreadCount</span>
-                            }
                             @if (!string.IsNullOrWhiteSpace(thread.DraftText))
                             {
                                 <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="color:#ef4444;font-weight:600;">Draft:</span> @thread.DraftText</div>
                             }
                             else
                             {
-                                <div style="color:#94a3b8;font-size:0.85em;">@thread.PreviewText</div>
+                                <div style="@(thread.UnreadCount > 0 ? "color:inherit;font-weight:600;" : "color:#94a3b8;")font-size:0.85em;">@thread.PreviewText</div>
                             }
                         </div>
-                        @if (_selectedThreadIds.Count == 0 && ViewModel.Lane != ConversationLane.Conversations && string.IsNullOrWhiteSpace(ViewModel.SearchText))
+                        @if (thread.UnreadCount > 0)
+                        {
+                            <span aria-hidden="true" style="flex-shrink:0;min-width:22px;padding:2px 8px;border-radius:999px;background:var(--accent-color);color:white;font-size:0.8em;font-weight:700;text-align:center;">@thread.UnreadCount</span>
+                        }
+                        @if (_selectedThreadIds.Count == 0 && ViewModel.Lane is ConversationLane.Updates or ConversationLane.Screener && string.IsNullOrWhiteSpace(ViewModel.SearchText))
                         {
                             <div style="display:flex;gap:10px;flex-basis:100%;justify-content:flex-end;">
                                 <button @onclick="() => AllowSender(thread.Address)" @onclick:stopPropagation="true"
@@ -851,7 +855,8 @@
         }
     }
 
-    private void ToggleUnreadFilter() => ViewModel.ShowUnreadOnly = !ViewModel.ShowUnreadOnly;
+    private void ToggleUnreadFilter() =>
+        ViewModel.SelectLane(ViewModel.Lane == ConversationLane.Unread ? ConversationLane.Conversations : ConversationLane.Unread);
 
     private void OpenSearch()
     {
@@ -1246,6 +1251,7 @@
     private IEnumerable<(ConversationLane Lane, string Label, int Count)> LaneTabs()
     {
         yield return (ConversationLane.Conversations, "Chats", 0);
+        yield return (ConversationLane.Unread, "Unread", ViewModel.UnreadTabCount);
         yield return (ConversationLane.Updates, "Updates", ViewModel.UpdatesCount);
         yield return (ConversationLane.Screener, "Screener", ViewModel.ScreenerCount);
     }
