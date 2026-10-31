@@ -42,7 +42,7 @@
         {
             <CascadingValue Name="TwoPane" Value="_twoPane">
                 @* The chat page loads its conversation once, so switching chats must rebuild it rather than reuse it. *@
-                <div @key="Nav.Uri" class="@(_isBackNav ? "nav-enter-back" : "nav-enter-forward")" style="height:100%;">
+                <div @key="Nav.Uri" class="@(_isBackNav ? "nav-enter-back" : "nav-enter-forward")" style="height:100%;@(OwnsScrolling() ? "overflow:hidden;" : "overflow-y:auto;")">
                     @Body
                 </div>
             </CascadingValue>
@@ -119,6 +119,10 @@
         _leftPct = ForgeLinkSms.Core.Utils.TwoPaneRules.ClampLeftPct(pct);
         StateHasChanged();
     }
+
+    // The chat list and an open chat scroll their own lists inside a fixed-height page; every other page scrolls here.
+    private bool OwnsScrolling() =>
+        Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0].Trim('/') is "conversations" or "conversations/thread";
 
     private void Update()
     {
