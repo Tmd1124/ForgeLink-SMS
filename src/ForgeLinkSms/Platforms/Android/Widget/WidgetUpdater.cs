@@ -15,16 +15,10 @@ namespace ForgeLinkSms.Platforms.Android.Widget;
 
 public static class WidgetUpdater
 {
-    private const int TallMinHeightDp = 110;
-
     private static readonly int[] FavoriteSlots = [Resource.Id.fav0, Resource.Id.fav1, Resource.Id.fav2, Resource.Id.fav3, Resource.Id.fav4];
     private static readonly int[] FavoritePhotos = [Resource.Id.fav0_photo, Resource.Id.fav1_photo, Resource.Id.fav2_photo, Resource.Id.fav3_photo, Resource.Id.fav4_photo];
     private static readonly int[] FavoriteBadges = [Resource.Id.fav0_badge, Resource.Id.fav1_badge, Resource.Id.fav2_badge, Resource.Id.fav3_badge, Resource.Id.fav4_badge];
     private static readonly int[] FavoriteNames = [Resource.Id.fav0_name, Resource.Id.fav1_name, Resource.Id.fav2_name, Resource.Id.fav3_name, Resource.Id.fav4_name];
-    private static readonly int[] Rows = [Resource.Id.row0, Resource.Id.row1, Resource.Id.row2];
-    private static readonly int[] RowNames = [Resource.Id.row0_name, Resource.Id.row1_name, Resource.Id.row2_name];
-    private static readonly int[] RowTexts = [Resource.Id.row0_text, Resource.Id.row1_text, Resource.Id.row2_text];
-    private static readonly int[] RowTimes = [Resource.Id.row0_when, Resource.Id.row1_when, Resource.Id.row2_when];
 
     private static readonly object Gate = new();
     private static bool _running;
@@ -98,8 +92,7 @@ public static class WidgetUpdater
 
         foreach (var id in ids)
         {
-            var minHeight = manager.GetAppWidgetOptions(id)?.GetInt(AppWidgetManager.OptionAppwidgetMinHeight) ?? 0;
-            manager.UpdateAppWidget(id, Render(context, snapshot, minHeight >= TallMinHeightDp, accent));
+            manager.UpdateAppWidget(id, Render(context, snapshot, accent));
         }
     }
 
@@ -115,9 +108,9 @@ public static class WidgetUpdater
         }
     }
 
-    private static RemoteViews Render(Context context, WidgetSnapshot? snapshot, bool tall, AndroidColor accent)
+    private static RemoteViews Render(Context context, WidgetSnapshot? snapshot, AndroidColor accent)
     {
-        var views = new RemoteViews(context.PackageName, tall ? Resource.Layout.forgelink_widget_tall : Resource.Layout.forgelink_widget_small);
+        var views = new RemoteViews(context.PackageName, Resource.Layout.forgelink_widget_small);
         views.SetOnClickPendingIntent(Resource.Id.widget_header, Open(context, "/conversations", 1));
         views.SetOnClickPendingIntent(Resource.Id.widget_compose, Open(context, "/compose", 2));
         views.SetInt(Resource.Id.widget_compose, "setColorFilter", accent.ToArgb());
@@ -129,13 +122,6 @@ public static class WidgetUpdater
             views.SetViewVisibility(Resource.Id.widget_favorites, ViewStates.Gone);
             views.SetViewVisibility(Resource.Id.widget_error, ViewStates.Visible);
             views.SetOnClickPendingIntent(Resource.Id.widget_error, Open(context, "/conversations", 3));
-            if (tall)
-            {
-                foreach (var row in Rows)
-                {
-                    views.SetViewVisibility(row, ViewStates.Gone);
-                }
-            }
             return views;
         }
 
@@ -160,25 +146,6 @@ public static class WidgetUpdater
             Tint(views, FavoriteBadges[i], accent);
             views.SetContentDescription(FavoriteSlots[i], AccessibleLabelFor(person));
             views.SetOnClickPendingIntent(FavoriteSlots[i], Open(context, ChatRoute(person.ThreadId, person.Address), 100 + i));
-        }
-
-        if (tall)
-        {
-            views.SetViewVisibility(Resource.Id.widget_caught_up, snapshot.RecentUnread.Count == 0 ? ViewStates.Visible : ViewStates.Gone);
-            for (var i = 0; i < Rows.Length; i++)
-            {
-                if (i >= snapshot.RecentUnread.Count)
-                {
-                    views.SetViewVisibility(Rows[i], ViewStates.Gone);
-                    continue;
-                }
-                var row = snapshot.RecentUnread[i];
-                views.SetViewVisibility(Rows[i], ViewStates.Visible);
-                views.SetTextViewText(RowNames[i], row.Name);
-                views.SetTextViewText(RowTexts[i], row.Text);
-                views.SetTextViewText(RowTimes[i], row.When);
-                views.SetOnClickPendingIntent(Rows[i], Open(context, ChatRoute(row.ThreadId, row.Address), 200 + i));
-            }
         }
         return views;
     }
