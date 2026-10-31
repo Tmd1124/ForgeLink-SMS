@@ -16,6 +16,8 @@ public class ForwardRequestStore
 
     public void Set(string? text, PickedAttachment? attachment) => _pending = new ForwardRequest(text, attachment);
 
+    public ForwardRequest? Peek() => _pending;
+
     public ForwardRequest? Take()
     {
         var pending = _pending;

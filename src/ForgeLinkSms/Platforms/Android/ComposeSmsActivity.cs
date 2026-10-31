@@ -26,12 +26,16 @@ public class ComposeSmsActivity : Activity
         var address = intent?.Data?.SchemeSpecificPart;
         var text = intent?.GetStringExtra(Intent.ExtraText) ?? intent?.GetStringExtra("sms_body");
         var attachment = intent?.Action == Intent.ActionSend ? CopySharedFile(intent) : null;
-        if (!string.IsNullOrEmpty(text) || attachment is not null)
+        var hasSharedContent = !string.IsNullOrEmpty(text) || attachment is not null;
+        if (hasSharedContent)
         {
             MauiApplication.Current.Services.GetRequiredService<ForwardRequestStore>().Set(text, attachment);
         }
 
-        var route = $"/compose?add={Uri.EscapeDataString(address ?? string.Empty)}";
+        // Content shared from another app is placed by choosing a conversation on the chat list, like the search button; a "text this number" link still opens New Message.
+        var route = hasSharedContent && string.IsNullOrEmpty(address)
+            ? "/conversations?share=1"
+            : $"/compose?add={Uri.EscapeDataString(address ?? string.Empty)}";
         var mainIntent = new Intent(this, typeof(MainActivity));
         mainIntent.PutExtra("initial_route", route);
         mainIntent.AddFlags(ActivityFlags.NewTask);

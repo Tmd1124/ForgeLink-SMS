@@ -494,6 +494,10 @@ else
     [SupplyParameterFromQuery(Name = "jumpTicks")]
     public long? JumpTicks { get; set; }
 
+    // Set when a conversation was chosen for something shared in from another app.
+    [SupplyParameterFromQuery(Name = "share")]
+    public string? Share { get; set; }
+
     private ThreadDetailViewModel? ViewModel;
     private string DisplayName = string.Empty;
     private static readonly string[] ReactionEmojis = { "👍", "❤️", "😂", "😮", "😢", "🙏" };
@@ -596,6 +600,14 @@ else
             reviewPrompt: Services.GetRequiredService<ForgeLinkSms.Core.Services.IReviewPromptService>(),
             listRefresher: ListRefresher);
         await ViewModel.LoadCommand.ExecuteAsync(null);
+        if (Share == "1" && Services.GetRequiredService<ForwardRequestStore>().Take() is { } shared)
+        {
+            if (!string.IsNullOrEmpty(shared.Text))
+            {
+                ViewModel.ComposeText = string.IsNullOrEmpty(ViewModel.ComposeText) ? shared.Text : $"{ViewModel.ComposeText}\n{shared.Text}";
+            }
+            _pendingAttachment = shared.Attachment;
+        }
         if (JumpId is long jumpId && JumpTicks is long jumpTicks)
         {
             await JumpToMessage(new ForgeLinkSms.Core.Models.SmsMessage
