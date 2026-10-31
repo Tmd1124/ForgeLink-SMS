@@ -2,6 +2,9 @@
 @implements IDisposable
 @inject ForgeLinkSms.Core.ViewModels.FiltersViewModel ViewModel
 @inject ForgeLinkSms.Core.Services.IFilterIconPicker IconPicker
+@inject Microsoft.JSInterop.IJSRuntime JS
+@inject ForgeLinkSms.Core.ViewModels.ConversationsViewModel Chats
+@inject Microsoft.AspNetCore.Components.NavigationManager Nav
 @using ForgeLinkSms.Components
 @using ForgeLinkSms.Core.Utils
 
@@ -12,15 +15,24 @@
     </div>
     <div style="@HintStyle">Group conversations under a name, emoji, picture and color. They show as tabs above your chats.</div>
 
-    <h4 style="@HeadingStyle">New filter</h4>
+    <h4 id="filter-form" style="@HeadingStyle">@(ViewModel.EditingFilterId is null ? "New filter" : "Edit filter")</h4>
     <div style="@GroupStyle;display:flex;flex-direction:column;gap:10px;padding:12px;">
-        <input placeholder="Name, an emoji, or both" @bind="ViewModel.NewFilterName" @bind:event="oninput" aria-label="New filter name"
+        <input placeholder="Name, an emoji, or both" @bind="ViewModel.NewFilterName" @bind:event="oninput" aria-label="@(ViewModel.EditingFilterId is null ? "New filter name" : "Filter name")"
                style="padding:10px;border-radius:10px;border:1px solid rgba(127,127,127,0.35);background:var(--surface-color);color:var(--text-color);font-size:1em;" />
-        <div class="filter-tabs" style="display:flex;gap:4px;overflow-x:auto;touch-action:pan-x;scrollbar-width:none;">
-            @foreach (var emoji in Emojis)
+        <div class="filter-tabs" role="group" aria-label="Emoji groups" style="display:flex;gap:6px;overflow-x:auto;touch-action:pan-x;scrollbar-width:none;">
+            @for (var i = 0; i < EmojiGroups.Length; i++)
+            {
+                var index = i;
+                var on = _emojiGroup == index;
+                <button @onclick="() => _emojiGroup = index" aria-pressed="@(on ? "true" : "false")"
+                        style="flex-shrink:0;border:none;border-radius:999px;padding:6px 12px;font-size:0.85em;font-weight:600;white-space:nowrap;background:@(on ? "var(--accent-color)" : "var(--surface-color)");color:@(on ? "white" : "var(--text-color)");">@EmojiGroups[index].Icon @EmojiGroups[index].Name</button>
+            }
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            @foreach (var emoji in EmojiGroups[_emojiGroup].Emojis)
             {
                 <button @onclick="() => ViewModel.AddEmoji(emoji)" aria-label="@($"Add {emoji}")"
-                        style="flex-shrink:0;width:40px;height:40px;border:none;border-radius:10px;background:var(--surface-color);font-size:1.4em;padding:0;">@emoji</button>
+                        style="width:40px;height:40px;border:none;border-radius:10px;background:var(--surface-color);font-size:1.4em;padding:0;">@emoji</button>
             }
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -28,15 +40,10 @@
                     style="padding:8px 14px;border-radius:10px;border:none;background:var(--surface-color);color:var(--text-color);font-size:1em;">
                 🖼 @(ViewModel.NewFilterIconDataUri is null ? "Choose a picture" : "Change picture")
             </button>
-            @if (ViewModel.NewFilterIconDataUri is not null)
-            {
-                <button @onclick="() => ViewModel.SetNewFilterIcon(null)" aria-label="Remove picture"
-                        style="border:none;background:transparent;color:var(--text-color);font-size:1.2em;">✕</button>
-            }
         </div>
         @if (ViewModel.NewFilterIconDataUri is not null)
         {
-            <div style="@HintStyle">Preview: <span style="color:var(--text-color);font-size:1.1em;"><FilterLabel Filter="@(new ForgeLinkSms.Core.Models.Filter { Name = ViewModel.NewFilterName, IconDataUri = ViewModel.NewFilterIconDataUri })" Size="24" /></span></div>
+            <div style="@HintStyle">Delete the 🖼 from the name to remove the picture. Preview:<span style="color:var(--text-color);font-size:1.1em;"><FilterLabel Filter="@(new ForgeLinkSms.Core.Models.Filter { Name = ViewModel.NewFilterName, IconDataUri = ViewModel.NewFilterIconDataUri })" Size="24" /></span></div>
         }
         <div role="radiogroup" aria-label="Color" style="display:flex;gap:10px;flex-wrap:wrap;">
             @foreach (var color in ForgeLinkSms.Core.ViewModels.FiltersViewModel.PresetColors)
@@ -48,8 +55,15 @@
         <button @onclick="() => ViewModel.CreateFilterCommand.ExecuteAsync(null)"
                 disabled="@(string.IsNullOrWhiteSpace(ViewModel.NewFilterName))"
                 style="padding:10px;border-radius:10px;border:none;background:var(--accent-color);color:white;font-size:1em;font-weight:600;opacity:@(string.IsNullOrWhiteSpace(ViewModel.NewFilterName) ? "0.5" : "1");">
-            Add filter
+            @(ViewModel.EditingFilterId is null ? "Add filter" : "Update filter")
         </button>
+        @if (ViewModel.EditingFilterId is not null)
+        {
+            <button @onclick="ViewModel.CancelEditing"
+                    style="padding:10px;border-radius:10px;border:none;background:var(--surface-color);color:var(--text-color);font-size:1em;font-weight:600;">
+                Cancel
+            </button>
+        }
     </div>
 
     <h4 style="@HeadingStyle">Your filters</h4>
@@ -59,7 +73,7 @@
     }
     else
     {
-        <div style="@HintStyle;padding:0 4px 6px;">A check means the filter shows as a tab; tap it to turn the tab off or on. Tap a name to rename it, or the dot to change its color.</div>
+        <div style="@HintStyle;padding:0 4px 6px;">A check means the filter shows as a tab; tap it to turn the tab off or on. Tap a name to change it above: edit the text, add an emoji or picture, and press Update filter. Tap a number to see that filter's conversations.</div>
         <div style="@GroupStyle">
             @foreach (var filter in ViewModel.Filters)
             {
@@ -77,23 +91,14 @@
                             <div @onclick="() => ToggleColorPicker(filter.Id)" aria-label="@($"Change color of {FilterName.Plain(filter.Name)}")"
                                  style="width:24px;height:24px;border-radius:50%;background:@filter.ColorHex;cursor:pointer;flex-shrink:0;" role="button" tabindex="0"></div>
 
-                            @if (_editingFilterId == filter.Id)
+                            <span @onclick="() => StartEdit(filter)" aria-label="@($"Edit {FilterName.Plain(filter.Name)}")"
+                                  style="flex:1;cursor:pointer;@(ViewModel.EditingFilterId == filter.Id ? "color:var(--accent-color);" : "")" role="button" tabindex="0"><FilterLabel Filter="filter" Size="22" /></span>
+                            @if (_countsLoaded)
                             {
-                                <input @bind="_editingName" @bind:event="oninput" @onkeyup="@(e => OnRenameKeyUp(e, filter.Id))" aria-label="Filter name"
-                                       style="flex:1;min-width:0;padding:6px;border-radius:6px;border:1px solid rgba(127,127,127,0.35);background:var(--surface-color);color:var(--text-color);font-size:1em;" />
-                                <button @onclick="() => ConfirmRename(filter.Id)" aria-label="Save name" style="border:none;background:transparent;color:var(--text-color);font-size:1.2em;">✓</button>
-                            }
-                            else
-                            {
-                                <span @onclick="() => StartRename(filter)" style="flex:1;cursor:pointer;" role="button" tabindex="0"><FilterLabel Filter="filter" Size="22" /></span>
-                            }
-
-                            <button @onclick="() => PickFilterIcon(filter.Id)" aria-label="@($"Choose a picture for {FilterName.Plain(filter.Name)}")"
-                                    style="border:none;background:transparent;font-size:1.1em;">🖼</button>
-                            @if (filter.IconDataUri is not null)
-                            {
-                                <button @onclick="() => ViewModel.SetFilterIconCommand.ExecuteAsync((filter.Id, (string?)null))" aria-label="@($"Remove the picture from {FilterName.Plain(filter.Name)}")"
-                                        style="border:none;background:transparent;color:var(--text-color);font-size:1.1em;">✕</button>
+                                var count = Chats.FilterChatCount(filter.Id);
+                                <button @onclick="() => OpenFilterChats(filter.Id)"
+                                        aria-label="@($"{count} conversation{(count == 1 ? "" : "s")} in {FilterName.Plain(filter.Name)}, tap to see them")"
+                                        style="border:none;border-radius:999px;padding:4px 12px;background:var(--surface-color);color:var(--text-color);font-size:0.9em;font-variant-numeric:tabular-nums;min-width:40px;">@count</button>
                             }
                             <button @onclick="() => _pendingDelete.StartAsync(filter.Id, filter.Name, () => ViewModel.DeleteFilterCommand.ExecuteAsync(filter.Id))" aria-label="@($"Delete {FilterName.Plain(filter.Name)}")"
                                     style="border:none;background:transparent;font-size:1.1em;">🗑</button>
@@ -125,21 +130,43 @@
     private static string Swatch(string color, bool selected, int size) =>
         $"width:{size}px;height:{size}px;border-radius:50%;background:{color};cursor:pointer;box-shadow:{(selected ? "0 0 0 2px var(--card-color), 0 0 0 4px var(--text-color)" : "none")};";
 
-    private static readonly string[] Emojis =
+    private static readonly (string Name, string Icon, string[] Emojis)[] EmojiGroups =
     {
-        "❤️", "⭐", "👨‍👩‍👧‍👦", "🏠", "💼", "👥", "👶", "💍", "🏀", "⚾", "🏈", "⚽", "🥎", "🏐", "🎓", "🏫",
-        "⛪", "🏥", "💊", "🦷", "🏦", "💳", "🛒", "📦", "🍔", "🚗", "🔧", "✈️", "🏖️", "🐶", "🎉", "🎮",
-        "🎵", "📚", "🔥", "✅", "🔔", "💬"
+        ("People", "👨‍👩‍👧‍👦", new[] { "❤️", "💕", "👨‍👩‍👧‍👦", "👥", "👶", "🧒", "👵", "👴", "💍", "🤝", "🙏", "😊", "🎂", "👫" }),
+        ("Home", "🏠", new[] { "🏠", "🏡", "🏢", "🏫", "🏥", "⛪", "🏦", "🏪", "🏬", "🏭", "🏗️", "🏘️", "🛏️", "🔑", "🚪" }),
+        ("Work", "💼", new[] { "💼", "💳", "💰", "💵", "🧾", "📊", "📈", "📅", "📝", "📞", "💻", "📧", "🖥️", "✉️", "📌", "🏷️" }),
+        ("Trades", "🔧", new[] { "🔧", "🔨", "🛠️", "🧱", "🧹", "🚿", "🔌", "💡", "⚡", "💧", "❄️", "🔥", "🌳", "🌱", "🚜", "🧰" }),
+        ("Sports", "🏀", new[] { "🏀", "⚾", "🏈", "⚽", "🥎", "🏐", "🎾", "🏒", "⛳", "🏌️", "🏊", "🚴", "🏃", "🥊", "🎣", "🏆" }),
+        ("School", "🎓", new[] { "🎓", "🏫", "📚", "✏️", "🎒", "🧠", "🔬", "🔭", "🧮", "📖" }),
+        ("Health", "💊", new[] { "💊", "🦷", "🩺", "🏥", "👓", "🏋️", "🧘", "🩹", "🚑", "🧴" }),
+        ("Food", "🍔", new[] { "🍔", "🍕", "🌮", "🍗", "🥗", "🍳", "☕", "🍺", "🍷", "🍎", "🛒", "🍦" }),
+        ("Travel", "✈️", new[] { "🚗", "✈️", "🚌", "🚚", "🏍️", "🚲", "⛽", "🗺️", "🧳", "🏖️", "🏕️", "⛵" }),
+        ("Fun", "🎉", new[] { "🎉", "🎮", "🎵", "🎬", "📷", "🎨", "🎸", "🎁", "🎲", "🎤", "🎭", "🧩" }),
+        ("Nature", "🐶", new[] { "🐶", "🐱", "🐴", "🐮", "🐔", "🐟", "🦌", "🦅", "🐝", "🌲", "🌸", "☀️", "🌧️", "🌎" }),
+        ("Marks", "✅", new[] { "✅", "🔔", "💬", "⭐", "🔥", "⚠️", "❗", "❓", "🚫", "🔒", "📍", "🚩", "💯", "🆕" })
     };
 
-    private long? _editingFilterId;
-    private string _editingName = string.Empty;
+    private int _emojiGroup;
+
     private long? _colorPickerFilterId;
 
     protected override async Task OnInitializedAsync()
     {
         SetUpPendingDelete();
         await ViewModel.LoadCommand.ExecuteAsync(null);
+        _ = LoadCountsAsync();
+    }
+
+    private bool _countsLoaded;
+
+    private void OpenFilterChats(long filterId) => Nav.NavigateTo($"/filters/chats?id={filterId}");
+
+    // The counts come from the same chat list the Chats screen shows, so they match the filter list there.
+    private async Task LoadCountsAsync()
+    {
+        await Chats.LoadCommand.ExecuteAsync(null);
+        _countsLoaded = true;
+        await InvokeAsync(StateHasChanged);
     }
 
     private DeferredAction<long> _pendingDelete = null!;
@@ -153,31 +180,17 @@
     // Leaving the screen finishes a delete that's still waiting.
     public void Dispose() => _ = _pendingDelete.CommitAsync();
 
-    private void StartRename(ForgeLinkSms.Core.Models.Filter filter)
+    // The name goes up into the form at the top, where text, emoji, picture and color are all changed together.
+    private async Task StartEdit(ForgeLinkSms.Core.Models.Filter filter)
     {
-        _editingFilterId = filter.Id;
-        _editingName = filter.Name;
         _colorPickerFilterId = null;
-    }
-
-    private async Task ConfirmRename(long filterId)
-    {
-        await ViewModel.RenameFilterCommand.ExecuteAsync((filterId, _editingName));
-        _editingFilterId = null;
-    }
-
-    private async Task OnRenameKeyUp(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e, long filterId)
-    {
-        if (e.Key == "Enter")
-        {
-            await ConfirmRename(filterId);
-        }
+        ViewModel.StartEditing(filter);
+        await JS.InvokeVoidAsync("forgeLinkScroll.intoView", "filter-form");
     }
 
     private void ToggleColorPicker(long filterId)
     {
         _colorPickerFilterId = _colorPickerFilterId == filterId ? null : filterId;
-        _editingFilterId = null;
     }
 
     private async Task PickNewIcon()
@@ -185,14 +198,6 @@
         if (await IconPicker.PickIconAsync() is { } icon)
         {
             ViewModel.SetNewFilterIcon(icon);
-        }
-    }
-
-    private async Task PickFilterIcon(long filterId)
-    {
-        if (await IconPicker.PickIconAsync() is { } icon)
-        {
-            await ViewModel.SetFilterIconCommand.ExecuteAsync((filterId, icon));
         }
     }
 

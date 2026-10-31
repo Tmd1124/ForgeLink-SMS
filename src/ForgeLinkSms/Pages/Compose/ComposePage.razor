@@ -115,7 +115,7 @@
             var contact = ViewModel.FindContact(recipient);
             <span class="recipient-chip">
                 @(contact?.DisplayName ?? PhoneNumberFormatter.ToDisplayFormat(recipient))
-                <span class="chip-remove" @onclick="() => ViewModel.RemoveRecipientCommand.Execute(recipient)" role="button" tabindex="0" aria-label="Remove recipient">✕</span>
+                <span class="chip-remove" @onclick="() => ViewModel.RemoveRecipientCommand.Execute(recipient)" role="button" tabindex="0" aria-label="Remove recipient">🗑</span>
             </span>
         }
         <input placeholder="@(ViewModel.Recipients.Count == 0 ? "Name or phone number" : "Add another")"

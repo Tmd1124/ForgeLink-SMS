@@ -22,7 +22,7 @@
     else
     {
         <div style="color:#94a3b8;font-size:0.85em;padding:0 4px 8px;">
-            @_chats.Count conversation@(_chats.Count == 1 ? "" : "s") in <FilterLabel Filter="_filter" />. Tap ✕ to take one out of this filter; the conversation itself isn't deleted.
+            @_chats.Count conversation@(_chats.Count == 1 ? "" : "s") in <FilterLabel Filter="_filter" />. Tap 🗑 to take one out of this filter; the conversation itself isn't deleted.
         </div>
         @if (_chats.Count == 0)
         {
@@ -49,7 +49,7 @@
                             </div>
                         </div>
                         <button @onclick="() => Remove(chat)" aria-label="@($"Remove {chat.DisplayNameOrAddress} from this filter")"
-                                style="width:40px;height:40px;flex-shrink:0;border:none;border-radius:50%;background:var(--surface-color);color:var(--text-color);font-size:1.1em;padding:0;">✕</button>
+                                style="width:40px;height:40px;flex-shrink:0;border:none;border-radius:50%;background:var(--surface-color);color:var(--text-color);font-size:1.1em;padding:0;">🗑</button>
                     </div>
                 }
             </div>

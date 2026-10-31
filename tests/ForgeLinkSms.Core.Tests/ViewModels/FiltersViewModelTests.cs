@@ -72,6 +72,80 @@ public class FiltersViewModelTests
     }
 
     [Fact]
+    public void Deleting_the_picture_marker_from_the_new_filters_name_removes_the_picture()
+    {
+        var viewModel = new FiltersViewModel(new Mock<IFilterRepository>().Object) { NewFilterName = "Golf" };
+        viewModel.SetNewFilterIcon("data:image/png;base64,AAAA");
+
+        viewModel.NewFilterName = "Golf";
+
+        Assert.Null(viewModel.NewFilterIconDataUri);
+    }
+
+    [Fact]
+    public async Task Renaming_a_filter_without_its_picture_marker_removes_the_picture()
+    {
+        var repository = new Mock<IFilterRepository>();
+        repository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter> { new() { Id = 3, Name = "Golf 🖼", ColorHex = "#ef4444", IconDataUri = "data:image/png;base64,AAAA" } });
+        var viewModel = new FiltersViewModel(repository.Object);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.RenameFilterCommand.ExecuteAsync((3L, "Golf"));
+        Assert.Null(viewModel.Filters[0].IconDataUri);
+        repository.Verify(r => r.SetFilterIconAsync(3, null), Times.Once);
+
+        await viewModel.RenameFilterCommand.ExecuteAsync((3L, "Golf Club"));
+        repository.Verify(r => r.SetFilterIconAsync(3, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task Editing_a_filter_loads_it_into_the_form_and_Update_saves_the_changes()
+    {
+        var repository = new Mock<IFilterRepository>();
+        repository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter> { new() { Id = 3, Name = "Golf", ColorHex = "#ef4444" } });
+        var viewModel = new FiltersViewModel(repository.Object);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        viewModel.StartEditing(viewModel.Filters[0]);
+        Assert.Equal(3, viewModel.EditingFilterId);
+        Assert.Equal("Golf", viewModel.NewFilterName);
+
+        viewModel.AddEmoji("🏀");
+        viewModel.SetNewFilterIcon("data:image/png;base64,AAAA");
+        viewModel.NewFilterColorHex = "#22c55e";
+        await viewModel.CreateFilterCommand.ExecuteAsync(null);
+
+        repository.Verify(r => r.CreateFilterAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        repository.Verify(r => r.RenameFilterAsync(3, "Golf 🏀 🖼"), Times.Once);
+        repository.Verify(r => r.SetFilterColorAsync(3, "#22c55e"), Times.Once);
+        repository.Verify(r => r.SetFilterIconAsync(3, "data:image/png;base64,AAAA"), Times.Once);
+        Assert.Equal("Golf 🏀 🖼", viewModel.Filters[0].Name);
+        Assert.Null(viewModel.EditingFilterId);
+        Assert.Equal(string.Empty, viewModel.NewFilterName);
+    }
+
+    [Fact]
+    public async Task Editing_a_filter_with_a_picture_keeps_the_picture_marker_in_the_name_and_cancel_clears_the_form()
+    {
+        var repository = new Mock<IFilterRepository>();
+        repository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter>
+        {
+            new() { Id = 3, Name = "Golf", ColorHex = "#ef4444", IconDataUri = "data:image/png;base64,AAAA" }
+        });
+        var viewModel = new FiltersViewModel(repository.Object);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        viewModel.StartEditing(viewModel.Filters[0]);
+        Assert.Equal("Golf 🖼", viewModel.NewFilterName);
+        Assert.Equal("data:image/png;base64,AAAA", viewModel.NewFilterIconDataUri);
+
+        viewModel.CancelEditing();
+        Assert.Null(viewModel.EditingFilterId);
+        Assert.Equal(string.Empty, viewModel.NewFilterName);
+        Assert.Null(viewModel.NewFilterIconDataUri);
+    }
+
+    [Fact]
     public async Task SetFilterIconCommand_puts_the_picture_in_the_filters_name()
     {
         var repository = new Mock<IFilterRepository>();

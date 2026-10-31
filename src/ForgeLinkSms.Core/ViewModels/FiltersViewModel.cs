@@ -27,11 +27,19 @@ public partial class FiltersViewModel : ObservableObject
     [ObservableProperty]
     private string? _newFilterIconDataUri;
 
-    // The picture goes into the name text like an emoji; removing it takes its spot out again.
+    // The picture goes into the name text like an emoji, and deleting it from the text removes the picture.
     public void SetNewFilterIcon(string? iconDataUri)
     {
         NewFilterIconDataUri = iconDataUri;
         NewFilterName = iconDataUri is null ? FilterName.WithoutMarker(NewFilterName) : FilterName.WithMarker(NewFilterName);
+    }
+
+    partial void OnNewFilterNameChanged(string value)
+    {
+        if (NewFilterIconDataUri is not null && !value.Contains(FilterName.Marker))
+        {
+            NewFilterIconDataUri = null;
+        }
     }
 
     // An emoji on an empty name leads it ("🏀 " ready for typing); otherwise it's appended as a word.
@@ -73,6 +81,12 @@ public partial class FiltersViewModel : ObservableObject
             }
         }
 
+        if (EditingFilterId is { } editingId)
+        {
+            await UpdateFilter(editingId, name);
+            return;
+        }
+
         var filter = await _filterRepository.CreateFilterAsync(name, NewFilterColorHex);
         if (NewFilterIconDataUri is { } icon)
         {
@@ -80,6 +94,51 @@ public partial class FiltersViewModel : ObservableObject
             filter.IconDataUri = icon;
         }
         Filters.Add(filter);
+        ResetForm();
+    }
+
+    private async Task UpdateFilter(long filterId, string name)
+    {
+        var filter = Filters.FirstOrDefault(f => f.Id == filterId);
+        if (filter is not null)
+        {
+            if (name != filter.Name)
+            {
+                await _filterRepository.RenameFilterAsync(filterId, name);
+                filter.Name = name;
+            }
+            if (NewFilterColorHex != filter.ColorHex)
+            {
+                await _filterRepository.SetFilterColorAsync(filterId, NewFilterColorHex);
+                filter.ColorHex = NewFilterColorHex;
+            }
+            if (NewFilterIconDataUri != filter.IconDataUri)
+            {
+                await _filterRepository.SetFilterIconAsync(filterId, NewFilterIconDataUri);
+                filter.IconDataUri = NewFilterIconDataUri;
+            }
+        }
+        ResetForm();
+    }
+
+    /// The filter being changed in the form at the top; null while the form adds a new one.
+    [ObservableProperty]
+    private long? _editingFilterId;
+
+    // Loads a filter into the form so its name, emoji, picture and color can be changed together.
+    public void StartEditing(Filter filter)
+    {
+        EditingFilterId = filter.Id;
+        NewFilterColorHex = filter.ColorHex;
+        NewFilterIconDataUri = filter.IconDataUri;
+        NewFilterName = filter.IconDataUri is null ? filter.Name : FilterName.WithMarker(filter.Name).TrimEnd();
+    }
+
+    public void CancelEditing() => ResetForm();
+
+    private void ResetForm()
+    {
+        EditingFilterId = null;
         NewFilterName = string.Empty;
         NewFilterColorHex = PresetColors[0];
         NewFilterIconDataUri = null;
@@ -129,6 +188,11 @@ public partial class FiltersViewModel : ObservableObject
         if (filter is not null)
         {
             filter.Name = name;
+            if (filter.IconDataUri is not null && !name.Contains(FilterName.Marker))
+            {
+                await _filterRepository.SetFilterIconAsync(filter.Id, null);
+                filter.IconDataUri = null;
+            }
         }
     }
 
@@ -146,6 +210,10 @@ public partial class FiltersViewModel : ObservableObject
     [RelayCommand]
     private async Task DeleteFilter(long filterId)
     {
+        if (EditingFilterId == filterId)
+        {
+            ResetForm();
+        }
         await _filterRepository.DeleteFilterAsync(filterId);
         var filter = Filters.FirstOrDefault(f => f.Id == filterId);
         if (filter is not null)
