@@ -9,7 +9,7 @@ window.forgeLinkBackSwipe = {
         var start = null;
 
         function startsSomewhereElse(target) {
-            if (target.closest("input, textarea, [contenteditable='true'], [data-no-back-swipe]")) {
+            if (target.closest("input, textarea, [contenteditable='true'], [data-no-back-swipe], img[data-zoom]")) {
                 return true;
             }
             // A strip that can still scroll left should get the swipe instead of the page.
