@@ -2,14 +2,15 @@
 
 ## Pick up here
 
-*Last updated 2026-10-30.*
+*Last updated 2026-10-30 (evening).*
 
 **Run it:** connect a physical Android device over USB (the emulator does not run on this ARM64 machine). `adb` is not on PATH; it lives at `C:\Program Files (x86)\Android\android-sdk\platform-tools\adb.exe`. Run `adb devices` (the phone must show `device`, not `unauthorized`), then `dotnet build src/ForgeLinkSms/ForgeLinkSms.csproj -t:Run -f net10.0-android` with that folder on PATH. The app now targets `net10.0-android`. Unit tests: `dotnet test tests/ForgeLinkSms.Core.Tests` (856 pass).
 
 **Deploy:** CI is `azure-pipelines.yml`. Push `master` to both remotes (`origin` = GitHub, `azuredevops`).
 
 **State of play:**
-- Latest code commit `151fa3d`, pushed to both remotes. Working tree is clean apart from this README edit and the untracked `.vscode/` folder.
+- Latest code commit `51300fa`, pushed to both remotes. Working tree is clean apart from the untracked `.vscode/` folder.
+- Back with a photo open in a conversation now redraws so one press closes the viewer (it used to need a second press, which left the conversation). Installed on the phone, not yet confirmed by Travis; if it still jumps to the list, ask whether he used the back key or the edge-swipe gesture.
 - 2026-10-30 changes: pinch/pan/double-tap zoom in the photo viewer (and panning no longer triggers back-swipe); new **Unread** tab beside Chats/Updates/Screener; unread list removed from the home-screen widget; send arrow stays on screen when a long link is shared into New Message or typed in a conversation.
 - The Unread tab, widget change and zoom were built and installed on the phone, but only the share-a-long-link fix was checked on the device. Check the rest by hand.
 - Feature plans in `docs/superpowers/plans/` cover conversation filters, notifications, backup/restore, home widget, two-pane fold and computer access. Which of those are fully shipped has not been re-verified.
