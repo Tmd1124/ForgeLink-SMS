@@ -2,20 +2,27 @@
 
 ## Pick up here
 
-*Last updated 2026-10-18.*
+*Last updated 2026-10-30.*
 
-**Run it:** connect a physical Android device over USB (the emulator does not run on this ARM64 machine), check `adb devices`, then `dotnet build src/ForgeLinkSms/ForgeLinkSms.csproj -t:Run -f net9.0-android`. Unit tests: `dotnet test tests/ForgeLinkSms.Core.Tests`.
+**Run it:** connect a physical Android device over USB (the emulator does not run on this ARM64 machine). `adb` is not on PATH; it lives at `C:\Program Files (x86)\Android\android-sdk\platform-tools\adb.exe`. Run `adb devices` (the phone must show `device`, not `unauthorized`), then `dotnet build src/ForgeLinkSms/ForgeLinkSms.csproj -t:Run -f net10.0-android` with that folder on PATH. The app now targets `net10.0-android`. Unit tests: `dotnet test tests/ForgeLinkSms.Core.Tests` (856 pass).
 
-**Deploy:** CI is `azure-pipelines.yml`. Push to both remotes (`origin` = GitHub, `azuredevops`).
+**Deploy:** CI is `azure-pipelines.yml`. Push `master` to both remotes (`origin` = GitHub, `azuredevops`).
 
 **State of play:**
-- Recent work (latest commit `b7602e9`) is UI polish: conversation list scrolling, screen slide transitions, New Message sheet, contact thumbnails, 3-second undo-send window.
-- Feature plans in `docs/superpowers/plans/` cover conversation filters, notifications, backup/restore, home widget, two-pane fold and computer access. Which of those are fully shipped was not re-verified on 2026-10-18.
-- Uncommitted: only the untracked `.vscode/` folder.
+- Latest code commit `151fa3d`, pushed to both remotes. Working tree is clean apart from this README edit and the untracked `.vscode/` folder.
+- 2026-10-30 changes: pinch/pan/double-tap zoom in the photo viewer (and panning no longer triggers back-swipe); new **Unread** tab beside Chats/Updates/Screener; unread list removed from the home-screen widget; send arrow stays on screen when a long link is shared into New Message or typed in a conversation.
+- The Unread tab, widget change and zoom were built and installed on the phone, but only the share-a-long-link fix was checked on the device. Check the rest by hand.
+- Feature plans in `docs/superpowers/plans/` cover conversation filters, notifications, backup/restore, home widget, two-pane fold and computer access. Which of those are fully shipped has not been re-verified.
 
-**Decisions:** none recorded here; see the specs and plans in `docs/superpowers/`.
+**Decisions:**
+- 2026-10-30, Travis: unread chats live only in the Unread tab and return to Chats once read, instead of floating to the top of Chats or showing as bubbles. Unread chats in Updates/Screener stay in those tabs. The eye button in the header jumps to the Unread tab.
+- 2026-10-30, Travis: the home-screen widget shows favorites only (no recent-unread rows) and always uses the compact layout.
 
-**Open items:** confirm the status of each plan listed above.
+**Open items:**
+- Dead code left behind: `forgelink_widget_tall.xml`, `WidgetContent.RecentUnread` and its tests, and the `ShowUnreadOnly` property.
+- The "Bubble unread" checkbox in Display settings now has no effect, since unread chats never appear in Chats. Remove it or repurpose it.
+- The Build/Run sections below still say `net9.0-android`; update them to `net10.0-android`.
+- Confirm the status of each plan listed above.
 
 A native Android app that sends and receives real SMS text messages through
 the phone's own cellular connection — not a chat app, no backend, no cloud
