@@ -25,11 +25,14 @@
     }
     .compose-grow-wrap {
         display: inline-grid;
+        grid-template-columns: minmax(0, 1fr);
+        min-width: 0;
         vertical-align: bottom;
     }
     .compose-grow-wrap::after {
         content: attr(data-replicated-value) " ";
         white-space: pre-wrap;
+        overflow-wrap: anywhere;
         visibility: hidden;
     }
     .compose-grow-wrap > textarea {

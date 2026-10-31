@@ -75,11 +75,14 @@
 
     .compose-grow-wrap {
         display: inline-grid;
+        grid-template-columns: minmax(0, 1fr);
+        min-width: 0;
         vertical-align: bottom;
     }
     .compose-grow-wrap::after {
         content: attr(data-replicated-value) " ";
         white-space: pre-wrap;
+        overflow-wrap: anywhere;
         visibility: hidden;
     }
     .compose-grow-wrap > textarea {
@@ -201,6 +204,10 @@
         <div style="flex:1;"></div>
     }
 
+    @if (_needsRecipient && ViewModel.Recipients.Count == 0)
+    {
+        <p role="alert" style="margin:0;padding:6px 12px;text-align:center;color:#b45309;font-size:0.9em;">Choose who to send this to first.</p>
+    }
     <PendingAttachmentPreview Attachment="_pendingAttachment" OnRemove="() => _pendingAttachment = null" />
     <ScheduledSendPreview Schedule="_scheduledSendTime" OnRemove="() => _scheduledSendTime = null" />
     <div style="display:flex;align-items:flex-end;padding:8px;border-top:1px solid #eee;">
@@ -212,10 +219,11 @@
             <textarea placeholder="Text message" rows="1" spellcheck="true" autocorrect="on" autocapitalize="sentences"
                       @bind="ViewModel.MessageBody" @bind:event="oninput"></textarea>
         </div>
-        @if (ViewModel.Recipients.Count > 0 && (!string.IsNullOrWhiteSpace(ViewModel.MessageBody) || _pendingAttachment is not null))
+        @if (!string.IsNullOrWhiteSpace(ViewModel.MessageBody) || _pendingAttachment is not null)
         {
-            <button @onclick="SendOrSchedule" aria-label="Send"
-                    style="width:40px;height:40px;border-radius:50%;border:none;background:#22c55e;color:white;font-size:1.2em;margin-left:8px;flex-shrink:0;">
+            var hasRecipient = ViewModel.Recipients.Count > 0;
+            <button @onclick="SendOrSchedule" aria-label="@(hasRecipient ? "Send" : "Send, choose a recipient first")"
+                    style="width:40px;height:40px;border-radius:50%;border:none;background:#22c55e;color:white;font-size:1.2em;margin-left:8px;flex-shrink:0;opacity:@(hasRecipient ? "1" : "0.45");">
                 ➤
             </button>
         }
@@ -245,8 +253,22 @@
         }
     }
 
+    private bool _needsRecipient;
+
     private async Task SendOrSchedule()
     {
+        if (ViewModel.Recipients.Count == 0 && !string.IsNullOrWhiteSpace(ViewModel.SearchText))
+        {
+            ViewModel.AddRecipientCommand.Execute(ViewModel.SearchText);
+            ViewModel.SearchText = string.Empty;
+        }
+        if (ViewModel.Recipients.Count == 0)
+        {
+            _needsRecipient = true;
+            return;
+        }
+        _needsRecipient = false;
+
         if (_scheduledSendTime is { } sendAt)
         {
             await ViewModel.ScheduleSendCommand.ExecuteAsync(sendAt);
