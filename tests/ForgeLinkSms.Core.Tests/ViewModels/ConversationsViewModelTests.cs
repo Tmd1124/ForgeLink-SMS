@@ -421,6 +421,80 @@ public class ConversationsViewModelTests
     }
 
     [Fact]
+    public async Task FilterChatCount_counts_the_conversations_carrying_the_filter()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(new List<SmsThread>
+        {
+            MakeThread(1, "5550142231", "Alice Smith", "hi"),
+            MakeThread(2, "5550148890", "Bob Jones", "hey"),
+            MakeThread(3, "5550149999", "Carol Lee", "yo")
+        });
+        var filterRepository = new Mock<IFilterRepository>();
+        filterRepository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter>());
+        filterRepository.Setup(r => r.GetAllAssignmentsAsync()).ReturnsAsync(new Dictionary<long, List<long>>
+        {
+            [1] = new List<long> { 10 },
+            [2] = new List<long> { 10, 11 }
+        });
+        var viewModel = MakeViewModel(threadService, filterRepository: filterRepository);
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, viewModel.FilterChatCount(10));
+        Assert.Equal(1, viewModel.FilterChatCount(11));
+        Assert.Equal(0, viewModel.FilterChatCount(12));
+        Assert.Equal(new long[] { 1, 2 }, viewModel.ChatsInFilter(10).Select(t => t.Id).OrderBy(i => i));
+    }
+
+    [Fact]
+    public async Task Removing_a_chat_from_a_filter_takes_it_out_of_the_filters_chat_list()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(new List<SmsThread>
+        {
+            MakeThread(1, "5550142231", "Alice Smith", "hi"),
+            MakeThread(2, "5550148890", "Bob Jones", "hey")
+        });
+        var filterRepository = new Mock<IFilterRepository>();
+        filterRepository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter>());
+        filterRepository.Setup(r => r.GetAllAssignmentsAsync()).ReturnsAsync(new Dictionary<long, List<long>>
+        {
+            [1] = new List<long> { 10 },
+            [2] = new List<long> { 10 }
+        });
+        var viewModel = MakeViewModel(threadService, filterRepository: filterRepository);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.ToggleFilterForThreadsCommand.ExecuteAsync((new List<long> { 1 }, 10L));
+
+        filterRepository.Verify(r => r.UnassignFilterAsync(1, 10), Times.Once);
+        Assert.Equal(new long[] { 2 }, viewModel.ChatsInFilter(10).Select(t => t.Id));
+    }
+
+    [Fact]
+    public async Task An_unread_favorite_shows_in_both_chats_and_the_unread_tab()
+    {
+        var threadService = new Mock<IThreadService>();
+        threadService.Setup(s => s.GetThreadsAsync()).ReturnsAsync(new List<SmsThread>
+        {
+            MakeThread(1, "5550142231", "Alice Smith", "hi", unreadCount: 0),
+            MakeThread(2, "5550148890", "Bob Jones", "hey", unreadCount: 2),
+            MakeThread(3, "5550149999", "Carol Lee", "yo", unreadCount: 1)
+        });
+        var favoriteRepository = new Mock<IFavoriteRepository>();
+        favoriteRepository.Setup(r => r.GetFavoriteThreadIdsAsync()).ReturnsAsync(new List<long> { 2 });
+        var viewModel = MakeViewModel(threadService, favoriteRepository: favoriteRepository);
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(new long[] { 1, 2 }, viewModel.Threads.Select(t => t.Id).OrderBy(i => i));
+        viewModel.SelectLane(ConversationLane.Unread);
+        Assert.Equal(new long[] { 2, 3 }, viewModel.Threads.Select(t => t.Id).OrderBy(i => i));
+        Assert.Equal(2, viewModel.UnreadTabCount);
+    }
+
+    [Fact]
     public async Task MarkThreadReadStateCommand_moves_a_chat_between_the_unread_tab_and_chats()
     {
         var threadService = new Mock<IThreadService>();

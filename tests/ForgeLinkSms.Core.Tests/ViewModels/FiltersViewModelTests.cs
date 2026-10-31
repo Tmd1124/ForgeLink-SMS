@@ -43,6 +43,66 @@ public class FiltersViewModelTests
     }
 
     [Fact]
+    public async Task CreateFilterCommand_saves_the_chosen_picture_and_clears_it_afterwards()
+    {
+        var repository = new Mock<IFilterRepository>();
+        repository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter>());
+        repository.Setup(r => r.CreateFilterAsync("Golf", It.IsAny<string>()))
+            .ReturnsAsync(new Filter { Id = 7, Name = "Golf", ColorHex = "#ef4444" });
+        var viewModel = new FiltersViewModel(repository.Object) { NewFilterName = "Golf", NewFilterIconDataUri = "data:image/png;base64,AAAA" };
+
+        await viewModel.CreateFilterCommand.ExecuteAsync(null);
+
+        repository.Verify(r => r.SetFilterIconAsync(7, "data:image/png;base64,AAAA"), Times.Once);
+        Assert.Equal("data:image/png;base64,AAAA", viewModel.Filters[0].IconDataUri);
+        Assert.Null(viewModel.NewFilterIconDataUri);
+    }
+
+    [Fact]
+    public void SetNewFilterIcon_adds_the_picture_to_the_name_text_and_removing_it_takes_it_out()
+    {
+        var viewModel = new FiltersViewModel(new Mock<IFilterRepository>().Object) { NewFilterName = "Golf" };
+
+        viewModel.SetNewFilterIcon("data:image/png;base64,AAAA");
+        Assert.Equal("Golf 🖼", viewModel.NewFilterName);
+
+        viewModel.SetNewFilterIcon(null);
+        Assert.Equal("Golf", viewModel.NewFilterName);
+        Assert.Null(viewModel.NewFilterIconDataUri);
+    }
+
+    [Fact]
+    public async Task SetFilterIconCommand_puts_the_picture_in_the_filters_name()
+    {
+        var repository = new Mock<IFilterRepository>();
+        repository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter> { new() { Id = 3, Name = "Golf", ColorHex = "#ef4444" } });
+        var viewModel = new FiltersViewModel(repository.Object);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.SetFilterIconCommand.ExecuteAsync((3L, (string?)"data:image/png;base64,AAAA"));
+
+        repository.Verify(r => r.RenameFilterAsync(3, "Golf 🖼"), Times.Once);
+        Assert.Equal("Golf 🖼", viewModel.Filters[0].Name);
+    }
+
+    [Fact]
+    public async Task ToggleFilterActiveCommand_flips_whether_the_filter_shows_as_a_tab()
+    {
+        var repository = new Mock<IFilterRepository>();
+        repository.Setup(r => r.GetAllFiltersAsync()).ReturnsAsync(new List<Filter> { new() { Id = 3, Name = "Golf", ColorHex = "#ef4444" } });
+        var viewModel = new FiltersViewModel(repository.Object);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.ToggleFilterActiveCommand.ExecuteAsync(3L);
+        Assert.True(viewModel.Filters[0].IsHidden);
+        repository.Verify(r => r.SetFilterHiddenAsync(3, true), Times.Once);
+
+        await viewModel.ToggleFilterActiveCommand.ExecuteAsync(3L);
+        Assert.False(viewModel.Filters[0].IsHidden);
+        repository.Verify(r => r.SetFilterHiddenAsync(3, false), Times.Once);
+    }
+
+    [Fact]
     public async Task CreateFilterCommand_does_nothing_when_the_name_is_blank()
     {
         var repository = new Mock<IFilterRepository>();

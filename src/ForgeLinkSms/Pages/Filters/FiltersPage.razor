@@ -1,6 +1,7 @@
 @page "/filters"
 @implements IDisposable
 @inject ForgeLinkSms.Core.ViewModels.FiltersViewModel ViewModel
+@inject ForgeLinkSms.Core.Services.IFilterIconPicker IconPicker
 @using ForgeLinkSms.Components
 @using ForgeLinkSms.Core.Utils
 
@@ -9,7 +10,7 @@
         <h3>Filters</h3>
         <HelpButton />
     </div>
-    <div style="@HintStyle">Group conversations under a name, emoji and color. They show as tabs above your chats.</div>
+    <div style="@HintStyle">Group conversations under a name, emoji, picture and color. They show as tabs above your chats.</div>
 
     <h4 style="@HeadingStyle">New filter</h4>
     <div style="@GroupStyle;display:flex;flex-direction:column;gap:10px;padding:12px;">
@@ -22,6 +23,21 @@
                         style="flex-shrink:0;width:40px;height:40px;border:none;border-radius:10px;background:var(--surface-color);font-size:1.4em;padding:0;">@emoji</button>
             }
         </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <button @onclick="PickNewIcon"
+                    style="padding:8px 14px;border-radius:10px;border:none;background:var(--surface-color);color:var(--text-color);font-size:1em;">
+                🖼 @(ViewModel.NewFilterIconDataUri is null ? "Choose a picture" : "Change picture")
+            </button>
+            @if (ViewModel.NewFilterIconDataUri is not null)
+            {
+                <button @onclick="() => ViewModel.SetNewFilterIcon(null)" aria-label="Remove picture"
+                        style="border:none;background:transparent;color:var(--text-color);font-size:1.2em;">✕</button>
+            }
+        </div>
+        @if (ViewModel.NewFilterIconDataUri is not null)
+        {
+            <div style="@HintStyle">Preview: <span style="color:var(--text-color);font-size:1.1em;"><FilterLabel Filter="@(new ForgeLinkSms.Core.Models.Filter { Name = ViewModel.NewFilterName, IconDataUri = ViewModel.NewFilterIconDataUri })" Size="24" /></span></div>
+        }
         <div role="radiogroup" aria-label="Color" style="display:flex;gap:10px;flex-wrap:wrap;">
             @foreach (var color in ForgeLinkSms.Core.ViewModels.FiltersViewModel.PresetColors)
             {
@@ -43,19 +59,22 @@
     }
     else
     {
-        <div style="@HintStyle;padding:0 4px 6px;">Tap a name to rename it, or the dot to change its color.</div>
+        <div style="@HintStyle;padding:0 4px 6px;">A check means the filter shows as a tab; tap it to turn the tab off or on. Tap a name to rename it, or the dot to change its color.</div>
         <div style="@GroupStyle">
             @foreach (var filter in ViewModel.Filters)
             {
                 <div style="padding:10px 12px;@(filter == ViewModel.Filters[^1] ? "" : RowDivider)">
                     @if (_pendingDelete.IsPending(filter.Id))
                     {
-                        <UndoCard Label="@($"{filter.Name} deleted")" OnUndo="_pendingDelete.Undo" />
+                        <UndoCard Label="@($"{FilterName.Plain(filter.Name)} deleted")" OnUndo="_pendingDelete.Undo" />
                     }
                     else
                     {
-                        <div style="display:flex;align-items:center;gap:12px;">
-                            <div @onclick="() => ToggleColorPicker(filter.Id)" aria-label="@($"Change color of {filter.Name}")"
+                        <div style="display:flex;align-items:center;gap:12px;opacity:@(filter.IsHidden ? "0.55" : "1");">
+                            <button @onclick="() => ViewModel.ToggleFilterActiveCommand.ExecuteAsync(filter.Id)" role="checkbox" aria-checked="@(filter.IsHidden ? "false" : "true")"
+                                    aria-label="@($"Show {FilterName.Plain(filter.Name)} as a tab")"
+                                    style="width:26px;height:26px;border-radius:50%;flex-shrink:0;padding:0;display:flex;align-items:center;justify-content:center;border:2px solid var(--accent-color);background:@(filter.IsHidden ? "transparent" : "var(--accent-color)");color:white;font-size:0.95em;line-height:1;">@(filter.IsHidden ? "" : "✓")</button>
+                            <div @onclick="() => ToggleColorPicker(filter.Id)" aria-label="@($"Change color of {FilterName.Plain(filter.Name)}")"
                                  style="width:24px;height:24px;border-radius:50%;background:@filter.ColorHex;cursor:pointer;flex-shrink:0;" role="button" tabindex="0"></div>
 
                             @if (_editingFilterId == filter.Id)
@@ -66,10 +85,17 @@
                             }
                             else
                             {
-                                <span @onclick="() => StartRename(filter)" style="flex:1;cursor:pointer;" role="button" tabindex="0">@filter.Name</span>
+                                <span @onclick="() => StartRename(filter)" style="flex:1;cursor:pointer;" role="button" tabindex="0"><FilterLabel Filter="filter" Size="22" /></span>
                             }
 
-                            <button @onclick="() => _pendingDelete.StartAsync(filter.Id, filter.Name, () => ViewModel.DeleteFilterCommand.ExecuteAsync(filter.Id))" aria-label="@($"Delete {filter.Name}")"
+                            <button @onclick="() => PickFilterIcon(filter.Id)" aria-label="@($"Choose a picture for {FilterName.Plain(filter.Name)}")"
+                                    style="border:none;background:transparent;font-size:1.1em;">🖼</button>
+                            @if (filter.IconDataUri is not null)
+                            {
+                                <button @onclick="() => ViewModel.SetFilterIconCommand.ExecuteAsync((filter.Id, (string?)null))" aria-label="@($"Remove the picture from {FilterName.Plain(filter.Name)}")"
+                                        style="border:none;background:transparent;color:var(--text-color);font-size:1.1em;">✕</button>
+                            }
+                            <button @onclick="() => _pendingDelete.StartAsync(filter.Id, filter.Name, () => ViewModel.DeleteFilterCommand.ExecuteAsync(filter.Id))" aria-label="@($"Delete {FilterName.Plain(filter.Name)}")"
                                     style="border:none;background:transparent;font-size:1.1em;">🗑</button>
                         </div>
 
@@ -152,6 +178,22 @@
     {
         _colorPickerFilterId = _colorPickerFilterId == filterId ? null : filterId;
         _editingFilterId = null;
+    }
+
+    private async Task PickNewIcon()
+    {
+        if (await IconPicker.PickIconAsync() is { } icon)
+        {
+            ViewModel.SetNewFilterIcon(icon);
+        }
+    }
+
+    private async Task PickFilterIcon(long filterId)
+    {
+        if (await IconPicker.PickIconAsync() is { } icon)
+        {
+            await ViewModel.SetFilterIconCommand.ExecuteAsync((filterId, icon));
+        }
     }
 
     private async Task SetColor(long filterId, string color)

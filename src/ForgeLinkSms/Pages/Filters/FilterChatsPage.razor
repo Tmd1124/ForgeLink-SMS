@@ -1,0 +1,84 @@
+@page "/filters/chats"
+@inject ForgeLinkSms.Core.ViewModels.ConversationsViewModel ViewModel
+@inject Microsoft.AspNetCore.Components.NavigationManager Nav
+@using ForgeLinkSms.Components
+@using ForgeLinkSms.Core.Models
+@using ForgeLinkSms.Core.Utils
+
+<div style="padding:12px;padding-bottom:40px;">
+    <div class="page-title-row">
+        <h3>@(_filter is null ? "Filter" : FilterName.Plain(_filter.Name))</h3>
+        <HelpButton />
+    </div>
+
+    @if (_isLoading)
+    {
+        <p style="text-align:center;color:#94a3b8;">Loading…</p>
+    }
+    else if (_filter is null)
+    {
+        <p style="text-align:center;color:#94a3b8;">This filter no longer exists.</p>
+    }
+    else
+    {
+        <div style="color:#94a3b8;font-size:0.85em;padding:0 4px 8px;">
+            @_chats.Count conversation@(_chats.Count == 1 ? "" : "s") in <FilterLabel Filter="_filter" />. Tap ✕ to take one out of this filter; the conversation itself isn't deleted.
+        </div>
+        @if (_chats.Count == 0)
+        {
+            <p style="text-align:center;color:#94a3b8;padding:24px 12px;">No conversations in this filter.</p>
+        }
+        else
+        {
+            <div style="background:var(--card-color);border-radius:12px;overflow:hidden;">
+                @foreach (var chat in _chats)
+                {
+                    <div @key="chat.Id" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(127,127,127,0.2);">
+                        <div @onclick="() => Open(chat)" role="button" tabindex="0" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer;">
+                            @if (!string.IsNullOrEmpty(chat.PhotoUri))
+                            {
+                                <img src="@chat.PhotoUri" alt="" loading="lazy" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
+                            }
+                            else
+                            {
+                                <div style="width:40px;height:40px;border-radius:50%;background:@PondSelector.ColorFor(chat.Address);color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:600;">@chat.Initials</div>
+                            }
+                            <div style="min-width:0;">
+                                <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@chat.DisplayNameOrAddress</div>
+                                <div style="color:#94a3b8;font-size:0.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@chat.PreviewText</div>
+                            </div>
+                        </div>
+                        <button @onclick="() => Remove(chat)" aria-label="@($"Remove {chat.DisplayNameOrAddress} from this filter")"
+                                style="width:40px;height:40px;flex-shrink:0;border:none;border-radius:50%;background:var(--surface-color);color:var(--text-color);font-size:1.1em;padding:0;">✕</button>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")]
+    public long FilterId { get; set; }
+
+    private Filter? _filter;
+    private IReadOnlyList<SmsThread> _chats = Array.Empty<SmsThread>();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.LoadCommand.ExecuteAsync(null);
+        _filter = ViewModel.Filters.FirstOrDefault(f => f.Id == FilterId);
+        _chats = ViewModel.ChatsInFilter(FilterId);
+        _isLoading = false;
+    }
+
+    private void Open(SmsThread chat) =>
+        Nav.NavigateTo($"/conversations/thread?id={chat.Id}&address={Uri.EscapeDataString(chat.Address)}");
+
+    private async Task Remove(SmsThread chat)
+    {
+        await ViewModel.ToggleFilterForThreadsCommand.ExecuteAsync((new List<long> { chat.Id }, FilterId));
+        _chats = ViewModel.ChatsInFilter(FilterId);
+    }
+}

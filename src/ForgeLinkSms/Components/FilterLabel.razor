@@ -1,0 +1,22 @@
+@using ForgeLinkSms.Core.Models
+@using ForgeLinkSms.Core.Utils
+
+@if (Filter.IconDataUri is { } icon)
+{
+    var (before, after) = FilterName.Split(Filter.Name);
+    @before
+    <img src="@icon" alt="" style="width:@(Size)px;height:@(Size)px;border-radius:50%;object-fit:cover;vertical-align:-@(Size / 4)px;margin:0 4px;" />
+    @after
+}
+else
+{
+    @Filter.Name
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public Filter Filter { get; set; } = null!;
+
+    [Parameter]
+    public int Size { get; set; } = 18;
+}

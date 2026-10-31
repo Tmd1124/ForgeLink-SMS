@@ -90,6 +90,32 @@ public class FilterRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task SetFilterHiddenAsync_hides_and_shows_the_filter_and_new_filters_start_visible()
+    {
+        var filter = await _repository.CreateFilterAsync("Work", "#6366f1");
+        Assert.False((await _repository.GetAllFiltersAsync())[0].IsHidden);
+
+        await _repository.SetFilterHiddenAsync(filter.Id, true);
+        Assert.True((await _repository.GetAllFiltersAsync())[0].IsHidden);
+
+        await _repository.SetFilterHiddenAsync(filter.Id, false);
+        Assert.False((await _repository.GetAllFiltersAsync())[0].IsHidden);
+    }
+
+    [Fact]
+    public async Task SetFilterIconAsync_saves_and_clears_the_picture()
+    {
+        var filter = await _repository.CreateFilterAsync("Work", "#6366f1");
+        Assert.Null((await _repository.GetAllFiltersAsync())[0].IconDataUri);
+
+        await _repository.SetFilterIconAsync(filter.Id, "data:image/png;base64,AAAA");
+        Assert.Equal("data:image/png;base64,AAAA", (await _repository.GetAllFiltersAsync())[0].IconDataUri);
+
+        await _repository.SetFilterIconAsync(filter.Id, null);
+        Assert.Null((await _repository.GetAllFiltersAsync())[0].IconDataUri);
+    }
+
+    [Fact]
     public async Task DeleteFilterAsync_removes_the_filter()
     {
         var filter = await _repository.CreateFilterAsync("Work", "#6366f1");

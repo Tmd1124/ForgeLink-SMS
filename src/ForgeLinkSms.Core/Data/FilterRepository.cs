@@ -43,6 +43,12 @@ public class FilterRepository : IFilterRepository, IDisposable
     public Task SetFilterColorAsync(long filterId, string colorHex) =>
         _db.ExecuteAsync("UPDATE Filter SET ColorHex = ? WHERE Id = ?", colorHex, filterId);
 
+    public Task SetFilterHiddenAsync(long filterId, bool isHidden) =>
+        _db.ExecuteAsync("UPDATE Filter SET IsHidden = ? WHERE Id = ?", isHidden ? 1 : 0, filterId);
+
+    public Task SetFilterIconAsync(long filterId, string? iconDataUri) =>
+        _db.ExecuteAsync("UPDATE Filter SET IconDataUri = ? WHERE Id = ?", iconDataUri, filterId);
+
     public Task ReorderFiltersAsync(IReadOnlyList<long> orderedIds) =>
         _db.RunInTransactionAsync(connection =>
         {

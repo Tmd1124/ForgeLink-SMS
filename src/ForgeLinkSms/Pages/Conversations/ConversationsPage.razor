@@ -177,7 +177,7 @@
                         <button @key="filter.Id" data-filter-id="@filter.Id" @onclick="() => OnFilterTabTap(filter.Id)"
                                 aria-description="@(_arrangingFilters ? null : "Long-press to rearrange")"
                                 style="flex-shrink:0;border:2px solid @filter.ColorHex;border-radius:999px;padding:3px 12px;font-size:0.8em;font-weight:600;white-space:nowrap;background:@(isActive ? filter.ColorHex : "transparent");color:@(isActive ? "white" : "var(--text-color)");transition:transform 0.1s;@FilterTabExtraStyle(filter.Id)">
-                            @filter.Name
+                            <FilterLabel Filter="filter" />
                         </button>
                     }
                 </div>
@@ -413,9 +413,10 @@
 @if (_actionSheetThreadId is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;" @onclick="CloseActionSheet">
-        <div style="background:var(--card-color);width:100%;padding:12px;" role="dialog" aria-modal="true" aria-label="Chat options" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:12px;max-height:85vh;overflow-y:auto;" role="dialog" aria-modal="true" aria-label="Chat options" @onclick:stopPropagation="true">
             <div @onclick="FavoriteSelectedThread" style="padding:12px;" role="button" tabindex="0">@(_actionSheetIsFavorite ? "💔 Unfavorite" : "❤️ Favorite")</div>
             <div @onclick="PinSelectedThread" style="padding:12px;" role="button" tabindex="0">@(_actionSheetIsPinned ? "📌 Unpin" : "📌 Pin")</div>
+            <div @onclick="OpenFilterFromOverflow" style="padding:12px;display:flex;align-items:center;gap:8px;" role="button" tabindex="0">@FunnelIcon <span>Filter</span></div>
             <div @onclick="MarkReadSelectedThread" style="padding:12px;display:flex;align-items:center;gap:8px;" role="button" tabindex="0">@(_actionSheetIsUnread ? EyeOpenIcon : EyeSlashIcon) <span>@(_actionSheetIsUnread ? "Mark as Read" : "Mark as Unread")</span></div>
             <div @onclick="OpenSnoozeSheet" style="padding:12px;" role="button" tabindex="0">💤 Snooze</div>
             @if (_actionSheetIsMuted)
@@ -450,7 +451,7 @@
 @if (_muteThreadId is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="() => _muteThreadId = null">
-        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" aria-label="Mute notifications" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;max-height:85vh;overflow-y:auto;" role="dialog" aria-modal="true" aria-label="Mute notifications" @onclick:stopPropagation="true">
             <div style="padding:4px 12px 8px;font-weight:600;">Mute notifications for…</div>
             @foreach (var preset in ForgeLinkSms.Core.Utils.MutePresets.For(DateTimeOffset.UtcNow))
             {
@@ -463,7 +464,7 @@
 @if (_snoozeThreadId is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="CloseSnoozeSheet">
-        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;" role="dialog" aria-modal="true" aria-label="Snooze until" @onclick:stopPropagation="true">
+        <div style="background:var(--card-color);width:100%;padding:12px;border-radius:16px 16px 0 0;max-height:85vh;overflow-y:auto;" role="dialog" aria-modal="true" aria-label="Snooze until" @onclick:stopPropagation="true">
             <div style="padding:4px 12px 8px;font-weight:600;">Snooze until…</div>
             @foreach (var preset in ForgeLinkSms.Core.Utils.SnoozePresets.For(DateTime.Now))
             {
@@ -484,8 +485,9 @@
 <FilterPickerSheet @ref="_filterSheet"
                     Filters="ViewModel.Filters"
                     IsChecked="IsFilterChecked"
+                    CountFor="f => ViewModel.FilterChatCount(f.Id)"
+                    OnCountTap="OpenFilterChats"
                     OnToggle="OnFilterToggled"
-                    ShowManageLink="!_isFilterAssignMode"
                     OnManageFilters="OpenFilterMaintenance"
                     OnClosed="OnFilterSheetClosed" />
 
@@ -529,8 +531,6 @@
     private long? _snoozeThreadId;
     private readonly HashSet<UpdateCategory> _expandedUpdateGroups = new();
     private bool _restoreRowAnchor;
-    private long? _pinnedThreadId;
-    private bool _scrollPinnedToTop;
     private CancellationTokenSource? _messageSearchCts;
     private DateTime? _customSnoozeTime;
     private readonly CancellationTokenSource _codeExpiryCts = new();
@@ -836,11 +836,6 @@
             _restoreRowAnchor = false;
             await JS.InvokeVoidAsync("forgeLinkBubblePond.restoreRow");
         }
-        if (_scrollPinnedToTop && _pinnedThreadId is { } pinnedId)
-        {
-            _scrollPinnedToTop = false;
-            await JS.InvokeVoidAsync("forgeLinkBubblePond.scrollListToTop", RowId(pinnedId));
-        }
         if (_shouldFocusSearch)
         {
             _shouldFocusSearch = false;
@@ -1049,7 +1044,7 @@
         ViewModel.FindThread(result.ThreadId) is { } thread && ViewModel.IsInActiveFilters(thread);
 
     private string ActiveFilterNames() =>
-        string.Join(", ", ViewModel.Filters.Where(f => ViewModel.ActiveFilterIds.Contains(f.Id)).Select(f => f.Name));
+        string.Join(", ", ViewModel.Filters.Where(f => ViewModel.ActiveFilterIds.Contains(f.Id)).Select(f => FilterName.Plain(f.Name)));
 
     private string? _infoToast;
     private CancellationTokenSource? _infoToastCts;
@@ -1230,13 +1225,13 @@
 
     private void SelectFromPond(SmsThread thread) => StartSelection(thread.Id);
 
-    // The long-pressed chat leads the selection list; later taps just add to the selection.
+    // Selecting keeps the list in its usual order; the bubbles hide, so the pressed row is anchored to stay where it was.
     private void StartSelection(long threadId)
     {
-        if (_selectedThreadIds.Count == 0)
+        if (_selectedThreadIds.Count == 0 && (ViewModel.PondThreads.Count > 0 || ViewModel.GridThreads.Count > 0))
         {
-            _pinnedThreadId = threadId;
-            _scrollPinnedToTop = true;
+            _ = JS.InvokeVoidAsync("forgeLinkBubblePond.rememberRow", RowId(threadId));
+            _restoreRowAnchor = true;
         }
         _selectedThreadIds.Add(threadId);
     }
@@ -1265,7 +1260,7 @@
         if (ViewModel.Lane != ConversationLane.Updates || !string.IsNullOrWhiteSpace(ViewModel.SearchText))
         {
             // While selecting, the bubbles hide, so every thread (bubbled ones included) must be in the list.
-            var rows = _selectedThreadIds.Count == 0 ? ViewModel.ListThreads : SelectionOrder.PinFirst(ViewModel.Threads, _pinnedThreadId);
+            var rows = _selectedThreadIds.Count == 0 ? ViewModel.ListThreads : ViewModel.Threads;
             foreach (var thread in rows)
             {
                 yield return (null, thread);
@@ -1273,17 +1268,12 @@
             yield break;
         }
 
-        var pinned = _selectedThreadIds.Count > 0 ? ViewModel.Threads.FirstOrDefault(t => t.Id == _pinnedThreadId) : null;
-        if (pinned is not null)
-        {
-            yield return (null, pinned);
-        }
         foreach (var group in ViewModel.UpdateGroups)
         {
             yield return (group, null);
             if (_expandedUpdateGroups.Contains(group.Category))
             {
-                foreach (var thread in group.Threads.Where(t => t.Id != pinned?.Id))
+                foreach (var thread in group.Threads)
                 {
                     yield return (null, thread);
                 }
@@ -1485,11 +1475,10 @@
         {
             // The JS call is queued ahead of this handler's render batch, so it measures the row
             // before the pond reappears above it.
-            _ = JS.InvokeVoidAsync("forgeLinkBubblePond.rememberRow", RowId(_pinnedThreadId ?? _selectedThreadIds.First()));
+            _ = JS.InvokeVoidAsync("forgeLinkBubblePond.rememberRow", RowId(_selectedThreadIds.First()));
             _restoreRowAnchor = true;
         }
         _selectedThreadIds.Clear();
-        _pinnedThreadId = null;
     }
 
     private static string RowId(long threadId) => $"thread-row-{threadId}";
@@ -1516,6 +1505,12 @@
     {
         _isFilterAssignMode = true;
         _filterSheet?.Open();
+    }
+
+    private void OpenFilterFromOverflow()
+    {
+        CloseActionSheet();
+        OpenFilterAssignPicker();
     }
 
     private void OnFilterSheetClosed()
@@ -1546,6 +1541,14 @@
             ViewModel.ToggleActiveFilter(filter.Id);
         }
         StateHasChanged();
+    }
+
+    // Goes through the Filters screen so Back from the list of chats lands there.
+    private void OpenFilterChats(ForgeLinkSms.Core.Models.Filter filter)
+    {
+        _filterSheet?.Close();
+        Nav.NavigateTo("/filters");
+        Nav.NavigateTo($"/filters/chats?id={filter.Id}");
     }
 
     private void OpenFilterMaintenance()

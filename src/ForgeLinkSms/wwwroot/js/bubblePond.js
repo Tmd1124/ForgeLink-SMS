@@ -53,13 +53,6 @@ window.forgeLinkBubblePond = {
             this.scrollerFor(row).scrollTop += delta;
         }
     },
-    // Selection puts the long-pressed row first in the list, so showing it means scrolling to the top.
-    scrollListToTop: function (rowId) {
-        var row = document.getElementById(rowId);
-        if (row) {
-            this.scrollerFor(row).scrollTop = 0;
-        }
-    },
     scrollerFor: function (row) {
         for (var el = row.parentElement; el; el = el.parentElement) {
             var overflowY = getComputedStyle(el).overflowY;

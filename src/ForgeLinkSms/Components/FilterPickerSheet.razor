@@ -15,19 +15,22 @@
                     <div @onclick="() => OnToggle.InvokeAsync(filter)"
                          style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #eee;cursor:pointer;" role="button" tabindex="0">
                         <div style="width:20px;height:20px;border-radius:50%;background:@filter.ColorHex;flex-shrink:0;"></div>
-                        <span style="flex:1;">@filter.Name</span>
+                        <span style="flex:1;"><FilterLabel Filter="filter" Size="22" /></span>
+                        @if (CountFor?.Invoke(filter) is { } count)
+                        {
+                            <button @onclick="() => OnCountTap.InvokeAsync(filter)" @onclick:stopPropagation="true"
+                                    aria-label="@($"{count} conversation{(count == 1 ? "" : "s")}, tap to see them")"
+                                    style="border:none;border-radius:999px;padding:4px 12px;background:var(--surface-color);color:var(--text-color);font-size:0.9em;font-variant-numeric:tabular-nums;min-width:40px;">@count</button>
+                        }
                         <div style="width:20px;height:20px;border:2px solid var(--accent-color);border-radius:4px;display:flex;align-items:center;justify-content:center;background:@(IsChecked(filter) ? "var(--accent-color)" : "transparent");color:white;flex-shrink:0;">
                             @(IsChecked(filter) ? "✓" : "")
                         </div>
                     </div>
                 }
             }
-            @if (ShowManageLink)
-            {
-                <div @onclick="OnManageFilters" style="padding:12px 0 0;color:var(--accent-color);font-weight:600;cursor:pointer;" role="button" tabindex="0">
-                    Manage filters
-                </div>
-            }
+            <div @onclick="OnManageFilters" style="padding:12px 0 0;color:var(--accent-color);font-weight:600;cursor:pointer;" role="button" tabindex="0">
+                Edit filters
+            </div>
         </div>
     </div>
 }
@@ -44,10 +47,13 @@
     public Func<Filter, bool> IsChecked { get; set; } = _ => false;
 
     [Parameter]
-    public EventCallback<Filter> OnToggle { get; set; }
+    public Func<Filter, int>? CountFor { get; set; }
 
     [Parameter]
-    public bool ShowManageLink { get; set; }
+    public EventCallback<Filter> OnCountTap { get; set; }
+
+    [Parameter]
+    public EventCallback<Filter> OnToggle { get; set; }
 
     [Parameter]
     public EventCallback OnManageFilters { get; set; }

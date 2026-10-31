@@ -9,6 +9,12 @@ public interface IFilterRepository
     Task<Filter> CreateFilterAsync(string name, string colorHex);
     Task RenameFilterAsync(long filterId, string newName);
     Task SetFilterColorAsync(long filterId, string colorHex);
+
+    /// Hides or shows the filter's tab above the chats; its chats stay assigned either way.
+    Task SetFilterHiddenAsync(long filterId, bool isHidden);
+
+    /// Sets the filter's picture, or clears it when iconDataUri is null.
+    Task SetFilterIconAsync(long filterId, string? iconDataUri);
     Task DeleteFilterAsync(long filterId);
 
     /// Saves the order filters are shown in, first to last.

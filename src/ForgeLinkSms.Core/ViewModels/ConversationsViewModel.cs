@@ -37,9 +37,18 @@ public partial class ConversationsViewModel : ObservableObject
     public ObservableCollection<Filter> Filters { get; } = new();
     public HashSet<long> ActiveFilterIds { get; } = new();
 
-    /// Filters with at least one visible conversation assigned, in the user's filter order.
+    /// How many conversations in the list carry this filter.
+    public int FilterChatCount(long filterId) => _allThreads.Count(t => t.FilterIds.Contains(filterId));
+
+    /// The conversations carrying this filter, newest first.
+    public IReadOnlyList<SmsThread> ChatsInFilter(long filterId) => _allThreads
+        .Where(t => t.FilterIds.Contains(filterId))
+        .OrderByDescending(t => t.LastMessageTimestamp)
+        .ToList();
+
+    /// Active filters with at least one visible conversation assigned, in the user's filter order.
     public IReadOnlyList<Filter> FiltersInUse => Filters
-        .Where(f => _allThreads.Any(t => t.FilterIds.Contains(f.Id)))
+        .Where(f => !f.IsHidden && _allThreads.Any(t => t.FilterIds.Contains(f.Id)))
         .ToList();
 
     [ObservableProperty]
@@ -57,7 +66,7 @@ public partial class ConversationsViewModel : ObservableObject
 
     public int UpdatesCount => _allThreads.Count(t => LaneOf(t) == ConversationLane.Updates);
 
-    public int UnreadTabCount => _allThreads.Count(t => TabOf(t) == ConversationLane.Unread);
+    public int UnreadTabCount => _allThreads.Count(t => InTab(t, ConversationLane.Unread));
 
     // Groups the visible Updates threads by what their latest text is about, busiest-recent first.
     public IReadOnlyList<(UpdateCategory Category, IReadOnlyList<SmsThread> Threads)> UpdateGroups => Threads
@@ -108,11 +117,18 @@ public partial class ConversationsViewModel : ObservableObject
 
     private ConversationLane LaneOf(SmsThread thread) => SenderScreening.LaneFor(thread, _allowedSenders);
 
-    // Unread chats from real conversations wait in their own tab and return to Chats once read.
-    private ConversationLane TabOf(SmsThread thread)
+    // Unread chats from real conversations wait in their own tab and return to Chats once read;
+    // unread favorites show in both places.
+    private bool InTab(SmsThread thread, ConversationLane tab)
     {
         var lane = LaneOf(thread);
-        return lane == ConversationLane.Conversations && thread.UnreadCount > 0 ? ConversationLane.Unread : lane;
+        var isUnreadChat = lane == ConversationLane.Conversations && thread.UnreadCount > 0;
+        return tab switch
+        {
+            ConversationLane.Unread => isUnreadChat,
+            ConversationLane.Conversations => lane == ConversationLane.Conversations && (!isUnreadChat || thread.IsFavorite),
+            _ => lane == tab
+        };
     }
 
     public ConversationsViewModel(
@@ -282,7 +298,7 @@ public partial class ConversationsViewModel : ObservableObject
             {
                 Filters.Add(filter);
             }
-            ActiveFilterIds.RemoveWhere(id => Filters.All(f => f.Id != id));
+            ActiveFilterIds.RemoveWhere(id => Filters.All(f => f.Id != id || f.IsHidden));
 
             _allThreads = threads
                 .Where(t => !trashedIds.Contains(t.Id) && !blockedNumbers.Contains(t.Address) && !archivedIds.Contains(t.Id) && !snoozed.ContainsKey(t.Id))
@@ -729,7 +745,7 @@ public partial class ConversationsViewModel : ObservableObject
 
     private void ApplyFilter()
     {
-        if (Lane != ConversationLane.Conversations && _allThreads.All(t => TabOf(t) != Lane))
+        if (Lane != ConversationLane.Conversations && !_allThreads.Any(t => InTab(t, Lane)))
         {
             Lane = ConversationLane.Conversations;
             return;
@@ -739,7 +755,7 @@ public partial class ConversationsViewModel : ObservableObject
         var query = SearchText.Trim();
         // Search deliberately spans both lanes so a screened sender is still findable by name or text.
         var matches = string.IsNullOrEmpty(query)
-            ? _allThreads.Where(t => TabOf(t) == Lane)
+            ? _allThreads.Where(t => InTab(t, Lane))
             : _allThreads.Where(t =>
                 t.DisplayNameOrAddress.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 t.LastMessageBody.Contains(query, StringComparison.OrdinalIgnoreCase));
