@@ -92,7 +92,7 @@
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:25;display:flex;align-items:center;justify-content:center;" @onclick="CloseViewer">
         @if (_viewerImage is not null)
         {
-            <img src="@_viewerImage" alt="@_viewerItem.FileName" style="max-width:100%;max-height:100%;object-fit:contain;" @onclick:stopPropagation="true" />
+            <img src="@_viewerImage" alt="@_viewerItem.FileName" data-zoom style="max-width:100%;max-height:100%;object-fit:contain;touch-action:none;" @onclick:stopPropagation="true" />
         }
         else
         {

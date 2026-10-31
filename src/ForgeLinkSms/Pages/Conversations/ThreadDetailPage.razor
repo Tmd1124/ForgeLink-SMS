@@ -448,8 +448,8 @@ else
         }
         else
         {
-            <img src="@_viewerSrc" alt="@viewing.FileName" @onerror="() => _viewerFailed = true"
-                 style="max-width:100%;max-height:100%;object-fit:contain;" @onclick:stopPropagation="true" />
+            <img src="@_viewerSrc" alt="@viewing.FileName" data-zoom @onerror="() => _viewerFailed = true"
+                 style="max-width:100%;max-height:100%;object-fit:contain;touch-action:none;" @onclick:stopPropagation="true" />
         }
         <button @onclick="() => SaveAttachment(viewing)" @onclick:stopPropagation="true" title="Download" aria-label="Download"
                 style="position:absolute;top:16px;left:16px;height:40px;padding:0 16px;border-radius:999px;border:none;background:rgba(255,255,255,0.15);color:white;font-size:1em;font-weight:600;">
