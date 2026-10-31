@@ -1353,8 +1353,7 @@ public class ConversationsViewModelTests
         viewModel.ShowUnreadOnly = false;
 
         viewModel.Lane = ConversationLane.Updates;
-        Assert.Empty(viewModel.PondThreads);
-        viewModel.Lane = ConversationLane.Conversations;
+        Assert.Equal(ConversationLane.Conversations, viewModel.Lane);
 
         Assert.NotEmpty(viewModel.PondThreads);
     }

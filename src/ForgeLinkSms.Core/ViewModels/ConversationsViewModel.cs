@@ -567,10 +567,6 @@ public partial class ConversationsViewModel : ObservableObject
         await _allowedSenderRepository.AllowAsync(normalizedAddress);
         _undoStack.Push(new AllowSenderUndoAction(normalizedAddress, _allowedSenderRepository));
         _allowedSenders = _allowedSenders.Append(normalizedAddress).ToHashSet();
-        if ((Lane == ConversationLane.Screener && ScreenerCount == 0) || (Lane == ConversationLane.Updates && UpdatesCount == 0))
-        {
-            Lane = ConversationLane.Conversations;
-        }
         ApplyFilter();
     }
 
@@ -733,7 +729,7 @@ public partial class ConversationsViewModel : ObservableObject
 
     private void ApplyFilter()
     {
-        if (Lane == ConversationLane.Unread && UnreadTabCount == 0)
+        if (Lane != ConversationLane.Conversations && _allThreads.All(t => TabOf(t) != Lane))
         {
             Lane = ConversationLane.Conversations;
             return;
