@@ -853,6 +853,7 @@ else
         if (_viewerAttachment is not null)
         {
             CloseImageViewer();
+            _ = InvokeAsync(StateHasChanged);
             return true;
         }
 
