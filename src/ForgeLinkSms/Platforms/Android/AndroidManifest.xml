@@ -23,6 +23,8 @@
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
     </application>
+    <!-- ML Kit GenAI needs Android 8; OnDeviceAiService never calls it below that, so the app keeps supporting Android 7. -->
+    <uses-sdk tools:overrideLibrary="com.google.mlkit.genai.prompt,com.google.mlkit.genai.common" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Lets ForgeLink hand a downloaded update to Android's installer (sideloaded builds only). -->

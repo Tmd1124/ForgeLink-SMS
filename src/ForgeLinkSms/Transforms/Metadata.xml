@@ -1,0 +1,5 @@
+<metadata>
+  <!-- ML Kit GenAI is Kotlin the binder can't wrap; it's called through reflection, so drop its generated bindings. -->
+  <remove-node path="/api/package[starts-with(@name,'com.google.mlkit.genai')]" />
+  <remove-node path="/api/package[contains(@name,'mlkit_genai')]" />
+</metadata>

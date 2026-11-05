@@ -93,6 +93,11 @@
                 </div>
                 <button @onclick="OpenMedia" title="Photos &amp; links"
                         style="border:none;background:transparent;font-size:1.1em;padding:8px 6px;" aria-label="Photos &amp; links">🖼️</button>
+                @if (_ai is { Status: not ForgeLinkSms.Core.Services.OnDeviceAiStatus.Unsupported })
+                {
+                    <button @onclick="OpenAssistant" title="Assistant (runs on this phone)"
+                            style="border:none;background:transparent;font-size:1.1em;padding:8px 6px;" aria-label="Assistant">✨</button>
+                }
                 <button @onclick="OpenSearch" title="Search this conversation"
                         style="border:none;background:transparent;font-size:1.1em;padding:8px 6px;" aria-label="Search this conversation">🔍</button>
                 <span style="padding:0 8px 0 4px;display:flex;"><HelpButton /></span>
@@ -380,6 +385,51 @@ else
 
 <AttachmentDrawer @ref="_drawer" OnInsertText="InsertIntoCompose" OnAttachmentPicked="a => _pendingAttachment = a" OnScheduleTimePicked="t => _scheduledSendTime = t" />
 
+@if (_assistantOpen)
+{
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;z-index:20;" @onclick="CloseAssistant">
+        <div style="background:var(--card-color);width:100%;padding:16px;border-radius:16px 16px 0 0;max-height:80vh;overflow-y:auto;" role="dialog" aria-modal="true" aria-label="Assistant" @onclick:stopPropagation="true">
+            <div style="font-weight:600;font-size:1.1em;">✨ Assistant</div>
+            <div style="color:#94a3b8;font-size:0.85em;margin:2px 0 12px;">Runs on this phone with Google's Gemini Nano. Your messages never leave it. AI can make mistakes.</div>
+            @if (_ai is { Status: ForgeLinkSms.Core.Services.OnDeviceAiStatus.Ready })
+            {
+                <div style="display:flex;gap:10px;">
+                    <button @onclick="() => RunAssistant(summary: true)" disabled="@_assistantBusy" style="@AssistantButtonStyle">📝 Summarize this chat</button>
+                    <button @onclick="() => RunAssistant(summary: false)" disabled="@_assistantBusy" style="@AssistantButtonStyle">💬 Suggest a reply</button>
+                </div>
+                @if (_assistantBusy)
+                {
+                    <div role="status" style="margin-top:12px;color:#94a3b8;">Thinking…</div>
+                }
+                @if (!string.IsNullOrEmpty(_assistantResult))
+                {
+                    <div style="margin-top:12px;padding:12px;border-radius:12px;background:var(--surface-color);white-space:pre-wrap;user-select:text;">@_assistantResult</div>
+                    @if (!_assistantWasSummary)
+                    {
+                        <button @onclick="UseAssistantReply" style="@AssistantButtonStyle;margin-top:10px;width:100%;background:var(--accent-color);color:white;">Use this reply</button>
+                        <div style="color:#94a3b8;font-size:0.85em;margin-top:4px;">It goes into the message box. Nothing is sent until you tap send.</div>
+                    }
+                }
+                @if (!string.IsNullOrEmpty(_assistantError))
+                {
+                    <div role="alert" style="margin-top:12px;color:#ef4444;">@_assistantError</div>
+                }
+            }
+            else
+            {
+                <div style="margin-bottom:12px;">To use the assistant, Android needs to download Google's on-device model once. It can be large, so use Wi-Fi. After that it works offline.</div>
+                <button @onclick="DownloadAssistant" disabled="@_assistantBusy" style="@AssistantButtonStyle;width:100%;background:var(--accent-color);color:white;">
+                    @(_assistantBusy ? $"Downloading… {_assistantMegabytes} MB" : "Download")
+                </button>
+                @if (!string.IsNullOrEmpty(_assistantError))
+                {
+                    <div role="alert" style="margin-top:12px;color:#ef4444;">@_assistantError</div>
+                }
+            }
+        </div>
+    </div>
+}
+
 @if (_reactionTargetMessage is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;" @onclick="CloseReactionBar">
@@ -501,6 +551,102 @@ else
     private ThreadDetailViewModel? ViewModel;
     private string DisplayName = string.Empty;
     private static readonly string[] ReactionEmojis = { "👍", "❤️", "😂", "😮", "😢", "🙏" };
+    private const string AssistantButtonStyle = "flex:1;padding:12px;border:none;border-radius:12px;background:var(--surface-color);color:var(--text-color);font:inherit;font-weight:600;";
+    private ForgeLinkSms.Core.Services.OnDeviceAiState? _ai;
+    private bool _assistantOpen;
+    private bool _assistantBusy;
+    private bool _assistantWasSummary;
+    private string? _assistantResult;
+    private string? _assistantError;
+    private long _assistantMegabytes;
+
+    private async Task LoadAssistantStateAsync()
+    {
+        _ai = await Services.GetRequiredService<ForgeLinkSms.Core.Services.IOnDeviceAiService>().GetStateAsync();
+        if (!_disposed)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OpenAssistant()
+    {
+        _assistantOpen = true;
+        _assistantResult = _assistantError = null;
+        _ai = await Services.GetRequiredService<ForgeLinkSms.Core.Services.IOnDeviceAiService>().GetStateAsync();
+        await SuggestReplyIfReady();
+    }
+
+    // Suggesting a reply is the assistant's default: it starts as soon as the sheet opens.
+    private async Task SuggestReplyIfReady()
+    {
+        if (_ai is { Status: ForgeLinkSms.Core.Services.OnDeviceAiStatus.Ready } && _assistantOpen)
+        {
+            await RunAssistant(summary: false);
+        }
+    }
+
+    private void CloseAssistant() => _assistantOpen = false;
+
+    private async Task DownloadAssistant()
+    {
+        _assistantBusy = true;
+        _assistantError = null;
+        var progress = new Progress<long>(bytes =>
+        {
+            _assistantMegabytes = bytes / (1024 * 1024);
+            _ = InvokeAsync(StateHasChanged);
+        });
+        var ai = Services.GetRequiredService<ForgeLinkSms.Core.Services.IOnDeviceAiService>();
+        _assistantError = await ai.DownloadAsync(progress);
+        _ai = await ai.GetStateAsync();
+        _assistantBusy = false;
+        await SuggestReplyIfReady();
+    }
+
+    private async Task RunAssistant(bool summary)
+    {
+        if (ViewModel is null)
+        {
+            return;
+        }
+        _assistantBusy = true;
+        _assistantResult = _assistantError = null;
+        _assistantWasSummary = summary;
+        try
+        {
+            var chat = ViewModel.Messages
+                .Where(m => !m.IsHiddenReaction)
+                .Select(m => new ForgeLinkSms.Core.Utils.ChatLine(m.IsOutgoing, m.Body, m.Timestamp))
+                .ToList();
+            var prompt = summary
+                ? ForgeLinkSms.Core.Utils.AssistantPrompts.Summary(chat, DisplayName)
+                : ForgeLinkSms.Core.Utils.AssistantPrompts.Reply(chat, DisplayName);
+            _assistantResult = (await Services.GetRequiredService<ForgeLinkSms.Core.Services.IOnDeviceAiService>().GenerateAsync(prompt)).Trim();
+            if (_assistantResult.Length == 0)
+            {
+                _assistantError = "The assistant had nothing to say. Try again.";
+            }
+        }
+        catch (ForgeLinkSms.Core.Services.OnDeviceAiException e)
+        {
+            _assistantError = e.Message;
+        }
+        finally
+        {
+            _assistantBusy = false;
+        }
+    }
+
+    private void UseAssistantReply()
+    {
+        if (ViewModel is not null && !string.IsNullOrWhiteSpace(_assistantResult))
+        {
+            ViewModel.ComposeText = _assistantResult.Trim('"', ' ');
+        }
+        _assistantOpen = false;
+    }
+
     private ForgeLinkSms.Core.Models.SmsMessage? _reactionTargetMessage;
     private ForgeLinkSms.Core.Models.MessageAttachment? _viewerAttachment;
     private CancellationTokenSource? _messageLongPressCts;
@@ -601,6 +747,7 @@ else
             drafts: Services.GetRequiredService<ForgeLinkSms.Core.Data.IDraftRepository>(),
             reviewPrompt: Services.GetRequiredService<ForgeLinkSms.Core.Services.IReviewPromptService>(),
             listRefresher: ListRefresher);
+        _ = LoadAssistantStateAsync();
         await ViewModel.LoadCommand.ExecuteAsync(null);
         if (Share == "1" && Services.GetRequiredService<ForwardRequestStore>().Take() is { } shared)
         {
@@ -874,6 +1021,13 @@ else
         if (_drawer is { IsOpen: true })
         {
             _drawer.Close();
+            return true;
+        }
+
+        if (_assistantOpen)
+        {
+            CloseAssistant();
+            StateHasChanged();
             return true;
         }
 

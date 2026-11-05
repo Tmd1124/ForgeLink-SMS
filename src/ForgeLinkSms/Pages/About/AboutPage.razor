@@ -1,0 +1,152 @@
+@page "/about"
+@inject ForgeLinkSms.Core.Services.IUpdateService Updates
+@inject ForgeLinkSms.Core.Services.ICrashReportService CrashReports
+@inject ForgeLinkSms.Core.Services.IReviewPromptService ReviewPrompt
+@inject ForgeLinkSms.Core.Services.IOnDeviceAiService OnDeviceAi
+@inject Microsoft.AspNetCore.Components.NavigationManager Nav
+@using ForgeLinkSms.Core.Services
+@using ForgeLinkSms.Platforms.Android
+
+<div style="padding:12px;padding-bottom:40px;">
+    <div class="page-title-row">
+        <h3>About ForgeLink</h3>
+    </div>
+    <div style="@HintStyle;margin-bottom:8px;">A private SMS and MMS app by AzureForge AI. Messages stay on this phone.</div>
+
+    <h4 style="@HeadingStyle">Version</h4>
+    <div style="@GroupStyle">
+        @Line("Installed", Updates.InstalledVersionName)
+        @Line("Newest available", LatestText())
+        @Line("Build type", BuildInfo.IsDevelopment ? "Development (debug build)" : "Production (release build)")
+        @Line("Installed from", BuildInfo.InstallSource, last: true)
+    </div>
+    @if (Updates.IsSupported)
+    {
+        <button @onclick="Check" disabled="@_checking" style="@ButtonStyle;margin-top:8px;width:100%;">@(_checking ? "Checking…" : "Check for updates")</button>
+        @if (_update is not null)
+        {
+            <button @onclick="@(() => Nav.NavigateTo("/updates"))" style="@PrimaryStyle">Update to @_update.VersionName</button>
+        }
+        @if (BuildInfo.IsDevelopment)
+        {
+            <div style="@HintStyle;padding:6px 4px 0;">This is a development build, signed with a different key than the released app, so Android can't update it in place. Reinstall from the website to get production builds.</div>
+        }
+    }
+
+    <h4 style="@HeadingStyle">This phone</h4>
+    <div style="@GroupStyle">
+        @Line("Device", BuildInfo.Device)
+        @Line("Android", BuildInfo.AndroidVersion)
+        @Line("On-device AI", AiText())
+        @Line("Package", BuildInfo.PackageName, last: true)
+    </div>
+
+    <h4 style="@HeadingStyle">Learn more</h4>
+    <div style="@GroupStyle">
+        @LinkRow("🌐", "ForgeLink SMS on cloudcompassai.com", () => Open("https://cloudcompassai.com/products/forgelink-sms.html"))
+        @LinkRow("🔒", "Privacy policy", () => Open("https://cloudcompassai.com/privacy-policy.html"))
+        @LinkRow("✉️", "Send feedback", () => { CrashReports.EmailFeedback(); return Task.CompletedTask; })
+        @LinkRow("⭐", "Rate ForgeLink", () => { Nav.NavigateTo("/rate"); return Task.CompletedTask; }, last: true)
+    </div>
+
+    <div style="@HintStyle;text-align:center;margin-top:24px;">© @DateTime.Now.Year AzureForge AI</div>
+</div>
+
+@code {
+    private const string HintStyle = "color:#94a3b8;font-size:0.85em";
+    private const string HeadingStyle = "margin:20px 4px 6px;font-size:0.8em;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#94a3b8;";
+    private const string GroupStyle = "background:var(--card-color);border-radius:12px;overflow:hidden";
+    private const string ButtonStyle = "padding:12px;border:none;border-radius:12px;background:var(--card-color);color:var(--text-color);font:inherit;font-weight:600;";
+    private const string PrimaryStyle = "margin-top:8px;width:100%;padding:14px;border:none;border-radius:12px;background:var(--accent-color);color:white;font:inherit;font-weight:600;";
+
+    private UpdateInfo? _update;
+    private bool _checking;
+    private bool _checkFailed;
+    private bool _checked;
+
+    private ForgeLinkSms.Core.Services.OnDeviceAiState? _ai;
+
+    private string AiText() => _ai switch
+    {
+        null => "Checking…",
+        { Status: OnDeviceAiStatus.Ready } => "Ready (Gemini Nano)",
+        { Status: OnDeviceAiStatus.NeedsDownload } => "Needs a one-time download",
+        { Status: OnDeviceAiStatus.Downloading } => "Downloading…",
+        var other => $"Not available{(string.IsNullOrEmpty(other.Detail) ? "" : $" — {other.Detail}")}"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ = LoadAiAsync();
+        _update = Updates.PendingUpdate;
+        _checked = Updates.LastCheckedUtc is not null;
+        if (Updates.IsSupported)
+        {
+            await Check();
+        }
+    }
+
+    private async Task LoadAiAsync()
+    {
+        _ai = await OnDeviceAi.GetStateAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Check()
+    {
+        _checking = true;
+        _checkFailed = false;
+        StateHasChanged();
+        try
+        {
+            var outcome = await Updates.CheckAsync(force: true);
+            _checkFailed = outcome.Result == UpdateCheckResult.Failed;
+            if (!_checkFailed)
+            {
+                _update = outcome.Update;
+                _checked = true;
+            }
+        }
+        finally
+        {
+            _checking = false;
+        }
+    }
+
+    private string LatestText()
+    {
+        if (!Updates.IsSupported)
+        {
+            return "Updated by Google Play";
+        }
+        if (_checking)
+        {
+            return "Checking…";
+        }
+        if (_update is { } update)
+        {
+            return $"{update.VersionName} (update available)";
+        }
+        if (_checkFailed)
+        {
+            return "Couldn't check right now";
+        }
+        return _checked ? "You're up to date" : "Not checked yet";
+    }
+
+    private static Task Open(string url) => Launcher.Default.OpenAsync(new Uri(url));
+
+    private static RenderFragment Line(string label, string value, bool last = false) =>
+        @<div style="display:flex;justify-content:space-between;gap:12px;padding:12px;@(last ? "" : "border-bottom:1px solid rgba(127,127,127,0.2);")">
+            <span style="color:#94a3b8;">@label</span>
+            <span style="text-align:right;min-width:0;overflow-wrap:anywhere;">@value</span>
+        </div>;
+
+    private RenderFragment LinkRow(string icon, string label, Func<Task> onClick, bool last = false) =>
+        @<div @onclick="onClick" role="button" tabindex="0"
+              style="display:flex;align-items:center;gap:12px;padding:14px 12px;@(last ? "" : "border-bottom:1px solid rgba(127,127,127,0.2);")">
+            <span aria-hidden="true" style="width:1.5em;text-align:center;">@icon</span>
+            <span style="flex:1;min-width:0;">@label</span>
+            <span aria-hidden="true" style="color:#94a3b8;font-size:1.3em;line-height:1;">›</span>
+        </div>;
+}
