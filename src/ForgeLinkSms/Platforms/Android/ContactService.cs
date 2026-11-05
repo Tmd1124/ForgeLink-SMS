@@ -24,6 +24,12 @@ public class ContactService : IContactService
 
     public async Task<ContactInfo?> LookupAsync(string phoneNumber)
     {
+        // PhoneLookup with an empty number throws IllegalArgumentException, which took down the whole conversations list.
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            return null;
+        }
+
         if (_lookupCache.TryGetValue(phoneNumber, out var cached))
         {
             return cached;
@@ -155,6 +161,11 @@ public class ContactService : IContactService
 
     public Task OpenContactAsync(string phoneNumber)
     {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            return Task.CompletedTask;
+        }
+
         var context = AndroidApp.Context;
         var lookupUri = FindContactLookupUri(context, phoneNumber);
 

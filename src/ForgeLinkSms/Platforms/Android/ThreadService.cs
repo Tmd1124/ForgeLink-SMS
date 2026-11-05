@@ -21,7 +21,7 @@ public class ThreadService : IThreadService
     {
         public required long ThreadId { get; init; }
         public required long DateMillis { get; init; }
-        public required string Address { get; init; }
+        public required string Address { get; set; }
         public required string Body { get; init; }
         public required bool IsUnread { get; init; }
     }
@@ -56,6 +56,17 @@ public class ThreadService : IThreadService
         // call) for every thread runs on its own thread-pool thread instead of one at a time —
         // with dozens of conversations, sequential awaits here were the dominant cost of loading
         // the list.
+        // A thread's newest message can lack an address (e.g. an MMS or RCS row), which left the row
+        // with no contact and an empty number; the thread's own recipient list still knows it.
+        foreach (var row in rawRows.Rows)
+        {
+            if (string.IsNullOrWhiteSpace(row.Address)
+                && rawRows.Participants.TryGetValue(row.ThreadId, out var known) && known.Count == 1)
+            {
+                row.Address = known[0];
+            }
+        }
+
         var contacts = await Task.WhenAll(rawRows.Rows.Select(row => Task.Run(() => _contactService.LookupAsync(row.Address))));
 
         // Group titles need a name for every member, so look each distinct member up once.
