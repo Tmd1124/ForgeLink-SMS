@@ -24,7 +24,6 @@
 **Open items:**
 - Dead code left behind: `forgelink_widget_tall.xml`, `WidgetContent.RecentUnread` and its tests, and the `ShowUnreadOnly` property.
 - The "Bubble unread" checkbox in Display settings now has no effect, since unread chats never appear in Chats. Remove it or repurpose it.
-- The Build/Run sections below still say `net9.0-android`; update them to `net10.0-android`.
 - Other `LookupAsync` callers (notifications, delivery status, MMS download, export) still pass raw addresses; blank ones are now safe, but no one has checked what they show for a thread with no address.
 - Confirm the status of each plan listed above.
 
@@ -36,7 +35,7 @@ the implementation plan this was built from.
 
 ## Requirements
 
-- .NET SDK 9.0+ with the `android` workload (`dotnet workload install android`)
+- .NET SDK 10.0+ with the `android` workload (`dotnet workload install android`)
 - A physical Android device connected over USB with USB debugging enabled.
   This project's development machine could not run the Android emulator at
   all (ARM64 Windows host — see the implementation plan's Task 1 for the
@@ -46,17 +45,17 @@ the implementation plan this was built from.
 
 ## Build
 
-    dotnet build src/ForgeLinkSms/ForgeLinkSms.csproj -f net9.0-android
+    dotnet build src/ForgeLinkSms/ForgeLinkSms.csproj -f net10.0-android
 
-(`dotnet build ForgeLinkSms.sln -f net9.0-android` — building the whole
+(`dotnet build ForgeLinkSms.sln -f net10.0-android` — building the whole
 solution with an Android target filter — does not work, since
-`ForgeLinkSms.Core`/`ForgeLinkSms.Core.Tests` are plain `net9.0` projects
+`ForgeLinkSms.Core`/`ForgeLinkSms.Core.Tests` are plain `net10.0` projects
 that don't target Android; build the app project directly, or build the
 solution with no `-f` filter.)
 
 ## Run on a device
 
-    dotnet build src/ForgeLinkSms/ForgeLinkSms.csproj -t:Run -f net9.0-android
+    dotnet build src/ForgeLinkSms/ForgeLinkSms.csproj -t:Run -f net10.0-android
 
 ## Run the unit tests
 
