@@ -59,6 +59,7 @@
             @Row("🎨", "Theme", () => Go("/theme"))
             @Row("⚙", "Settings", () => Go("/settings"))
             @Row("⬆️", "Check for updates", () => Go("/updates"), summary: Updates.PendingUpdate is { } pending ? $"Version {pending.VersionName} is available" : null)
+            @Row("💬", "Ask ForgeLink", () => Go("/assistant"))
             @Row("⭐", "Rate ForgeLink", () => Go("/rate"))
             @Row("🛍", "Rate ForgeLink on Google Play", () => { ReviewPrompt.OpenStoreListing(); return Task.CompletedTask; })
             @Row("ℹ️", "About", () => Go("/about"), last: true, summary: $"Version {Updates.InstalledVersionName}")

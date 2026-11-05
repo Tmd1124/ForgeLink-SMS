@@ -622,7 +622,7 @@ else
             var prompt = summary
                 ? ForgeLinkSms.Core.Utils.AssistantPrompts.Summary(chat, DisplayName)
                 : ForgeLinkSms.Core.Utils.AssistantPrompts.Reply(chat, DisplayName);
-            _assistantResult = (await Services.GetRequiredService<ForgeLinkSms.Core.Services.IOnDeviceAiService>().GenerateAsync(prompt)).Trim();
+            _assistantResult = ForgeLinkSms.Core.Utils.AssistantPrompts.Clean(await Services.GetRequiredService<ForgeLinkSms.Core.Services.IOnDeviceAiService>().GenerateAsync(prompt));
             if (_assistantResult.Length == 0)
             {
                 _assistantError = "The assistant had nothing to say. Try again.";

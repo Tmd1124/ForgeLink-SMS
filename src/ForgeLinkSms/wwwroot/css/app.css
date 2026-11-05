@@ -379,3 +379,21 @@ body {
 .group-row { cursor: pointer; padding: 14px 12px; }
 .group-row-icon { color: var(--accent-color); display: flex; }
 .group-row.danger, .group-row.danger .group-row-icon { color: #ef4444; }
+
+/* ---------- Ask ForgeLink ---------- */
+.assist-page { padding: 12px 12px 24px; display: flex; flex-direction: column; min-height: 100%; }
+.assist-note { color: #94a3b8; font-size: 0.82em; margin: 0 0 10px; }
+.assist-thread { display: flex; flex-direction: column; gap: 8px; flex: 1; padding-bottom: 8px; }
+.assist-bubble { max-width: 86%; padding: 10px 13px; border-radius: 18px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.assist-bubble.me { align-self: flex-end; background: var(--accent-color); color: #04210f; border-bottom-right-radius: 5px; }
+.assist-bubble.bot { align-self: flex-start; background: var(--card-color); border: 1px solid rgba(127, 127, 127, 0.25); border-bottom-left-radius: 5px; }
+.assist-source { align-self: flex-start; margin: -4px 0 2px 6px; font-size: 0.74em; font-weight: 600; color: var(--accent-color); }
+.assist-thinking { letter-spacing: 3px; opacity: 0.7; }
+.assist-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+.assist-chip { border: 1px solid rgba(127, 127, 127, 0.35); background: var(--card-color); color: var(--text-color); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 0.9em; }
+.assist-report { align-self: flex-start; margin: 0 0 10px; border: 1px solid rgba(127, 127, 127, 0.35); background: transparent; color: var(--text-color); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 0.85em; }
+.assist-input { position: sticky; bottom: 0; display: flex; gap: 8px; padding-top: 8px; background: var(--surface-color); }
+.assist-input input { flex: 1; min-width: 0; padding: 12px 16px; border-radius: 999px; font: inherit; border: 1px solid rgba(127, 127, 127, 0.35); background: var(--card-color); color: var(--text-color); }
+.assist-input button { width: 46px; border: none; border-radius: 50%; background: var(--accent-color); color: #04210f; font-size: 1.1em; }
+.assist-input button:disabled { opacity: 0.45; }
+@media (prefers-reduced-motion: no-preference) { .assist-bubble { animation: help-item 0.25s ease both; } }

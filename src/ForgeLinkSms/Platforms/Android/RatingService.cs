@@ -7,7 +7,7 @@ public class RatingService(RatingClient client, IReviewPromptService prompts) : 
     private const string InstallIdKey = "rating_install_id";
 
     // Random, made on first use; identifies one install so a person can't rate twice. Not a device id.
-    private static string InstallId()
+    internal static string InstallId()
     {
         var id = Preferences.Get(InstallIdKey, "");
         if (id.Length == 0)

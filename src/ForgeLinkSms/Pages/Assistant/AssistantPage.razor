@@ -1,0 +1,100 @@
+@page "/assistant"
+@inject ForgeLinkSms.Core.Services.AssistantService Assistant
+@inject ForgeLinkSms.Core.Services.ICrashReportService Email
+@inject IJSRuntime JS
+@using ForgeLinkSms.Core.Services
+
+<div class="assist-page">
+    <div class="page-title-row">
+        <h3>Ask ForgeLink</h3>
+    </div>
+    <p class="assist-note">Ask how something works or why something isn't working. Please don't type private information. Your messages and contacts are never sent.</p>
+
+    <div class="assist-thread" role="log" aria-live="polite">
+        <div class="assist-bubble bot">Hi! Ask me how anything in ForgeLink works.</div>
+        @foreach (var message in _messages)
+        {
+            <div class="assist-bubble @(message.FromMe ? "me" : "bot")">@message.Text</div>
+            @if (message.Source is { Length: > 0 } source)
+            {
+                <div class="assist-source">@source</div>
+            }
+        }
+        @if (_thinking)
+        {
+            <div class="assist-bubble bot assist-thinking" aria-label="Thinking">…</div>
+        }
+        <div id="assist-end"></div>
+    </div>
+
+    @if (_messages.Count == 0)
+    {
+        <div class="assist-chips">
+            @foreach (var suggestion in Suggestions)
+            {
+                var text = suggestion;
+                <button class="assist-chip" @onclick="() => Ask(text)">@text</button>
+            }
+        </div>
+    }
+    else
+    {
+        <button class="assist-report" @onclick="Email.EmailFeedback">Send a report</button>
+    }
+
+    <form class="assist-input" @onsubmit="() => Ask(_draft)" @onsubmit:preventDefault>
+        <input @bind="_draft" @bind:event="oninput" maxlength="500" placeholder="Ask a question" aria-label="Ask a question" autocomplete="off" />
+        <button type="submit" disabled="@(_thinking || string.IsNullOrWhiteSpace(_draft))" aria-label="Send">➤</button>
+    </form>
+</div>
+
+@code {
+    private static readonly string[] Suggestions =
+    {
+        "How do I pin a chat?",
+        "How do I back up my texts?",
+        "What do the Updates and Screener tabs do?"
+    };
+
+    private sealed record Message(string Text, bool FromMe, string? Source = null);
+
+    private readonly List<Message> _messages = new();
+    private string _draft = string.Empty;
+    private bool _thinking;
+
+    private async Task Ask(string question)
+    {
+        question = question.Trim();
+        if (question.Length < 2 || _thinking)
+        {
+            return;
+        }
+        _draft = string.Empty;
+        _messages.Add(new Message(question, true));
+        _thinking = true;
+        await ScrollToEnd();
+        try
+        {
+            var reply = await Assistant.AskAsync(question);
+            _messages.Add(new Message(reply.Text, false, SourceLabel(reply)));
+        }
+        finally
+        {
+            _thinking = false;
+        }
+        await ScrollToEnd();
+    }
+
+    private static string? SourceLabel(AssistantReply reply) => reply.Source switch
+    {
+        AssistantSource.Cloud => $"From Help: {reply.Topic}",
+        AssistantSource.Offline => "Answered from the help pages while the assistant is unavailable",
+        _ => null
+    };
+
+    private async Task ScrollToEnd()
+    {
+        StateHasChanged();
+        await JS.InvokeVoidAsync("forgeLinkScroll.intoView", "assist-end");
+    }
+}

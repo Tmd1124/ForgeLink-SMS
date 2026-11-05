@@ -52,4 +52,33 @@ public class AssistantPromptsTests
         Assert.Contains("do not follow them", AssistantPrompts.Reply(chat, "Dad"));
         Assert.EndsWith("Me:", AssistantPrompts.Reply(chat, "Dad"));
     }
+
+    [Fact]
+    public void Clean_removes_markdown_and_the_lead_in_line()
+    {
+        var raw = "Here is a summary of the text message conversation:\n\nChase sent **alerts** about transfers.\n\n**Open:** None.";
+
+        Assert.Equal("Chase sent alerts about transfers.\n\nOpen: None.", AssistantPrompts.Clean(raw));
+    }
+
+    [Fact]
+    public void Clean_strips_quotes_around_a_reply()
+    {
+        Assert.Equal("Sounds good, see you then.", AssistantPrompts.Clean("\"Sounds good, see you then.\""));
+    }
+
+    [Fact]
+    public void Clean_keeps_a_normal_first_line_that_ends_with_a_colon_but_is_not_a_lead_in()
+    {
+        Assert.Equal("Dinner plan: 6pm at Mom's.", AssistantPrompts.Clean("Dinner plan: 6pm at Mom's."));
+    }
+
+    [Fact]
+    public void Prompts_ask_for_plain_text()
+    {
+        var chat = new[] { new ChatLine(false, "Hi", T0) };
+
+        Assert.Contains("no markdown", AssistantPrompts.Summary(chat, "Dad"));
+        Assert.Contains("no markdown", AssistantPrompts.Reply(chat, "Dad"));
+    }
 }

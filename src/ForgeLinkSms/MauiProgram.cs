@@ -128,6 +128,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IReviewPromptService, ReviewPromptService>();
 		builder.Services.AddSingleton(new RatingClient(new HttpClient()));
 		builder.Services.AddSingleton<IRatingService, RatingService>();
+		builder.Services.AddSingleton(new AssistantService(new AssistantClient(new HttpClient()), ForgeLinkSms.Platforms.Android.RatingService.InstallId, $"{AppInfo.Current.VersionString} ({AppInfo.Current.BuildString})"));
 		builder.Services.AddSingleton<IOnDeviceAiService, ForgeLinkSms.Platforms.Android.OnDeviceAiService>();
 		builder.Services.AddSingleton(new UpdateClient(new HttpClient()));
 		builder.Services.AddSingleton<IUpdateService, ForgeLinkSms.Platforms.Android.UpdateService>();
