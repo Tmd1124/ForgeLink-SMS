@@ -801,6 +801,13 @@
             return true;
         }
 
+        if (_actionSheetThreadId is not null && _snoozeThreadId is null)
+        {
+            CloseActionSheet();
+            StateHasChanged();
+            return true;
+        }
+
         if (_snoozeThreadId is not null)
         {
             CloseSnoozeSheet();
@@ -1705,6 +1712,12 @@
 
     private void OpenOverflowForSingleSelection()
     {
+        if (_actionSheetThreadId is not null)
+        {
+            CloseActionSheet();
+            return;
+        }
+
         if (_selectedThreadIds.Count != 1)
         {
             return;
