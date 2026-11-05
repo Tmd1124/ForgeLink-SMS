@@ -35,7 +35,11 @@
     {
         <div style="position:sticky;top:0;z-index:10;background:var(--surface-color);display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:6px 4px;overflow-x:auto;">
             <button @onclick="ClearSelection" title="Clear selection" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;color:var(--text-color);font-size:1.4em;font-weight:bold;line-height:1;padding:0;" aria-label="Clear selection">✕</button>
-            <strong style="flex:1;min-width:0;">@_selectedThreadIds.Count selected</strong>
+            <strong style="flex:1;min-width:0;white-space:nowrap;">@_selectedThreadIds.Count selected</strong>
+            @if (!AllVisibleSelected())
+            {
+                <button @onclick="SelectAllVisible" aria-label="Select all conversations" style="flex-shrink:0;padding:8px 14px;border:none;border-radius:999px;background:#e2e8f0;color:#1e293b;font:inherit;font-weight:600;">Select all</button>
+            }
             <button @onclick="ToggleFavoriteSelectedThreads" aria-label="@(AllSelectedAreFavorited() ? "Remove from favorites" : "Add to favorites")" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;font-size:1.2em;line-height:1;padding:0;">@(AllSelectedAreFavorited() ? "💔" : "❤️")</button>
             <button @onclick="OpenFilterAssignPicker" aria-label="Add to a filter" style="width:40px;height:40px;flex-shrink:0;border:none;background:transparent;color:var(--text-color);display:flex;align-items:center;justify-content:center;padding:0;">@FunnelIcon</button>
             <button @onclick="ToggleSelectedThreadsReadState" aria-label="Mark as read or unread" style="width:40px;height:40px;flex-shrink:0;border:none;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;padding:0;">@(AllSelectedAreRead() ? EyeSlashIcon : EyeOpenIcon)</button>
@@ -1599,6 +1603,21 @@
     {
         await ContactService.AddContactAsync(address);
     }
+
+    // Selects every chat that is currently on screen; collapsed Updates groups stay out so nothing unseen is swept up.
+    private void SelectAllVisible()
+    {
+        foreach (var (_, thread) in VisibleRows())
+        {
+            if (thread is not null)
+            {
+                _selectedThreadIds.Add(thread.Id);
+            }
+        }
+    }
+
+    private bool AllVisibleSelected() =>
+        VisibleRows().All(row => row.Thread is null || _selectedThreadIds.Contains(row.Thread.Id));
 
     private void ClearSelection()
     {
