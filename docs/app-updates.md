@@ -25,3 +25,7 @@ The app discards a download whose SHA-256 doesn't match, and ignores a manifest 
 ## When it moves to Google Play
 
 Play-installed copies already hide the update UI. Remove the Check for updates row and `UpdateService` once the sideload build is retired.
+
+## One-command release
+
+After raising the version in the csproj: `scripts\release.ps1 -Notes "What changed." -Publish` runs the unit tests, builds, signs with the upload key, checks the key and version, then runs the website's `scripts/publish-app-release.sh` (APK first, `latest.json` last) and re-downloads the live APK to check its hash. Without `-Publish` it only builds and verifies. It refuses a versionCode that is not higher than the published one. New buyers on the website also get this build (`api/product_download.php` serves `downloads/forgelink-sms/` first, and falls back to the APK uploaded in admin Products).
