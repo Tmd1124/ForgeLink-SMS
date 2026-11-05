@@ -1,0 +1,112 @@
+@page "/updates"
+@inject ForgeLinkSms.Core.Services.IUpdateService Updates
+@using ForgeLinkSms.Core.Services
+
+<div style="padding:12px;padding-bottom:40px;">
+    <div class="page-title-row">
+        <h3>Updates</h3>
+    </div>
+
+    <div style="@GroupStyle;padding:14px 12px;">
+        <div style="font-weight:600;">ForgeLink @Updates.InstalledVersionName</div>
+        <div style="@HintStyle">@LastCheckedText()</div>
+    </div>
+
+    @if (!Updates.IsSupported)
+    {
+        <p style="@HintStyle;margin:12px 4px;">This copy of ForgeLink came from Google Play, which keeps it up to date for you.</p>
+    }
+    else
+    {
+        @if (_update is { } update)
+        {
+            <h4 style="@HeadingStyle">Available</h4>
+            <div style="@GroupStyle;padding:14px 12px;">
+                <div style="font-weight:600;">ForgeLink @update.VersionName</div>
+                @if (!string.IsNullOrWhiteSpace(update.Notes))
+                {
+                    <div style="@HintStyle;white-space:pre-line;margin-top:4px;">@update.Notes</div>
+                }
+                @if (_downloading)
+                {
+                    <progress value="@_progress" max="1" aria-label="Download progress" style="width:100%;margin-top:12px;"></progress>
+                }
+            </div>
+            <button @onclick="Install" disabled="@_downloading" style="@PrimaryStyle">@(_downloading ? $"Downloading… {(int)(_progress * 100)}%" : "Download and install")</button>
+        }
+
+        <button @onclick="Check" disabled="@(_checking || _downloading)" style="@ButtonStyle;margin-top:12px;width:100%;">@(_checking ? "Checking…" : "Check for updates")</button>
+
+        @if (!string.IsNullOrEmpty(_status))
+        {
+            <p role="status" style="color:#06b6d4;margin:12px 4px 0;">@_status</p>
+        }
+
+        <p style="@HintStyle;margin:16px 4px 0;">ForgeLink also checks once a day when it starts. You can turn that off in Settings → Check for Updates.</p>
+    }
+</div>
+
+@code {
+    private const string HintStyle = "color:#94a3b8;font-size:0.85em";
+    private const string HeadingStyle = "margin:20px 4px 6px;font-size:0.8em;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#94a3b8;";
+    private const string GroupStyle = "background:var(--card-color);border-radius:12px;overflow:hidden";
+    private const string ButtonStyle = "padding:12px;border:none;border-radius:12px;background:var(--card-color);color:var(--text-color);font:inherit;font-weight:600;";
+    private const string PrimaryStyle = "margin-top:12px;width:100%;padding:14px;border:none;border-radius:12px;background:var(--accent-color);color:white;font:inherit;font-weight:600;";
+
+    private UpdateInfo? _update;
+    private string? _status;
+    private bool _checking;
+    private bool _downloading;
+    private double _progress;
+
+    protected override void OnInitialized() => _update = Updates.PendingUpdate;
+
+    private string LastCheckedText() =>
+        Updates.LastCheckedUtc is { } when ? $"Last checked {when.ToLocalTime():MMM d, h:mm tt}" : "Not checked yet";
+
+    private async Task Check()
+    {
+        _checking = true;
+        _status = null;
+        try
+        {
+            var outcome = await Updates.CheckAsync(force: true);
+            _update = outcome.Update;
+            _status = outcome.Result switch
+            {
+                UpdateCheckResult.Available => null,
+                UpdateCheckResult.UpToDate => "You're on the newest version.",
+                _ => outcome.Message
+            };
+        }
+        finally
+        {
+            _checking = false;
+        }
+    }
+
+    private async Task Install()
+    {
+        if (_update is not { } update)
+        {
+            return;
+        }
+
+        _downloading = true;
+        _progress = 0;
+        _status = null;
+        var progress = new Progress<double>(p =>
+        {
+            _progress = p;
+            _ = InvokeAsync(StateHasChanged);
+        });
+        try
+        {
+            _status = await Updates.DownloadAndInstallAsync(update, progress);
+        }
+        finally
+        {
+            _downloading = false;
+        }
+    }
+}

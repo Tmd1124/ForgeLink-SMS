@@ -10,6 +10,7 @@
 @inject ForgeLinkSms.Core.Services.NavigationHistoryTracker HistoryTracker
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
 @inject ForgeLinkSms.Core.Services.IReviewPromptService ReviewPrompt
+@inject ForgeLinkSms.Core.Services.IUpdateService UpdateService
 @using ForgeLinkSms.Core.Models
 @using ForgeLinkSms.Core.Utils
 
@@ -47,6 +48,19 @@
                     </div>
                 }
             </div>
+            @if (_updatesSupported)
+            {
+                <div style="@GroupStyle;margin-top:12px;">
+                    <label style="display:flex;align-items:center;gap:12px;padding:14px 12px;">
+                        <span aria-hidden="true" style="width:1.5em;text-align:center;">⬆️</span>
+                        <span style="flex:1;min-width:0;">
+                            <span style="display:block;">Check for Updates</span>
+                            <span style="@HintStyle;display:block;">Once a day, when ForgeLink starts</span>
+                        </span>
+                        <input type="checkbox" checked="@_autoCheckUpdates" @onchange="e => SetAutoCheckUpdates(e.Value is true)" aria-label="Check for Updates" style="width:22px;height:22px;" />
+                    </label>
+                </div>
+            }
             break;
 
         case "appearance":
@@ -315,7 +329,7 @@
             <div style="@GroupStyle">
                 <label style="display:flex;align-items:center;gap:10px;padding:12px;@RowDivider">
                     <input type="checkbox" checked="@_settings.ShowLinkPreviews" @onchange="e => Update(s => s.ShowLinkPreviews = e.Value is true)" style="width:20px;height:20px;" />
-                    <span>Show link previews<br /><span style="@HintStyle">To build a preview, ForgeLink opens the linked page — the only time the app uses the internet. Turn off and links stay plain.</span></span>
+                    <span>Show link previews<br /><span style="@HintStyle">To build a preview, ForgeLink opens the linked page. Turn off and links stay plain. (The app also goes online to send a rating you choose to give, and to check for updates.)</span></span>
                 </label>
                 <label style="display:flex;align-items:center;gap:10px;padding:12px;">
                     <input type="checkbox" checked="@_settings.ShowWidgetText" @onchange="SetWidgetText" style="width:20px;height:20px;" />
@@ -462,6 +476,15 @@
     {
         (90, "Small"), (100, "Default"), (115, "Large"), (130, "Extra large")
     };
+
+    private bool _updatesSupported;
+    private bool _autoCheckUpdates;
+
+    private void SetAutoCheckUpdates(bool on)
+    {
+        _autoCheckUpdates = on;
+        UpdateService.AutoCheckEnabled = on;
+    }
 
     private DisplaySettings _settings = new();
     private NotificationSettings _notify = new();
@@ -672,6 +695,8 @@
     protected override async Task OnInitializedAsync()
     {
         _settings = DisplayStyles.GetDisplaySettings();
+        _updatesSupported = UpdateService.IsSupported;
+        _autoCheckUpdates = UpdateService.AutoCheckEnabled;
         _notify = NotificationStore.Get();
         await ViewModel.RefreshCommand.ExecuteAsync(null);
         RefreshBackup();

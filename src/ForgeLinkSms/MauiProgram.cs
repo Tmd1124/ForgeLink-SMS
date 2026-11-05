@@ -128,6 +128,8 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IReviewPromptService, ReviewPromptService>();
 		builder.Services.AddSingleton(new RatingClient(new HttpClient()));
 		builder.Services.AddSingleton<IRatingService, RatingService>();
+		builder.Services.AddSingleton(new UpdateClient(new HttpClient()));
+		builder.Services.AddSingleton<IUpdateService, ForgeLinkSms.Platforms.Android.UpdateService>();
 		builder.Services.AddSingleton<ICrashReportService, CrashReportService>();
 		builder.Services.AddSingleton<ForgeLinkSms.Components.Help.HelpState>();
 		builder.Services.AddSingleton<IBackupService, ForgeLinkSms.Platforms.Android.Backup.BackupService>();

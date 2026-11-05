@@ -4,6 +4,7 @@
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
 @inject ForgeLinkSms.Core.Services.IReviewPromptService ReviewPrompt
 @inject ForgeLinkSms.Core.Services.IDisplayStyleService DisplayStyles
+@inject ForgeLinkSms.Core.Services.IUpdateService Updates
 @using ForgeLinkSms.Core.Utils
 
 <div style="padding:12px;">
@@ -57,6 +58,7 @@
         <div style="@GroupStyle">
             @Row("🎨", "Theme", () => Go("/theme"))
             @Row("⚙", "Settings", () => Go("/settings"))
+            @Row("⬆️", "Check for updates", () => Go("/updates"), summary: Updates.PendingUpdate is { } pending ? $"Version {pending.VersionName} is available" : null)
             @Row("⭐", "Rate ForgeLink", () => Go("/rate"))
             @Row("🛍", "Rate ForgeLink on Google Play", () => { ReviewPrompt.OpenStoreListing(); return Task.CompletedTask; }, last: true)
         </div>

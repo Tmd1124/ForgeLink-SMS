@@ -15,6 +15,7 @@
 @inject ForgeLinkSms.Core.Services.ConversationListRefresher ListRefresher
 @inject ForgeLinkSms.Core.Services.ICrashReportService CrashReports
 @inject HelpState Help
+@inject ForgeLinkSms.Core.Services.IUpdateService Updates
 @inject ForgeLinkSms.Core.Services.ForwardRequestStore ShareStore
 @inject ForgeLinkSms.Core.Services.IBackupService Backups
 @using ForgeLinkSms.Core.Utils
@@ -22,6 +23,14 @@
 @using ForgeLinkSms.Components
 
 <div style="padding:12px;display:flex;flex-direction:column;height:100vh;box-sizing:border-box;">
+    @if (_updateBanner is { } update)
+    {
+        <div role="status" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 12px;border-radius:12px;background:var(--accent-color);color:white;">
+            <span aria-hidden="true">⬆️</span>
+            <span style="flex:1;min-width:0;">Update available — ForgeLink @update.VersionName</span>
+            <button @onclick="@(() => Nav.NavigateTo("/updates"))" style="border:none;border-radius:8px;padding:6px 12px;background:white;color:#1e293b;font:inherit;font-weight:600;">View</button>
+        </div>
+    }
     @if (_selectedThreadIds.Count > 0)
     {
         <div style="position:sticky;top:0;z-index:10;background:var(--surface-color);display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:6px 4px;overflow-x:auto;">
@@ -647,6 +656,28 @@
         // Back on the list after sending is a calm moment to (maybe) ask for a Play rating.
         await ReviewPrompt.MaybeAskAsync();
         _showRatingCard = ReviewPrompt.ShouldShowRatingCard();
+        _ = LoadUpdateBannerAsync();
+    }
+
+    private ForgeLinkSms.Core.Services.UpdateInfo? _updateBanner;
+
+    // Shown for 3 seconds after a cold start's check finds an update; reopening the app never re-checks.
+    private async Task LoadUpdateBannerAsync()
+    {
+        var update = await Updates.CheckOnLaunchAsync();
+        if (update is null || _disposed)
+        {
+            return;
+        }
+
+        _updateBanner = update;
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(3000);
+        _updateBanner = null;
+        if (!_disposed)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private bool _showRatingCard;

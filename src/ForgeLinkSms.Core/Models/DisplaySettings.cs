@@ -28,7 +28,7 @@ public class DisplaySettings
     /// Overrides ColorBy for unread conversations; null means unread rows get no color.
     public string? UnreadColor { get; set; } = Gray;
 
-    // Building a preview fetches the linked page — the app's only use of the internet.
+    // Building a preview fetches the linked page.
     public bool ShowLinkPreviews { get; set; } = true;
 
     /// Off: the home screen widget shows names and counts, but "New message" instead of the text.
