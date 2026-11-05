@@ -63,7 +63,10 @@ if (-not $Publish) {
 
 function ToPosix($p) { '/' + $p.Substring(0, 1).ToLower() + ($p.Substring(2) -replace '\\', '/') }
 $safeNotes = $Notes -replace "'", "'\''"
-& $bash -c "cd '$(ToPosix (Resolve-Path $website).Path)' && scripts/publish-app-release.sh forgelink-sms '$(ToPosix $final)' $code '$name' '$safeNotes' </dev/null"
+# stderr is merged inside bash: under -ErrorAction Stop, PowerShell 5.1 turns native stderr text (like the FTP
+# upload's harmless "curl: (18) ... 451" retry message) into a terminating error when the caller redirects 2>&1.
+# Only the exit code decides whether the publish worked.
+& $bash -c "{ cd '$(ToPosix (Resolve-Path $website).Path)' && scripts/publish-app-release.sh forgelink-sms '$(ToPosix $final)' $code '$name' '$safeNotes' </dev/null; } 2>&1"
 if ($LASTEXITCODE) { throw 'Publish failed.' }
 
 $m = Invoke-RestMethod 'https://cloudcompassai.com/downloads/forgelink-sms/latest.json'
