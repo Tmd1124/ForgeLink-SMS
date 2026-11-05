@@ -46,4 +46,38 @@ public class ReviewPromptRulesTests
     {
         Assert.False(ReviewPromptRules.ShouldAsk(Ready() with { FirstUseUtc = null }, Now));
     }
+
+    [Fact]
+    public void Never_asks_Google_Play_once_the_person_has_rated_in_the_app()
+    {
+        Assert.False(ReviewPromptRules.ShouldAsk(Ready() with { Rated = true }, Now));
+    }
+
+    [Fact]
+    public void Shows_the_in_app_card_to_installs_not_from_Google_Play_when_the_same_rules_are_met()
+    {
+        Assert.True(ReviewPromptRules.ShouldShowCard(Ready(), Now));
+        Assert.False(ReviewPromptRules.ShouldShowCard(Ready() with { FirstUseUtc = Now.AddDays(-6) }, Now));
+        Assert.False(ReviewPromptRules.ShouldShowCard(Ready() with { SentCount = 19 }, Now));
+        Assert.False(ReviewPromptRules.ShouldShowCard(Ready() with { FirstUseUtc = null }, Now));
+    }
+
+    [Fact]
+    public void Leaves_Google_Play_installs_to_the_Google_card()
+    {
+        Assert.False(ReviewPromptRules.ShouldShowCard(Ready() with { InstalledFromPlay = true }, Now));
+    }
+
+    [Fact]
+    public void Stops_showing_the_card_once_rated()
+    {
+        Assert.False(ReviewPromptRules.ShouldShowCard(Ready() with { Rated = true }, Now));
+    }
+
+    [Fact]
+    public void Hides_the_card_for_120_days_after_Not_now()
+    {
+        Assert.False(ReviewPromptRules.ShouldShowCard(Ready() with { CardDismissedUtc = Now.AddDays(-119) }, Now));
+        Assert.True(ReviewPromptRules.ShouldShowCard(Ready() with { CardDismissedUtc = Now.AddDays(-120) }, Now));
+    }
 }

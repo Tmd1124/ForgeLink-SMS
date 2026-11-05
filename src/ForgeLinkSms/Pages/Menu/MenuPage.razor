@@ -57,7 +57,8 @@
         <div style="@GroupStyle">
             @Row("🎨", "Theme", () => Go("/theme"))
             @Row("⚙", "Settings", () => Go("/settings"))
-            @Row("⭐", "Rate ForgeLink on Google Play", () => { ReviewPrompt.OpenStoreListing(); return Task.CompletedTask; }, last: true)
+            @Row("⭐", "Rate ForgeLink", () => Go("/rate"))
+            @Row("🛍", "Rate ForgeLink on Google Play", () => { ReviewPrompt.OpenStoreListing(); return Task.CompletedTask; }, last: true)
         </div>
     </section>
 </div>

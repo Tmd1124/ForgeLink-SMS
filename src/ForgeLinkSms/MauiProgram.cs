@@ -126,6 +126,8 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IDisplayStyleService, DisplayStyleService>();
 		builder.Services.AddSingleton<INotificationSettingsStore, NotificationSettingsStore>();
 		builder.Services.AddSingleton<IReviewPromptService, ReviewPromptService>();
+		builder.Services.AddSingleton(new RatingClient(new HttpClient()));
+		builder.Services.AddSingleton<IRatingService, RatingService>();
 		builder.Services.AddSingleton<ICrashReportService, CrashReportService>();
 		builder.Services.AddSingleton<ForgeLinkSms.Components.Help.HelpState>();
 		builder.Services.AddSingleton<IBackupService, ForgeLinkSms.Platforms.Android.Backup.BackupService>();
