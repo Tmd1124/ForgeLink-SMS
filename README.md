@@ -2,14 +2,15 @@
 
 ## Pick up here
 
-*Last updated 2026-10-30 (late evening).*
+*Last updated 2026-11-04.*
 
-**Run it:** connect a physical Android device over USB (the emulator does not run on this ARM64 machine). `adb` is not on PATH; it lives at `C:\Program Files (x86)\Android\android-sdk\platform-tools\adb.exe`. Run `adb devices` (the phone must show `device`, not `unauthorized`), then `dotnet build src/ForgeLinkSms/ForgeLinkSms.csproj -t:Run -f net10.0-android` with that folder on PATH. The app now targets `net10.0-android`. Unit tests: `dotnet test tests/ForgeLinkSms.Core.Tests` (856 pass).
+**Run it:** connect a physical Android device over USB (the emulator does not run on this ARM64 machine). `adb` is not on PATH; it lives at `C:\Program Files (x86)\Android\android-sdk\platform-tools\adb.exe`. Run `adb devices` (the phone must show `device`, not `unauthorized`), then `dotnet build src/ForgeLinkSms/ForgeLinkSms.csproj -t:Run -f net10.0-android` with that folder on PATH. The app targets `net10.0-android` (`net9.0-android` fails with NETSDK1005). Unit tests: `dotnet test tests/ForgeLinkSms.Core.Tests` (871 pass). The phone is a foldable with two displays, so a bare `adb shell screencap` returns the black cover screen or a stale file; list ids with `adb shell dumpsys SurfaceFlinger --display-id` and capture with `screencap -d <id>` (the second id is the main screen).
 
 **Deploy:** CI is `azure-pipelines.yml`. Push `master` to both remotes (`origin` = GitHub, `azuredevops`).
 
 **State of play:**
-- Latest code commit `4a683c8`, pushed to both remotes. It hides the Unread/Updates/Screener buttons when they are empty (and returns to Chats if the open one empties), and removes the invisible full-screen layer the Allowed/Blocked/Deleted undo toast put over the list, which made the next tap on a row icon need a second press. Installed on the phone, not yet confirmed by Travis.
+- Latest code commit `b2429a3`, pushed to both remotes. Fixes the "Something went wrong" crash on opening the app: a thread whose newest message had no address sent an empty number to the contact lookup. `ThreadService` now falls back to the thread's single recipient, and `ContactService` ignores blank numbers. Installed on the phone; the conversations list loads and Tiffani Donnelly's thread is back in favorites. Tapping into her thread and the contact button were not re-checked on the device. The two Android-only files have no unit tests.
+- Earlier code commit `4a683c8`. It hides the Unread/Updates/Screener buttons when they are empty (and returns to Chats if the open one empties), and removes the invisible full-screen layer the Allowed/Blocked/Deleted undo toast put over the list, which made the next tap on a row icon need a second press. Installed on the phone, not yet confirmed by Travis.
 - Previous code commit `51300fa`. Working tree is clean apart from the untracked `.vscode/` folder.
 - Back with a photo open in a conversation now redraws so one press closes the viewer (it used to need a second press, which left the conversation). Installed on the phone, not yet confirmed by Travis; if it still jumps to the list, ask whether he used the back key or the edge-swipe gesture.
 - 2026-10-30 changes: pinch/pan/double-tap zoom in the photo viewer (and panning no longer triggers back-swipe); new **Unread** tab beside Chats/Updates/Screener; unread list removed from the home-screen widget; send arrow stays on screen when a long link is shared into New Message or typed in a conversation.
@@ -24,6 +25,7 @@
 - Dead code left behind: `forgelink_widget_tall.xml`, `WidgetContent.RecentUnread` and its tests, and the `ShowUnreadOnly` property.
 - The "Bubble unread" checkbox in Display settings now has no effect, since unread chats never appear in Chats. Remove it or repurpose it.
 - The Build/Run sections below still say `net9.0-android`; update them to `net10.0-android`.
+- Other `LookupAsync` callers (notifications, delivery status, MMS download, export) still pass raw addresses; blank ones are now safe, but no one has checked what they show for a thread with no address.
 - Confirm the status of each plan listed above.
 
 A native Android app that sends and receives real SMS text messages through
