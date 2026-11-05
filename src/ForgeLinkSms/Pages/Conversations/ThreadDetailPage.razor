@@ -595,7 +595,9 @@ else
 
         var smsService = Services.GetRequiredService<ISmsService>();
         var scheduler = Services.GetRequiredService<IMessageSchedulerService>();
-        ViewModel = new ThreadDetailViewModel(smsService, scheduler, ThreadId, Address, participants: participants,
+        var display = Services.GetRequiredService<ForgeLinkSms.Core.Services.IDisplayStyleService>().GetDisplaySettings();
+        var undoWindow = display.UndoSendEnabled ? TimeSpan.FromSeconds(Math.Clamp(display.UndoSendSeconds, 0, 5)) : TimeSpan.Zero;
+        ViewModel = new ThreadDetailViewModel(smsService, scheduler, ThreadId, Address, undoSendWindow: undoWindow, participants: participants,
             drafts: Services.GetRequiredService<ForgeLinkSms.Core.Data.IDraftRepository>(),
             reviewPrompt: Services.GetRequiredService<ForgeLinkSms.Core.Services.IReviewPromptService>(),
             listRefresher: ListRefresher);

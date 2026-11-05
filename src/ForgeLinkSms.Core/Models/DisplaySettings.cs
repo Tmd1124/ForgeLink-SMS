@@ -37,6 +37,11 @@ public class DisplaySettings
     /// Percent of the normal text size; one of DisplayRules.TextScales.
     public int TextScale { get; set; } = 100;
 
+    /// Off sends immediately; on waits UndoSendSeconds (0-5) with an Undo bar.
+    public bool UndoSendEnabled { get; set; }
+
+    public int UndoSendSeconds { get; set; }
+
     public SwipeAction SwipeRight { get; set; } = SwipeAction.Trash;
 
     public SwipeAction SwipeLeft { get; set; } = SwipeAction.Archive;

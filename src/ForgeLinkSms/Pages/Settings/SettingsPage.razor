@@ -231,6 +231,32 @@
             </div>
             break;
 
+        case "messages":
+            <div class="page-title-row">
+                <h3>Messages</h3>
+                <HelpButton />
+            </div>
+            <div style="@GroupStyle">
+                <label style="display:flex;align-items:center;gap:10px;padding:12px;">
+                    <input type="checkbox" checked="@_settings.UndoSendEnabled" @onchange="e => Update(s => s.UndoSendEnabled = e.Value is true)" style="width:20px;height:20px;" />
+                    <span>Delay send<br /><span style="@HintStyle">Hold each text briefly so you can tap Undo before it goes.</span></span>
+                </label>
+                @if (_settings.UndoSendEnabled)
+                {
+                    <div style="padding:4px 12px 14px;">
+                        <label style="display:block;">
+                            Delay: <strong>@UndoSeconds @(UndoSeconds == 1 ? "second" : "seconds")</strong>
+                            <input type="range" min="0" max="5" step="1" value="@UndoSeconds" @oninput="SetUndoSeconds"
+                                   aria-label="Send delay in seconds" style="display:block;width:100%;margin-top:8px;accent-color:var(--accent-color);" />
+                        </label>
+                        <div style="display:flex;justify-content:space-between;@HintStyle">
+                            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                        </div>
+                    </div>
+                }
+            </div>
+            break;
+
         case "backup":
             <div class="page-title-row">
                 <h3>Backup &amp; restore</h3>
@@ -384,6 +410,7 @@
         yield return ("appearance", "🎨", "Appearance", $"Theme · Text size {textSize}");
         yield return ("notifications", "🔔", "Notifications", NotificationSummary());
         yield return ("chat-list", "💬", "Chat list", Layouts.First(l => l.Layout == _settings.Layout).Title);
+        yield return ("messages", "✉️", "Messages", _settings.UndoSendEnabled ? $"Delay send: {UndoSeconds}s" : "Delay send: off");
         yield return ("backup", "💾", "Backup & restore", (_backup.LastBackupUtc is { } when ? $"Last backup: {when.ToLocalTime():MMM d}" : "No backups yet")
             + (_backup.WeeklyEnabled ? " · Weekly on" : ""));
         yield return ("help", "✉️", "Help & feedback", "Send feedback, rate the app");
@@ -670,6 +697,16 @@
         if (TimeOnly.TryParse(e.Value?.ToString(), out var time))
         {
             UpdateNotify(n => { if (start) n.QuietStart = time; else n.QuietEnd = time; });
+        }
+    }
+
+    private int UndoSeconds => Math.Clamp(_settings.UndoSendSeconds, 0, 5);
+
+    private void SetUndoSeconds(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var seconds))
+        {
+            Update(s => s.UndoSendSeconds = Math.Clamp(seconds, 0, 5));
         }
     }
 
