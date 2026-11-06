@@ -70,10 +70,6 @@
                 </button>
             </div>
             <div style="display:flex;align-items:center;gap:12px;">
-                <button @onclick="@(() => Nav.NavigateTo("/assistant"))" title="Ask ForgeLink" aria-label="Ask ForgeLink"
-                        style="width:40px;height:40px;border-radius:50%;border:none;padding:0;display:flex;align-items:center;justify-content:center;background:#e2e8f0;">
-                    <span aria-hidden="true" style="font-size:1.15em;line-height:1;">🤖</span>
-                </button>
                 @if (!string.IsNullOrEmpty(_photoDataUri))
                 {
                     <img @onclick="@(() => Nav.NavigateTo("/menu"))" src="@_photoDataUri" alt="Menu" role="button" tabindex="0"
@@ -410,6 +406,10 @@
     <button @onclick="@(() => Nav.NavigateTo("/compose"))" aria-label="New message"
             style="position:fixed;right:24px;bottom:24px;width:56px;height:56px;border-radius:50%;background:var(--accent-color);color:white;font-size:1.5em;border:none;">
         +
+    </button>
+    <button @onclick="@(() => Nav.NavigateTo("/assistant"))" aria-label="Ask ForgeLink" title="Ask ForgeLink"
+            style="position:fixed;right:24px;bottom:92px;width:56px;height:56px;border-radius:50%;background:var(--card-color);border:2px solid var(--accent-color);font-size:1.6em;line-height:1;padding:0;box-shadow:0 4px 12px rgba(0,0,0,0.35);">
+        <span aria-hidden="true">🤖</span>
     </button>
 </div>
 
