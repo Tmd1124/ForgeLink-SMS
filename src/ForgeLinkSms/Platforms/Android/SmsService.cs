@@ -317,7 +317,11 @@ public class SmsService : ISmsService
             return SendAsync(failed.Address, failed.Body);
         });
 
-    public Task SendAsync(string address, string body)
+    // The outbox insert and the SmsManager call below are blocking binder calls into the phone process. Run on the
+    // caller's thread (the UI thread, for a tap on Send) they froze the app into an ANR whenever the SMS store was slow.
+    public Task SendAsync(string address, string body) => Task.Run(() => SendCore(address, body));
+
+    private void SendCore(string address, string body)
     {
         var context = AndroidApp.Context;
         var smsManager = AndroidSmsManager.Default!;
@@ -365,7 +369,5 @@ public class SmsService : ISmsService
             _ = Task.Run(() => DeliveryStatusReceiver.MarkFailed(context, messageUri));
             throw;
         }
-
-        return Task.CompletedTask;
     }
 }
