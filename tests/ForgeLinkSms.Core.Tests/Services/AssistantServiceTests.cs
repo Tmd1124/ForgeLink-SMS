@@ -122,29 +122,39 @@ public class AssistantServiceTests
     }
 
     [Fact]
-    public async Task When_web_search_is_unavailable_the_help_answers_and_says_so()
+    public async Task With_googling_on_a_question_about_the_app_still_uses_the_help_pages_and_is_not_searched()
     {
-        var calls = 0;
-        var (service, _) = Make(() => ++calls == 1
-            ? new HttpResponseMessage((HttpStatusCode)429)
-            : Answer("Long-press the chat and tap pin."));
+        var (service, handler) = Make(() => Answer("Long-press the chat and tap pin."));
 
         var reply = await service.AskAsync("How do I pin a conversation?", web: true);
 
         Assert.Equal(AssistantSource.Cloud, reply.Source);
-        Assert.StartsWith(AssistantService.WebUnavailableNote, reply.Text);
-        Assert.EndsWith("Long-press the chat and tap pin.", reply.Text);
-        Assert.Equal(2, calls);
+        Assert.Equal("Long-press the chat and tap pin.", reply.Text);
+        Assert.Null(reply.Sources);
+        Assert.Equal(1, handler.Calls);
     }
 
     [Fact]
-    public async Task When_web_search_and_the_cloud_are_both_down_the_offline_help_still_answers_with_the_note()
+    public async Task When_googling_is_unavailable_a_general_question_says_so_and_points_to_the_help()
     {
-        var (service, _) = Make(() => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        var (service, handler) = Make(() => new HttpResponseMessage((HttpStatusCode)429));
 
-        var reply = await service.AskAsync("How do I pin a conversation?", web: true);
+        var reply = await service.AskAsync("Who won the game last night?", web: true);
 
         Assert.Equal(AssistantSource.Offline, reply.Source);
         Assert.StartsWith(AssistantService.WebUnavailableNote, reply.Text);
+        Assert.Contains("couldn't find that in the ForgeLink help", reply.Text);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
+    public async Task When_googling_is_off_a_general_question_is_never_searched()
+    {
+        var (service, _) = Make(() => WebAnswer("web"));
+
+        var reply = await service.AskAsync("Who won the game last night?", web: false);
+
+        Assert.NotEqual(AssistantSource.Web, reply.Source);
+        Assert.Null(reply.Sources);
     }
 }

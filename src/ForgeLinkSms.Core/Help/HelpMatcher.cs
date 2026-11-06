@@ -14,6 +14,17 @@ public static class HelpMatcher
         "my", "this", "that", "with", "for", "from", "have", "has", "there", "about", "into", "get", "set", "use", "want", "need", "please"
     };
 
+    // Measured against the help catalog: questions about ForgeLink score 3 or more on their best topic; everyday
+    // questions (weather, sports, trivia) score 0 or 1 from words that happen to appear in the help text.
+    private const int AboutAppScore = 3;
+
+    /// True when the question is clearly about using ForgeLink, so it belongs on the help pages and never on a web search.
+    public static bool IsAboutApp(string question)
+    {
+        var tokens = Tokens(question);
+        return tokens.Count > 0 && HelpCatalog.All.Any(topic => Score(topic, tokens) >= AboutAppScore);
+    }
+
     public static IReadOnlyList<HelpExcerpt> Match(string question, int max = 3)
     {
         var tokens = Tokens(question);

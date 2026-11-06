@@ -9,7 +9,7 @@
         <h3>Ask ForgeLink</h3>
     </div>
     <p class="assist-note">Ask how something works or why something isn't working. Please don't type private information. Your messages and contacts are never sent.</p>
-    <p class="assist-note">Turn on Search the web for general questions: that question is sent to a web search service (Tavily) to find pages, and Google's Gemini writes the answer from them. The pages it used are listed under the answer.</p>
+    <p class="assist-note">While Googling is on, a question that isn't about ForgeLink is sent to a web search service (Tavily) to find pages, and Google's Gemini writes the answer from them. The pages it used are listed under the answer. Turn Googling off to keep every question on the ForgeLink help pages.</p>
 
     <div class="assist-thread" role="log" aria-live="polite">
         <div class="assist-bubble bot">Hi! Ask me how anything in ForgeLink works.</div>
@@ -53,8 +53,8 @@
         <button class="assist-report" @onclick="Email.EmailFeedback">Send a report</button>
     }
 
-    <button type="button" class="assist-web @(_web ? "on" : "")" role="switch" aria-checked="@(_web ? "true" : "false")" @onclick="() => _web = !_web">
-        🌐 Search the web: @(_web ? "on" : "off")
+    <button type="button" class="assist-web @(_web ? "on" : "")" role="switch" aria-checked="@(_web ? "true" : "false")" @onclick="ToggleGoogling">
+        🌐 Googling: @(_web ? "on" : "off")
     </button>
 
     <form class="assist-input" @onsubmit="() => Ask(_draft)" @onsubmit:preventDefault>
@@ -76,7 +76,8 @@
     private readonly List<Message> _messages = new();
     private string _draft = string.Empty;
     private bool _thinking;
-    private bool _web;
+    private const string GooglingKey = "assistant_googling";
+    private bool _web = Preferences.Get(GooglingKey, true);
 
     private async Task Ask(string question)
     {
@@ -104,10 +105,16 @@
     private static string? SourceLabel(AssistantReply reply) => reply.Source switch
     {
         AssistantSource.Cloud => $"From Help: {reply.Topic}",
-        AssistantSource.Web => "Searched the web. AI can make mistakes, so check the pages it used.",
+        AssistantSource.Web => "Googled it. AI can make mistakes, so check the pages it used.",
         AssistantSource.Offline => "Answered from the help pages while the assistant is unavailable",
         _ => null
     };
+
+    private void ToggleGoogling()
+    {
+        _web = !_web;
+        Preferences.Set(GooglingKey, _web);
+    }
 
     private static Task OpenLink(AssistantLink link) => Launcher.Default.OpenAsync(new Uri(link.Url));
 
