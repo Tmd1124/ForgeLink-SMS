@@ -25,8 +25,8 @@
         <ApplicationId>com.forgelink.sms</ApplicationId>
 
         <!-- Versions -->
-        <ApplicationDisplayVersion>2.0</ApplicationDisplayVersion>
-        <ApplicationVersion>11</ApplicationVersion>
+        <ApplicationDisplayVersion>2.1</ApplicationDisplayVersion>
+        <ApplicationVersion>12</ApplicationVersion>
 
         <!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
         <WindowsPackageType>None</WindowsPackageType>

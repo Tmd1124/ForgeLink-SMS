@@ -407,7 +407,7 @@
             style="position:fixed;right:24px;bottom:24px;width:56px;height:56px;border-radius:50%;background:var(--accent-color);color:white;font-size:1.5em;border:none;">
         +
     </button>
-    <button @onclick="@(() => Nav.NavigateTo("/assistant"))" aria-label="Ask ForgeLink" title="Ask ForgeLink"
+    <button id="assistant-fab" class="draggable-fab" data-no-back-swipe @onclick="@(() => Nav.NavigateTo("/assistant"))" aria-label="Ask ForgeLink" title="Ask ForgeLink (press and hold to move)"
             style="position:fixed;right:24px;bottom:92px;width:56px;height:56px;border-radius:50%;background:var(--card-color);border:2px solid var(--accent-color);font-size:1.6em;line-height:1;padding:0;box-shadow:0 4px 12px rgba(0,0,0,0.35);">
         <span aria-hidden="true">🤖</span>
     </button>
@@ -923,6 +923,7 @@
         if (firstRender)
         {
             await JS.InvokeVoidAsync("forgeLinkBubblePond.observe", "bubble-pond", "bubble-pond-mini", "conversations-header,lane-tabs");
+            await JS.InvokeVoidAsync("forgeLinkFab.attach", "assistant-fab", "fl-assistant-fab");
         }
         if (_restoreRowAnchor)
         {
