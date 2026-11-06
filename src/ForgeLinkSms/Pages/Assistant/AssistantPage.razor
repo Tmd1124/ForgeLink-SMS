@@ -9,6 +9,7 @@
         <h3>Ask ForgeLink</h3>
     </div>
     <p class="assist-note">Ask how something works or why something isn't working. Please don't type private information. Your messages and contacts are never sent.</p>
+    <p class="assist-note">Turn on Search the web for general questions: that question is sent to a web search service (Tavily) to find pages, and Google's Gemini writes the answer from them. The pages it used are listed under the answer.</p>
 
     <div class="assist-thread" role="log" aria-live="polite">
         <div class="assist-bubble bot">Hi! Ask me how anything in ForgeLink works.</div>
@@ -18,6 +19,16 @@
             @if (message.Source is { Length: > 0 } source)
             {
                 <div class="assist-source">@source</div>
+            }
+            @if (message.Links is { Count: > 0 } links)
+            {
+                <div class="assist-links">
+                    @foreach (var link in links)
+                    {
+                        var target = link;
+                        <button class="assist-link" @onclick="() => OpenLink(target)">↗ @target.Title</button>
+                    }
+                </div>
             }
         }
         @if (_thinking)
@@ -42,6 +53,10 @@
         <button class="assist-report" @onclick="Email.EmailFeedback">Send a report</button>
     }
 
+    <button type="button" class="assist-web @(_web ? "on" : "")" role="switch" aria-checked="@(_web ? "true" : "false")" @onclick="() => _web = !_web">
+        🌐 Search the web: @(_web ? "on" : "off")
+    </button>
+
     <form class="assist-input" @onsubmit="() => Ask(_draft)" @onsubmit:preventDefault>
         <input @bind="_draft" @bind:event="oninput" maxlength="500" placeholder="Ask a question" aria-label="Ask a question" autocomplete="off" />
         <button type="submit" disabled="@(_thinking || string.IsNullOrWhiteSpace(_draft))" aria-label="Send">➤</button>
@@ -56,11 +71,12 @@
         "What do the Updates and Screener tabs do?"
     };
 
-    private sealed record Message(string Text, bool FromMe, string? Source = null);
+    private sealed record Message(string Text, bool FromMe, string? Source = null, IReadOnlyList<AssistantLink>? Links = null);
 
     private readonly List<Message> _messages = new();
     private string _draft = string.Empty;
     private bool _thinking;
+    private bool _web;
 
     private async Task Ask(string question)
     {
@@ -75,8 +91,8 @@
         await ScrollToEnd();
         try
         {
-            var reply = await Assistant.AskAsync(question);
-            _messages.Add(new Message(reply.Text, false, SourceLabel(reply)));
+            var reply = await Assistant.AskAsync(question, _web);
+            _messages.Add(new Message(reply.Text, false, SourceLabel(reply), reply.Sources));
         }
         finally
         {
@@ -88,9 +104,12 @@
     private static string? SourceLabel(AssistantReply reply) => reply.Source switch
     {
         AssistantSource.Cloud => $"From Help: {reply.Topic}",
+        AssistantSource.Web => "Searched the web. AI can make mistakes, so check the pages it used.",
         AssistantSource.Offline => "Answered from the help pages while the assistant is unavailable",
         _ => null
     };
+
+    private static Task OpenLink(AssistantLink link) => Launcher.Default.OpenAsync(new Uri(link.Url));
 
     private async Task ScrollToEnd()
     {

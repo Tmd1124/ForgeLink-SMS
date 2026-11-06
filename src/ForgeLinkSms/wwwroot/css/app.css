@@ -389,6 +389,10 @@ body {
 .assist-bubble.bot { align-self: flex-start; background: var(--card-color); border: 1px solid rgba(127, 127, 127, 0.25); border-bottom-left-radius: 5px; }
 .assist-source { align-self: flex-start; margin: -4px 0 2px 6px; font-size: 0.74em; font-weight: 600; color: var(--accent-color); }
 .assist-thinking { letter-spacing: 3px; opacity: 0.7; }
+.assist-links { align-self: flex-start; display: flex; flex-direction: column; gap: 6px; margin: 0 0 4px 6px; max-width: 86%; }
+.assist-link { text-align: left; border: 1px solid rgba(127, 127, 127, 0.35); background: transparent; color: var(--text-color); border-radius: 12px; padding: 7px 12px; font: inherit; font-size: 0.82em; overflow-wrap: anywhere; }
+.assist-web { align-self: flex-start; margin: 0 0 6px; border: 1px solid rgba(127, 127, 127, 0.35); background: transparent; color: var(--text-color); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 0.85em; }
+.assist-web.on { border-color: var(--accent-color); color: var(--accent-color); font-weight: 600; }
 .assist-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
 .assist-chip { border: 1px solid rgba(127, 127, 127, 0.35); background: var(--card-color); color: var(--text-color); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 0.9em; }
 .assist-report { align-self: flex-start; margin: 0 0 10px; border: 1px solid rgba(127, 127, 127, 0.35); background: transparent; color: var(--text-color); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 0.85em; }

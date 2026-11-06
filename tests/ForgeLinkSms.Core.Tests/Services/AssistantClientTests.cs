@@ -66,4 +66,30 @@ public class AssistantClientTests
 
         Assert.Equal(AssistantCloudStatus.Unavailable, (await client.AskAsync("i", "v", "q?", [])).Status);
     }
+
+    [Fact]
+    public async Task Web_mode_sends_the_web_flag_and_returns_the_sources()
+    {
+        var (client, handler) = Make(_ => Json(HttpStatusCode.OK,
+            "{\"ok\":true,\"answer\":\"It was 3-2.\",\"web\":true,\"sources\":[{\"title\":\"Game recap\",\"url\":\"https://example.com/recap\"},{\"title\":\"Plain http\",\"url\":\"http://example.com/x\"},{\"url\":\"https://news.example.org/y\"}]}"));
+
+        var result = await client.AskAsync("install-id-1", "1.3 (4)", "Who won last night?", Array.Empty<string>(), web: true);
+
+        Assert.Equal(AssistantCloudStatus.Answered, result.Status);
+        Assert.Contains("\"web\":true", handler.LastBody);
+        Assert.Equal(2, result.Sources!.Count);
+        Assert.Equal(new AssistantLink("Game recap", "https://example.com/recap"), result.Sources[0]);
+        Assert.Equal("news.example.org", result.Sources[1].Title);
+    }
+
+    [Fact]
+    public async Task A_normal_question_sends_web_false()
+    {
+        var (client, handler) = Make(_ => Json(HttpStatusCode.OK, "{\"ok\":true,\"answer\":\"Long-press the chat.\"}"));
+
+        var result = await client.AskAsync("install-id-1", "1.3 (4)", "How do I pin?", new[] { "Chats: pin it." });
+
+        Assert.Contains("\"web\":false", handler.LastBody);
+        Assert.Empty(result.Sources!);
+    }
 }

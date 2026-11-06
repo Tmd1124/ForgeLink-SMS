@@ -78,4 +78,73 @@ public class AssistantServiceTests
         Assert.Contains("Send a report", reply.Text);
         Assert.Equal(0, handler.Calls);
     }
+
+    private static HttpResponseMessage WebAnswer(string text) =>
+        new(HttpStatusCode.OK)
+        {
+            Content = new StringContent($"{{\"ok\":true,\"answer\":\"{text}\",\"web\":true,\"sources\":[{{\"title\":\"Recap\",\"url\":\"https://example.com/recap\"}}]}}", Encoding.UTF8, "application/json")
+        };
+
+    [Fact]
+    public async Task With_web_on_a_general_question_is_answered_from_the_web_with_its_sources()
+    {
+        var (service, handler) = Make(() => WebAnswer("It was 3-2."));
+
+        var reply = await service.AskAsync("Who won the game last night?", web: true);
+
+        Assert.Equal(AssistantSource.Web, reply.Source);
+        Assert.Equal("It was 3-2.", reply.Text);
+        Assert.Equal("https://example.com/recap", Assert.Single(reply.Sources!).Url);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
+    public async Task With_web_off_nothing_is_searched()
+    {
+        var (service, handler) = Make(() => Answer("Long-press the chat and tap pin."));
+
+        var reply = await service.AskAsync("How do I pin a conversation?", web: false);
+
+        Assert.NotEqual(AssistantSource.Web, reply.Source);
+        Assert.Equal(1, handler.Calls);
+        Assert.Null(reply.Sources);
+    }
+
+    [Fact]
+    public async Task Fixed_answers_win_even_with_web_on_and_never_leave_the_phone()
+    {
+        var (service, handler) = Make(() => WebAnswer("web"));
+
+        var reply = await service.AskAsync("How much is it?", web: true);
+
+        Assert.Equal(AssistantSource.Fixed, reply.Source);
+        Assert.Equal(0, handler.Calls);
+    }
+
+    [Fact]
+    public async Task When_web_search_is_unavailable_the_help_answers_and_says_so()
+    {
+        var calls = 0;
+        var (service, _) = Make(() => ++calls == 1
+            ? new HttpResponseMessage((HttpStatusCode)429)
+            : Answer("Long-press the chat and tap pin."));
+
+        var reply = await service.AskAsync("How do I pin a conversation?", web: true);
+
+        Assert.Equal(AssistantSource.Cloud, reply.Source);
+        Assert.StartsWith(AssistantService.WebUnavailableNote, reply.Text);
+        Assert.EndsWith("Long-press the chat and tap pin.", reply.Text);
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public async Task When_web_search_and_the_cloud_are_both_down_the_offline_help_still_answers_with_the_note()
+    {
+        var (service, _) = Make(() => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+
+        var reply = await service.AskAsync("How do I pin a conversation?", web: true);
+
+        Assert.Equal(AssistantSource.Offline, reply.Source);
+        Assert.StartsWith(AssistantService.WebUnavailableNote, reply.Text);
+    }
 }
