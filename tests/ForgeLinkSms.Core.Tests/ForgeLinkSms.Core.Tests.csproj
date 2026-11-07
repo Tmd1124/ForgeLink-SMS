@@ -23,4 +23,8 @@
     <ProjectReference Include="..\..\src\ForgeLinkSms.Core\ForgeLinkSms.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Assistant\questions.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

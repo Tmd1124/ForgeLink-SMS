@@ -7,9 +7,9 @@ public static class AssistantFixedAnswers
     [
         (["refund", "money back", "charged", "chargeback"],
             $"For a refund or a billing problem, email {AzureForge.Email} and include the email you bought with."),
-        (["how much", "price", "cost", "subscription", "free", "pay "],
+        (["how much", "price", "cost", "subscription", "free", "pay ", " ads", "advert"],
             "ForgeLink SMS is a one-time $4.99 purchase. There is no subscription and no ads."),
-        (["privacy", "private", "read my", "see my", "my data", "my messages", "track", "spy", "collect"],
+        (["privacy", "private", " read my", " see my", "who can see", " sell my", " share my", " store my", "track", "spy", "collect"],
             "Your messages, contacts and settings stay on your phone. The developer does not receive them. Read the full policy at AzureForgeAI.com.")
     ];
 

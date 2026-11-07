@@ -39,6 +39,11 @@ public static class HelpCatalog
             "Pinned chats stay at the top. To unpin, select it and tap the pin.",
             "To favorite a chat, long-press it, then tap the heart.",
             "To add a chat to a filter, long-press it, then tap the filter button.",
+            "To mark a chat unread, select it and tap the eye icon.",
+            "To select every chat, select one, then tap Select all.",
+            "To mute, snooze, block or report spam, select one chat and tap the three dots.",
+            "To archive or delete chats, select them and tap the box or the trash.",
+            "The mailbox button at the top shows only your unread chats.",
             "Choose what swiping does in Menu → Scrolling.",
             "Undo appears right where the chat was for 3 seconds."
         });
@@ -56,7 +61,8 @@ public static class HelpCatalog
         {
             "Short codes, toll-free numbers and named senders land here.",
             "They arrive without a notification, except verification codes.",
-            "Businesses you've saved as contacts stay in Chats."
+            "Businesses you've saved as contacts stay in Chats.",
+            "To move a sender to Chats, tap the check mark next to it."
         });
 
     private static readonly HelpTopic Screener = new("Screener", "Texts from numbers you don't know yet.",
@@ -71,7 +77,8 @@ public static class HelpCatalog
         {
             "Numbers not in your contacts that you've never replied to.",
             "Often spam, wrong numbers or someone new.",
-            "They arrive silently, except verification codes."
+            "They arrive silently, except verification codes.",
+            "To move a sender to Chats, tap the check mark next to it."
         });
 
     private static readonly Dictionary<string, HelpTopic> Topics = new(StringComparer.OrdinalIgnoreCase)
@@ -91,7 +98,8 @@ public static class HelpCatalog
             {
                 "Long-press a message to react, reply, copy or set a reminder.",
                 "After you tap send you have 3 seconds to undo.",
-                "Status under your text: Sending, Sent, Delivered or Not sent."
+                "Status under your text: Sending, Sent, Delivered or Not sent.",
+                "Delivered means your text reached their phone."
             }),
         ["conversations/group"] = new("Group details", "Everyone in this group text.",
             new[]
@@ -143,7 +151,7 @@ public static class HelpCatalog
                 I("mail", "Help & feedback"),
                 I("lock", "Privacy")
             },
-            new[] { "Each row shows what's set now." }),
+            new[] { "Each row shows what's set now.", "Check for Updates here turns on a daily check when ForgeLink starts." }),
         ["settings/appearance"] = new("Appearance", "Theme and text size.",
             new[] { I("palette", "Colors and light or dark mode"), I("text", "Make all text bigger or smaller") },
             new[] { "Text size changes the whole app, not just messages." }),
@@ -152,7 +160,7 @@ public static class HelpCatalog
             new[] { "Muted chats never notify.", "Favorites can still ring during quiet hours." }),
         ["settings/chat-list"] = new("Chat list", "How your Chats screen looks.",
             new[] { I("bubbles", "Choose who gets a bubble"), I("palette", "Color the list by person or filter"), I("tag", "Show filters as tabs") },
-            new[] { "A quick preset sets everything in one tap." }),
+            new[] { "To turn off bubbles, untick every box under Who gets a bubble.", "A quick preset sets everything in one tap." }),
         ["settings/backup"] = new("Backup & restore", "Keep your messages safe.",
             new[]
             {
@@ -162,19 +170,25 @@ public static class HelpCatalog
                 I("download", "Restore from a backup"),
                 I("send", "Export for other apps")
             },
-            new[] { "Restoring only adds what's missing — nothing is deleted.", "Pick a Google Drive folder to keep backups off the phone." }),
+            new[] { "To export your texts to another app, tap Export for other apps.",
+                "Restoring only adds what's missing — nothing is deleted.", "Pick a Google Drive folder to keep backups off the phone." }),
         ["settings/help"] = new("Help & feedback", "Reach the people who make ForgeLink.",
             new[] { I("mail", "Send feedback by email"), I("star", "Rate ForgeLink") },
             new[] { "Nothing is sent until you send the email yourself." }),
         ["settings/privacy"] = new("Privacy", "What leaves your phone.",
             new[] { I("eye", "Link previews visit the linked page"), I("lock", "Hide message text in the widget") },
-            new[] { "Everything else stays on your phone." }),
+            new[]
+            {
+                "Link previews fetch the page from your phone. Turn them off in Settings → Privacy.",
+                "To hide message text in the widget, open Settings → Privacy and switch it on.",
+                "Everything else stays on your phone."
+            }),
         ["scrolling"] = new("Scrolling", "Choose what swiping a chat does.",
             new[] { I("archive", "Archive"), I("trash", "Move to Trash"), I("ban", "Nothing") },
-            new[] { "Undo appears right where the chat was for 3 seconds." }),
+            new[] { "Swipe a chat left or right to archive or delete it. You choose which here.", "Undo appears right where the chat was for 3 seconds." }),
         ["filters"] = new("Filters", "Group chats under a name, emoji and color.",
             new[] { I("tag", "Tap a name to rename it"), I("palette", "Tap the dot to change its color"), I("trash", "Delete — Undo shows for 3 seconds") },
-            new[] { "Filters with chats show as tabs above your chats.", "Long-press a tab there to reorder." }),
+            new[] { "To create a filter, open Menu → Filters, type a name or emoji, and tap Add filter.", "Filters with chats show as tabs above your chats.", "Long-press a tab there to reorder." }),
         ["scheduled"] = new("Scheduled", "Texts waiting to be sent.",
             new[] { I("clock", "Tap a text to change it"), I("trash", "Cancel — Undo shows for 3 seconds") },
             new[] { "Schedule one from + in any chat." }),
@@ -195,13 +209,40 @@ public static class HelpCatalog
             new[] { "Deleting from Trash can't be undone." }),
         ["theme"] = new("Theme", "Colors for the whole app.",
             new[] { I("sun", "Light, dark or match your phone"), I("palette", "Pick an accent color") },
-            Array.Empty<string>()),
+            new[] { "For dark mode, open Menu, tap Theme and choose Dark." }),
+        ["settings/messages"] = new("Delay send", "Gives you a moment to undo a text.",
+            new[] { I("clock", "Turn on Delay send"), I("undo", "Tap Undo before it goes") },
+            new[]
+            {
+                "To turn on delay send, open Settings, tap Messages and switch on Delay send.",
+                "Slide to pick 1 to 5 seconds. While it waits, tap Undo to cancel the text.",
+                "Delay send is off until you turn it on."
+            }),
+        ["about"] = new("About ForgeLink", "The About page: your version, updates and links.",
+            new[] { I("check", "The version installed and the newest one"), I("download", "Update to the newest version") },
+            new[] { "To see your version, open Menu and tap About." }),
+        ["updates"] = new("Check for updates", "Find and install a newer ForgeLink.",
+            new[] { I("refresh", "Check for updates now"), I("download", "Download the update") },
+            new[]
+            {
+                "To check for updates, open Menu and tap Check for updates.",
+                "To check automatically once a day, turn on Settings → Check for Updates.",
+                "Automatic checking is off until you turn it on."
+            }),
+        ["assistant"] = new("Ask ForgeLink", "A help chat that can also Google.",
+            new[] { I("bubbles", "Tap the robot button on your chats"), I("search", "Googling answers general questions") },
+            new[]
+            {
+                "To move the robot button, press and hold it, then drag it anywhere.",
+                "To turn Googling off, tap the Googling button above the question box.",
+                "Tap Send a report to email the developer your conversation."
+            }),
         ["profile"] = new("Your Profile", "Your details, kept on this phone.",
             new[] { I("contact", "Fill from your phone"), I("pin", "Use your current location"), I("send", "Share them with My card") },
             new[] { "Nothing is shared until you send My card." }),
         ["onboarding"] = new("Welcome", "Set ForgeLink as your texting app.",
             new[] { I("check", "Make ForgeLink your default SMS app") },
-            new[] { "Android only lets one app send and receive texts." }),
+            new[] { "To make ForgeLink your default texting app, tap the button and say yes to Android.", "Android only lets one app send and receive texts." }),
         ["rate"] = new("Rate ForgeLink", "Tell us how we're doing.",
             new[] { I("star", "Tap a star"), I("mail", "Send opens your email") },
             new[] { "Nothing is sent until you send the email yourself." })
