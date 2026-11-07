@@ -50,7 +50,7 @@
     }
     else
     {
-        <button class="assist-report" @onclick="Email.EmailFeedback">Send a report</button>
+        <button class="assist-report" @onclick="SendReport">Send a report</button>
     }
 
     <button type="button" class="assist-web @(_web ? "on" : "")" role="switch" aria-checked="@(_web ? "true" : "false")" @onclick="ToggleGoogling">
@@ -100,6 +100,12 @@
             _thinking = false;
         }
         await ScrollToEnd();
+    }
+
+    private void SendReport()
+    {
+        var lines = _messages.Select(m => (m.FromMe ? "You: " : "ForgeLink: ") + m.Text + (m.FromMe || m.Source is null ? "" : $" [{m.Source}]"));
+        Email.EmailAssistantReport(string.Join("\n", lines));
     }
 
     private static string? SourceLabel(AssistantReply reply) => reply.Source switch

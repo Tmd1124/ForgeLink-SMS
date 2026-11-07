@@ -35,7 +35,10 @@ public static class HelpCatalog
         },
         new[]
         {
-            "Long-press a chat to select it, pin it, mute it or add it to a filter.",
+            "To pin a chat, long-press it, then tap the pin in the top bar.",
+            "Pinned chats stay at the top. To unpin, select it and tap the pin.",
+            "To favorite a chat, long-press it, then tap the heart.",
+            "To add a chat to a filter, long-press it, then tap the filter button.",
             "Choose what swiping does in Menu → Scrolling.",
             "Undo appears right where the chat was for 3 seconds."
         });

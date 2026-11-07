@@ -13,6 +13,18 @@ public class HelpMatcherTests
         Assert.Equal("Chats", found[0].Title);
     }
 
+    [Theory]
+    [InlineData("How do I pin messages")]
+    [InlineData("how do i pin a text")]
+    [InlineData("How do I pin a message to the top?")]
+    public void Pinning_messages_or_texts_finds_the_chats_help_with_the_steps(string question)
+    {
+        var found = HelpMatcher.Match(question);
+
+        Assert.Equal("Chats", found[0].Title);
+        Assert.Contains("tap the pin", found[0].Text, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void Back_up_with_a_space_still_finds_backup()
     {

@@ -61,6 +61,8 @@ public class CrashReportService : ICrashReportService
 
     public void EmailFeedback() => Open(CrashReport.ForFeedback(Details()));
 
+    public void EmailAssistantReport(string transcript) => Open(CrashReport.ForAssistant(Details(), transcript));
+
     public void EmailCompany() =>
         Open(new ReportEmail("ForgeLink SMS", CrashReport.ForFeedback(Details()).Body, ForgeLinkSms.Core.Help.AzureForge.Email));
 

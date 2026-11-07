@@ -26,4 +26,14 @@ public static class CrashReport
 
     public static ReportEmail ForFeedback(AppDetails app) =>
         new($"ForgeLink SMS feedback ({app.Version})", $"\n\n\n---\nApp: ForgeLink SMS {app.Version}\nPhone: {app.Phone}, {app.AndroidVersion}");
+
+    // The person's own chat with the assistant, so the developer can see what was asked and how it answered. The newest lines win when it is too long.
+    public static ReportEmail ForAssistant(AppDetails app, string transcript)
+    {
+        const string Cut = "[earlier lines cut]\n";
+        var header = $"\n\n\n---\nApp: ForgeLink SMS {app.Version}\nPhone: {app.Phone}, {app.AndroidVersion}\n\nAsk ForgeLink conversation:\n";
+        var room = MaxBodyLength - header.Length;
+        var text = transcript.Length <= room ? transcript : Cut + transcript[^(room - Cut.Length)..];
+        return new ReportEmail($"ForgeLink SMS assistant report ({app.Version})", header + text);
+    }
 }

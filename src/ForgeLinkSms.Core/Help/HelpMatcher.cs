@@ -14,6 +14,8 @@ public static class HelpMatcher
         "my", "this", "that", "with", "for", "from", "have", "has", "there", "about", "into", "get", "set", "use", "want", "need", "please"
     };
 
+    private static readonly string[] ChatWords = ["message", "text", "conversation", "thread"];
+
     // Measured against the help catalog: questions about ForgeLink score 3 or more on their best topic; everyday
     // questions (weather, sports, trivia) score 0 or 1 from words that happen to appear in the help text.
     private const int AboutAppScore = 3;
@@ -47,7 +49,12 @@ public static class HelpMatcher
         var text = question.ToLowerInvariant().Replace("back up", "backup").Replace("set up", "setup");
         var words = new string(text.Select(c => char.IsLetterOrDigit(c) ? c : ' ').ToArray())
             .Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return words.Where(w => w.Length >= 3 && !Stop.Contains(w)).Distinct().ToList();
+        var tokens = words.Where(w => w.Length >= 3 && !Stop.Contains(w)).Distinct().ToList();
+        if (tokens.Any(w => ChatWords.Any(c => w.StartsWith(c, StringComparison.Ordinal))) && !tokens.Contains("chat"))
+        {
+            tokens.Add("chat");
+        }
+        return tokens;
     }
 
     private static int Score(HelpTopic topic, List<string> tokens)

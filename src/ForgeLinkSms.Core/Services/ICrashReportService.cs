@@ -14,6 +14,9 @@ public interface ICrashReportService
     /// Opens the email app with a feedback message and the app/phone details filled in.
     void EmailFeedback();
 
+    /// Opens the email app with the Ask ForgeLink conversation and the app/phone details filled in.
+    void EmailAssistantReport(string transcript);
+
     /// Opens the email app addressed to AzureForge AI.
     void EmailCompany();
 

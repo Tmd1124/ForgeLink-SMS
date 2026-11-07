@@ -42,6 +42,29 @@ public class CrashReportTests
     }
 
     [Fact]
+    public void Assistant_report_carries_the_conversation_below_the_phone_details()
+    {
+        var email = CrashReport.ForAssistant(App, "You: How do I pin messages\nForgeLink: I am not sure.");
+
+        Assert.Equal("ForgeLink SMS assistant report (1.0 (1))", email.Subject);
+        Assert.StartsWith("\n\n\n---\n", email.Body);
+        Assert.Contains("Phone: samsung SM-F966U1, Android 16", email.Body);
+        Assert.Contains("Ask ForgeLink conversation:\nYou: How do I pin messages\nForgeLink: I am not sure.", email.Body);
+    }
+
+    [Fact]
+    public void A_long_assistant_conversation_keeps_the_newest_lines_within_the_size_cap()
+    {
+        var transcript = string.Join("\n", Enumerable.Range(1, 800).Select(i => $"You: question number {i}"));
+
+        var email = CrashReport.ForAssistant(App, transcript);
+
+        Assert.True(email.Body.Length <= CrashReport.MaxBodyLength);
+        Assert.Contains("question number 800", email.Body);
+        Assert.DoesNotContain("question number 1\n", email.Body);
+    }
+
+    [Fact]
     public void Reports_go_to_the_developer_address()
     {
         Assert.Equal("Tmd1124@outlook.com", CrashReport.To);
