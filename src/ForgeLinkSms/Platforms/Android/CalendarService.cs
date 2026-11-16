@@ -7,12 +7,13 @@ namespace ForgeLinkSms.Platforms.Android;
 
 public class CalendarService : ICalendarService
 {
-    public Task OpenNewEventAsync(string title, DateTime start, DateTime end)
+    public Task OpenNewEventAsync(string title, DateTime start, DateTime end, bool allDay = false)
     {
         var intent = new Intent(Intent.ActionInsert);
         intent.SetData(CalendarContract.Events.ContentUri);
-        intent.PutExtra(CalendarContract.ExtraEventBeginTime, new DateTimeOffset(start).ToUnixTimeMilliseconds());
-        intent.PutExtra(CalendarContract.ExtraEventEndTime, new DateTimeOffset(end).ToUnixTimeMilliseconds());
+        intent.PutExtra(CalendarContract.ExtraEventBeginTime, ToMillis(start, allDay));
+        intent.PutExtra(CalendarContract.ExtraEventEndTime, ToMillis(end, allDay));
+        intent.PutExtra(CalendarContract.ExtraEventAllDay, allDay);
         intent.PutExtra(CalendarContract.Events.InterfaceConsts.Title, title);
         intent.AddFlags(ActivityFlags.NewTask);
 
@@ -21,4 +22,10 @@ public class CalendarService : ICalendarService
 
         return Task.CompletedTask;
     }
+
+    // All-day events are stored as UTC midnight; timed ones use the local zone.
+    private static long ToMillis(DateTime value, bool allDay) =>
+        allDay
+            ? new DateTimeOffset(DateTime.SpecifyKind(value.Date, DateTimeKind.Utc)).ToUnixTimeMilliseconds()
+            : new DateTimeOffset(value).ToUnixTimeMilliseconds();
 }

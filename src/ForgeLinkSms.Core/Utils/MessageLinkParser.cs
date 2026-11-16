@@ -12,6 +12,8 @@ public enum MessageLinkKind
     Appointment
 }
 
+// Data for an Appointment segment is a DateTime when the text names a time,
+// or a DateOnly when it names only a date (an all-day event).
 public sealed record MessageTextSegment(string Text, MessageLinkKind Kind, object? Data = null);
 
 public static partial class MessageLinkParser
@@ -24,19 +26,37 @@ public static partial class MessageLinkParser
 
     private const string Months =
         "January|February|March|April|May|June|July|August|September|October|November|December|" +
-        "Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec";
+        "Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept|Sep|Oct|Nov|Dec";
 
-    private const string Time = @"\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?";
+    private const string Time =
+        @"(?:\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)|\d{1,2}:\d{2}|noon|midnight|(?<=\bat\s)\d{1,2})(?!\d)";
+
+    private const string RelativeDay = @"(?:(?:next\s+|this\s+|on\s+)?(?:" + Weekdays + @")|today|tonight|tomorrow|tmrw)\b";
+
+    private const string CalendarDate =
+        $@"(?:\b\d{{4}}-\d{{1,2}}-\d{{1,2}}\b|\b\d{{1,2}}/\d{{1,2}}(?:/\d{{2,4}})?\b" +
+        $@"|\b(?:{Months})\.?\s+\d{{1,2}}(?:st|nd|rd|th)?\b(?:,?\s+\d{{4}}\b)?" +
+        $@"|\b\d{{1,2}}(?:st|nd|rd|th)?\s+(?:of\s+)?(?:{Months})\b\.?(?:,?\s+\d{{4}}\b)?)";
+
+    private const string AnyDate = $@"(?:{CalendarDate}|{RelativeDay})";
+
+    private const string Joiner = @"(?:\s*(?:,|@|-|at|on|around|by)?\s*)";
+
+    // A bare weekday or "today" alone is too common in ordinary prose to link,
+    // so those only count when paired with a time.
+    private const string DateTimeAlternation =
+        $@"\b{AnyDate}{Joiner}{Time}|\b{Time}{Joiner}{AnyDate}|\b{Time}|{CalendarDate}";
+
+    private const string UrlTail = @"[^\s]*?(?=[.,;:!?)\]]*(?:\s|$))";
 
     // Alternation order doubles as detector priority: a match earlier in this
     // list wins over one later in it when they'd otherwise overlap.
     [GeneratedRegex(
-        $@"(?<url>\bhttps?://[^\s]+\b|\bwww\.[^\s]+\b)" +
+        $@"(?<url>\bhttps?://{UrlTail}|\bwww\.{UrlTail}" +
+        $@"|(?<![@\w.-])[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|co|us|gov|edu|app|dev|ai|me|ly|info|biz)\b(?:/{UrlTail})?)" +
         $@"|(?<phone>(?:\+?1[-.\s]?)?\(?\d{{3}}\)?[-.\s]\d{{3}}[-.\s]\d{{4}}\b)" +
-        $@"|(?<appt>\b(?:(?:{Weekdays})|today|tonight|tomorrow)\b\s*(?:at\s*)?{Time}\b" +
-        $@"|\b\d{{1,2}}/\d{{1,2}}(?:/\d{{2,4}})?\s*(?:at\s*)?{Time}\b" +
-        $@"|\b(?:{Months})\s+\d{{1,2}}(?:st|nd|rd|th)?(?:,?\s+\d{{4}})?\s*(?:at\s*)?{Time}\b)" +
-        $@"|(?<address>\b\d{{1,6}}\s+(?:[A-Z][a-zA-Z]*\s){{1,4}}(?:{StreetSuffixes})\b\.?(?:,\s*[A-Za-z][A-Za-z\s]*)?(?:,\s*[A-Z]{{2}})?(?:\s+\d{{5}}(?:-\d{{4}})?)?)",
+        $@"|(?<address>\b\d{{1,6}}\s+(?:[A-Z][a-zA-Z]*\s){{1,4}}(?:{StreetSuffixes})\b\.?(?:,\s*[A-Za-z][A-Za-z\s]*)?(?:,\s*[A-Z]{{2}})?(?:\s+\d{{5}}(?:-\d{{4}})?)?)" +
+        $@"|(?<appt>{DateTimeAlternation})",
         RegexOptions.IgnoreCase)]
     private static partial Regex EntityRegex();
 
@@ -61,21 +81,16 @@ public static partial class MessageLinkParser
             {
                 segments.Add(new MessageTextSegment(match.Value, MessageLinkKind.PhoneNumber, PhoneNumberFormatter.ToComparableDigits(match.Value)));
             }
-            else if (match.Groups["appt"].Success)
-            {
-                var parsed = TryParseAppointment(match.Value, reference);
-                if (parsed is null)
-                {
-                    segments.Add(new MessageTextSegment(match.Value, MessageLinkKind.PlainText));
-                }
-                else
-                {
-                    segments.Add(new MessageTextSegment(match.Value, MessageLinkKind.Appointment, parsed.Value));
-                }
-            }
             else if (match.Groups["address"].Success)
             {
                 segments.Add(new MessageTextSegment(match.Value, MessageLinkKind.Address, match.Value));
+            }
+            else if (match.Groups["appt"].Success)
+            {
+                var parsed = TryParseAppointment(match.Value, reference);
+                segments.Add(parsed is null
+                    ? new MessageTextSegment(match.Value, MessageLinkKind.PlainText)
+                    : new MessageTextSegment(match.Value, MessageLinkKind.Appointment, parsed));
             }
 
             lastIndex = match.Index + match.Length;
@@ -96,69 +111,111 @@ public static partial class MessageLinkParser
 
     private static string BuildUrl(string raw) => raw.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? raw : "https://" + raw;
 
-    // Matched first: an explicit meridiem removes all ambiguity, so this
-    // takes priority over any bare number elsewhere in the phrase (e.g. the
-    // "9" in "9/25 at 10am" must not be mistaken for the time).
-    [GeneratedRegex(@"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?", RegexOptions.IgnoreCase)]
     private static partial Regex TimeWithMeridiemRegex();
 
-    // Fallback for a bare hour with no am/pm, only trusted right after "at"
-    // (e.g. "tonight at 7").
-    [GeneratedRegex(@"\bat\s+(\d{1,2})(?::(\d{2}))?\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(\d{1,2}):(\d{2})\b")]
+    private static partial Regex Time24Regex();
+
+    [GeneratedRegex(@"\bat\s+(\d{1,2})\b", RegexOptions.IgnoreCase)]
     private static partial Regex TimeAfterAtRegex();
 
-    private static DateTime? TryParseAppointment(string text, DateTime reference)
+    [GeneratedRegex(@"\b(\d{4})-(\d{1,2})-(\d{1,2})\b")]
+    private static partial Regex IsoDateRegex();
+
+    [GeneratedRegex(@"\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b")]
+    private static partial Regex NumericDateRegex();
+
+    [GeneratedRegex($@"\b({Months})\.?\s+(\d{{1,2}})(?:st|nd|rd|th)?\b(?:,?\s+(\d{{4}})\b)?", RegexOptions.IgnoreCase)]
+    private static partial Regex MonthDayRegex();
+
+    [GeneratedRegex($@"\b(\d{{1,2}})(?:st|nd|rd|th)?\s+(?:of\s+)?({Months})\b\.?(?:,?\s+(\d{{4}})\b)?", RegexOptions.IgnoreCase)]
+    private static partial Regex DayMonthRegex();
+
+    [GeneratedRegex($@"\b({Weekdays})\b", RegexOptions.IgnoreCase)]
+    private static partial Regex WeekdayRegex();
+
+    private static readonly string[] MonthAbbreviations =
+        ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+    private static object? TryParseAppointment(string text, DateTime reference)
     {
-        var timeMatch = TimeWithMeridiemRegex().Match(text);
-        var hasMeridiem = timeMatch.Success;
-        if (!hasMeridiem)
-        {
-            timeMatch = TimeAfterAtRegex().Match(text);
-        }
+        var time = ParseTime(text);
+        var date = ResolveDate(text, reference);
 
-        if (!timeMatch.Success)
+        if (time is null && date is null)
         {
             return null;
         }
 
-        var hour = int.Parse(timeMatch.Groups[1].Value, CultureInfo.InvariantCulture);
-        var minute = timeMatch.Groups[2].Success ? int.Parse(timeMatch.Groups[2].Value, CultureInfo.InvariantCulture) : 0;
-        var meridiem = hasMeridiem ? timeMatch.Groups[3].Value.ToLowerInvariant() : null;
-
-        if (hour is < 0 or > 23 || minute is < 0 or > 59)
+        if (time is null)
         {
-            return null;
+            return DateOnly.FromDateTime(date!.Value);
         }
 
-        if (meridiem == "pm" && hour < 12)
+        if (date is null)
         {
-            hour += 12;
-        }
-        else if (meridiem == "am" && hour == 12)
-        {
-            hour = 0;
-        }
-        else if (meridiem is null && hour is >= 1 and <= 11)
-        {
-            // No explicit am/pm: "tonight" always means evening; otherwise
-            // default afternoon-ish hours to PM, morning-ish hours to AM
-            // (matches the common shorthand "call at 7" == 7pm).
-            var isEvening = text.Contains("tonight", StringComparison.OrdinalIgnoreCase) || hour is >= 1 and <= 6;
-            hour = isEvening ? hour + 12 : hour;
+            var today = reference.Date + time.Value;
+            return today > reference ? today : today.AddDays(1);
         }
 
-        var datePart = ResolveDate(text, reference);
-        if (datePart is null)
+        return date.Value.Date + time.Value;
+    }
+
+    private static TimeSpan? ParseTime(string text)
+    {
+        if (text.Contains("noon", StringComparison.OrdinalIgnoreCase))
         {
-            return null;
+            return TimeSpan.FromHours(12);
         }
 
-        return datePart.Value.Date.AddHours(hour).AddMinutes(minute);
+        if (text.Contains("midnight", StringComparison.OrdinalIgnoreCase))
+        {
+            return TimeSpan.Zero;
+        }
+
+        var m = TimeWithMeridiemRegex().Match(text);
+        if (m.Success)
+        {
+            var hour = int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture);
+            var minute = m.Groups[2].Success ? int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture) : 0;
+            if (hour is < 1 or > 12 || minute > 59)
+            {
+                return null;
+            }
+
+            var pm = char.ToLowerInvariant(m.Groups[3].Value[0]) == 'p';
+            return new TimeSpan(hour % 12 + (pm ? 12 : 0), minute, 0);
+        }
+
+        m = Time24Regex().Match(text);
+        if (m.Success)
+        {
+            var hour = int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture);
+            var minute = int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
+            return hour <= 23 && minute <= 59 ? new TimeSpan(hour, minute, 0) : null;
+        }
+
+        m = TimeAfterAtRegex().Match(text);
+        if (m.Success)
+        {
+            var hour = int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture);
+            if (hour is < 1 or > 12)
+            {
+                return null;
+            }
+
+            // No explicit am/pm: "tonight" and hours 1-6 mean evening ("call at 7" == 7pm).
+            var evening = text.Contains("tonight", StringComparison.OrdinalIgnoreCase) || hour <= 6;
+            return TimeSpan.FromHours(evening ? hour + 12 : hour);
+        }
+
+        return null;
     }
 
     private static DateTime? ResolveDate(string text, DateTime reference)
     {
-        if (text.Contains("tomorrow", StringComparison.OrdinalIgnoreCase))
+        if (text.Contains("tomorrow", StringComparison.OrdinalIgnoreCase) || text.Contains("tmrw", StringComparison.OrdinalIgnoreCase))
         {
             return reference.Date.AddDays(1);
         }
@@ -168,33 +225,72 @@ public static partial class MessageLinkParser
             return reference.Date;
         }
 
-        var weekdayMatch = Regex.Match(text, $@"\b({Weekdays})\b", RegexOptions.IgnoreCase);
-        if (weekdayMatch.Success)
+        var iso = IsoDateRegex().Match(text);
+        if (iso.Success)
         {
-            return NextWeekday(reference.Date, weekdayMatch.Value);
+            return SafeDate(
+                int.Parse(iso.Groups[1].Value, CultureInfo.InvariantCulture),
+                int.Parse(iso.Groups[2].Value, CultureInfo.InvariantCulture),
+                int.Parse(iso.Groups[3].Value, CultureInfo.InvariantCulture),
+                false, reference);
         }
 
-        var numericMatch = Regex.Match(text, @"\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b");
-        if (numericMatch.Success)
+        var numeric = NumericDateRegex().Match(text);
+        if (numeric.Success)
         {
-            var month = int.Parse(numericMatch.Groups[1].Value, CultureInfo.InvariantCulture);
-            var day = int.Parse(numericMatch.Groups[2].Value, CultureInfo.InvariantCulture);
-            var year = numericMatch.Groups[3].Success
-                ? NormalizeYear(numericMatch.Groups[3].Value)
-                : reference.Year;
-            return new DateTime(year, month, day);
+            var hasYear = numeric.Groups[3].Success;
+            return SafeDate(
+                hasYear ? NormalizeYear(numeric.Groups[3].Value) : reference.Year,
+                int.Parse(numeric.Groups[1].Value, CultureInfo.InvariantCulture),
+                int.Parse(numeric.Groups[2].Value, CultureInfo.InvariantCulture),
+                !hasYear, reference);
         }
 
-        var monthNameMatch = Regex.Match(text, $@"\b({Months})\s+(\d{{1,2}})(?:st|nd|rd|th)?(?:,?\s+(\d{{4}}))?\b", RegexOptions.IgnoreCase);
-        if (monthNameMatch.Success)
+        var monthDay = MonthDayRegex().Match(text);
+        var dayMonth = DayMonthRegex().Match(text);
+        if (dayMonth.Success && (!monthDay.Success || dayMonth.Index < monthDay.Index))
         {
-            var month = DateTime.ParseExact(monthNameMatch.Groups[1].Value, monthNameMatch.Groups[1].Value.Length > 3 ? "MMMM" : "MMM", CultureInfo.InvariantCulture).Month;
-            var day = int.Parse(monthNameMatch.Groups[2].Value, CultureInfo.InvariantCulture);
-            var year = monthNameMatch.Groups[3].Success ? int.Parse(monthNameMatch.Groups[3].Value, CultureInfo.InvariantCulture) : reference.Year;
-            return new DateTime(year, month, day);
+            return NamedMonthDate(dayMonth.Groups[2].Value, dayMonth.Groups[1].Value, dayMonth.Groups[3], reference);
+        }
+
+        if (monthDay.Success)
+        {
+            return NamedMonthDate(monthDay.Groups[1].Value, monthDay.Groups[2].Value, monthDay.Groups[3], reference);
+        }
+
+        var weekday = WeekdayRegex().Match(text);
+        if (weekday.Success)
+        {
+            return NextWeekday(reference.Date, weekday.Value);
         }
 
         return null;
+    }
+
+    private static DateTime? NamedMonthDate(string monthText, string dayText, Group yearGroup, DateTime reference)
+    {
+        var month = Array.FindIndex(MonthAbbreviations, a => monthText.StartsWith(a, StringComparison.OrdinalIgnoreCase)) + 1;
+        var day = int.Parse(dayText, CultureInfo.InvariantCulture);
+        var hasYear = yearGroup.Success;
+        var year = hasYear ? int.Parse(yearGroup.Value, CultureInfo.InvariantCulture) : reference.Year;
+        return SafeDate(year, month, day, !hasYear, reference);
+    }
+
+    // A yearless date that is clearly in the past (more than a month back) means next year's.
+    private static DateTime? SafeDate(int year, int month, int day, bool rollForward, DateTime reference)
+    {
+        if (month is < 1 or > 12 || year is < 1 or > 9998 || day < 1 || day > DateTime.DaysInMonth(year, month))
+        {
+            return null;
+        }
+
+        var date = new DateTime(year, month, day);
+        if (rollForward && reference.Date - date > TimeSpan.FromDays(30) && day <= DateTime.DaysInMonth(year + 1, month))
+        {
+            return new DateTime(year + 1, month, day);
+        }
+
+        return date;
     }
 
     private static int NormalizeYear(string raw)

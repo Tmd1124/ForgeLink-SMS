@@ -106,4 +106,58 @@ public class MessageLinkParserTests
         Assert.Equal(MessageLinkKind.PlainText, segments[4].Kind);
         Assert.Equal(" now", segments[4].Text);
     }
+
+    [Theory]
+    [InlineData("go to example.com/menu now", "example.com/menu")]
+    [InlineData("see example.com.", "example.com")]
+    [InlineData("(https://example.com/a?b=1)", "https://example.com/a?b=1")]
+    public void Parse_detects_bare_domains_and_trims_trailing_punctuation(string text, string expected)
+    {
+        var url = Assert.Single(MessageLinkParser.Parse(text), s => s.Kind == MessageLinkKind.Url);
+        Assert.Equal(expected, url.Text);
+    }
+
+    [Fact]
+    public void Parse_does_not_treat_email_addresses_as_urls()
+    {
+        Assert.DoesNotContain(MessageLinkParser.Parse("mail bob@example.com please"), s => s.Kind == MessageLinkKind.Url);
+    }
+
+    [Theory]
+    [InlineData("dinner Nov 20 at 7pm", 2026, 11, 20, 19, 0)]
+    [InlineData("dinner 20 November 6:30pm", 2026, 11, 20, 18, 30)]
+    [InlineData("2026-12-01 14:30", 2026, 12, 1, 14, 30)]
+    [InlineData("3pm tomorrow", 2026, 9, 22, 15, 0)]
+    [InlineData("see you at noon on Friday", 2026, 9, 25, 12, 0)]
+    [InlineData("meet 9/25/26 @ 8:15 a.m.", 2026, 9, 25, 8, 15)]
+    [InlineData("party on January 5 at 9pm", 2027, 1, 5, 21, 0)]
+    public void Parse_detects_varied_date_time_formats(string text, int y, int mo, int d, int h, int mi)
+    {
+        var now = new DateTime(2026, 9, 21, 9, 0, 0);
+        var appt = Assert.Single(MessageLinkParser.Parse(text, now), s => s.Kind == MessageLinkKind.Appointment);
+        Assert.Equal(new DateTime(y, mo, d, h, mi, 0), Assert.IsType<DateTime>(appt.Data));
+    }
+
+    [Fact]
+    public void Parse_treats_a_date_without_a_time_as_an_all_day_event()
+    {
+        var appt = Assert.Single(MessageLinkParser.Parse("flight on Dec 3", new DateTime(2026, 9, 21)), s => s.Kind == MessageLinkKind.Appointment);
+        Assert.Equal(new DateOnly(2026, 12, 3), Assert.IsType<DateOnly>(appt.Data));
+    }
+
+    [Theory]
+    [InlineData("I sat down today")]
+    [InlineData("see you Friday")]
+    [InlineData("it may rain")]
+    public void Parse_leaves_ordinary_words_alone(string text)
+    {
+        Assert.DoesNotContain(MessageLinkParser.Parse(text, new DateTime(2026, 9, 21)), s => s.Kind != MessageLinkKind.PlainText);
+    }
+
+    [Fact]
+    public void Parse_address_beats_time_after_at()
+    {
+        var segs = MessageLinkParser.Parse("meet at 5 Oak St tomorrow");
+        Assert.Contains(segs, s => s.Kind == MessageLinkKind.Address);
+    }
 }

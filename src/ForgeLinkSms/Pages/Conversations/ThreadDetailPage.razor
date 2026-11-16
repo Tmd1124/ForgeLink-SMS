@@ -1462,11 +1462,11 @@ else
         });
     }
 
-    private static async Task OpenUrl(MessageTextSegment segment)
+    private async Task OpenUrl(MessageTextSegment segment)
     {
         if (segment.Data is string url)
         {
-            await Launcher.Default.OpenAsync(new Uri(url));
+            await TryLaunch(() => Launcher.Default.OpenAsync(new Uri(url)), "No app can open that link");
         }
     }
 
@@ -1478,19 +1478,37 @@ else
         }
     }
 
-    private static async Task OpenMap(MessageTextSegment segment)
+    private async Task OpenMap(MessageTextSegment segment)
     {
         if (segment.Data is string address)
         {
-            await Launcher.Default.OpenAsync(new Uri("geo:0,0?q=" + Uri.EscapeDataString(address)));
+            await TryLaunch(() => Launcher.Default.OpenAsync(new Uri("geo:0,0?q=" + Uri.EscapeDataString(address))), "No maps app found");
         }
     }
 
     private async Task OpenCalendarEvent(MessageTextSegment segment, string messageBody)
     {
-        if (segment.Data is DateTime start)
+        switch (segment.Data)
         {
-            await CalendarService.OpenNewEventAsync(messageBody, start, start.AddMinutes(30));
+            case DateTime start:
+                await TryLaunch(() => CalendarService.OpenNewEventAsync(messageBody, start, start.AddHours(1), false), "No calendar app found");
+                break;
+            case DateOnly day:
+                var date = day.ToDateTime(TimeOnly.MinValue);
+                await TryLaunch(() => CalendarService.OpenNewEventAsync(messageBody, date, date.AddDays(1), true), "No calendar app found");
+                break;
+        }
+    }
+
+    private async Task TryLaunch(Func<Task> launch, string failureMessage)
+    {
+        try
+        {
+            await launch();
+        }
+        catch (Exception)
+        {
+            ShowSaveToast(failureMessage);
         }
     }
 }
